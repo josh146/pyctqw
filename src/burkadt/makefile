@@ -10,7 +10,7 @@ else
 	libName = _intel
 endif
 
-switch = -O2
+switch = -O2 -fPIC
 
 #Makefile
 all: libmatExp.a libc8lib.a libr8lib.a cleanTemp
@@ -57,7 +57,7 @@ cleanTemp:
 	rm -rf temp*
 	
 clean:
-	rm f90split
+	rm -f f90split
 	rm -rf temp*
 
 

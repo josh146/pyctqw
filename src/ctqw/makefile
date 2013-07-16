@@ -6,14 +6,16 @@ BIN_INSTALL = bin
 BIN_PATH = ../../$(BIN_INSTALL)
 
 ifeq ($(FC),gfortran)
+	fcompiler=gfortran
 	switch = -O2 -fbackslash
 	libName = _gcc
 	lapack = -llapack
 else
 	FC = ifort
+	fcompiler=intelem
 	switch = -O2 -assume bscc
 	libName = _intel
-	lapack = -lmkl_lapack95_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread	
+	lapack = -lmkl_lapack95_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
 endif
 
 # fftw3 library location
@@ -32,6 +34,7 @@ all: $(progname) clean
 	cp ctqw $(BIN_PATH)
 	rm ctqw
 
+# Fortran source code
 $(progname): $(objects)
 	$(FC) $(objects) -o $(progname) $(switch) $(lapack) $(fftw) $(matExp)
 FFT.o: FFT.f90
@@ -42,7 +45,27 @@ fileOps.o: fileOps.f90
 	$(FC) -c $(switch) fileOps.f90
 main.o: FFT.o myFunctions.o fileOps.o main.f90
 	$(FC) -c $(switch) main.f90
+
+#Python wrappers
+python: pyctqw.so
+	
+pyctqw.so: myFunctions.f90
+	f2py $(lapack) $(fftw) $(matExp) -m pyctqw -c --fcompiler=$(fcompiler) myFunctions.f90
+
 #Cleaning files
 clean:
-	rm *.o
-	rm *.mod
+	rm -f *.o
+	rm -f *.mod
+
+
+
+
+
+
+
+
+
+
+
+
+

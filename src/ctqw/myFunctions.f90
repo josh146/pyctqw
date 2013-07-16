@@ -46,9 +46,9 @@ module myFunctions
 	end function marginal
 
 	function identity(n)
-		integer, intent(in)	::	n
-		integer			::	i
-		real(8)		::	identity(n,n)
+		integer, intent(in)	:: n
+		integer			:: i
+		real(8)			:: identity(n,n)
 
 		identity = 0.d0
 		do i = 1, n
@@ -72,6 +72,38 @@ module myFunctions
 			kron(r2*(i-1)+1:r2*i, c2*(j-1)+1:c2*j) = M1(i,j)*M2
 		end forall
 	end function kron
+	
+	subroutine hamiltonian_1p(H,d1,a1,d2,a2,N)
+		real(8), intent(out)	:: H(N,N)
+		real(8), intent(in)	:: a1, a2
+		integer, intent(in)	:: d1, d2, N
+		
+		! local variables
+		integer	:: j, k
+		
+		H = 0.d0
+		do j = 1, N
+			if (floor(j-N/2.d0)==real(d1,8)) then
+				H(j,j) = 2.d0 + a1
+			elseif (floor(j-N/2.d0)==real(d2,8) .and. floor(j-N/2.d0)/=real(d1,8)) then
+				H(j,j) = 2.d0 + a2
+			else
+				H(j,j) = 2.d0
+			end if
+
+			do k = 1, N
+				if (abs(k-j)==1) H(j,k) = -1.d0
+			end do
+		end do
+	end subroutine hamiltonian_1p
+	
+	subroutine hamiltonian_2p_noint(H1,H2,N)
+		integer, intent(in)	:: N
+		real(8), intent(in)	:: H1(N,N)
+		real(8), intent(out)	:: H2(N,N)
+		
+		H2 = kron(H1,identity(N)) + kron(identity(N),H1)		
+	end subroutine hamiltonian_2p_noint
 
 	subroutine extremeEv(H,Emin,Emax)
 		real(8), intent(in)	::	H(:,:)
@@ -142,26 +174,26 @@ module myFunctions
 		deallocate(phi0,phi1,phi2,U)
 	end function quantumWalk
 
-	! finds the matrix exponential exp(-iHt)
-	function matrixExp(H,t)
+	! finds the matrix exponential exp(Ht) using Chebyshev
+	function matrixExp_cheby(H,t)
 		real(8), intent(in)	::	H(:,:)
 		real(8), intent(in)	::	t
 
 		! local variables
 		integer			::	N, m, terms, i, j
 		real(8)			::	alpha, Emax, Emin
-		complex(8), allocatable	::	phi0(:,:), phi1(:,:), phi2(:,:), U(:,:), matrixExp(:,:)
+		complex(8), allocatable	::	phi0(:,:), phi1(:,:), phi2(:,:), U(:,:), matrixExp_cheby(:,:)
 
 		N = size(H,1)
-		allocate(phi0(N,N),phi1(N,N),phi2(N,N),U(N,N),matrixExp(N,N))
+		allocate(phi0(N,N),phi1(N,N),phi2(N,N),U(N,N),matrixExp_cheby(N,N))
 
 		! set Chebyshev variables
 		call extremeEv(H,Emin,Emax)
 		alpha = (Emax-Emin)*t/2.d0
 
 		phi0 = identity(N)
-		phi1 = -(2.d0*H-(Emax+Emin)*identity(N))/(Emax-Emin)
-		U = dbesjn(0,alpha)*phi0 + 2.d0*ii*dbesjn(1,alpha)*phi1
+		phi1 = (2.d0*H-(Emax+Emin)*identity(N))/(Emax-Emin)
+		U = dbesjn(0,alpha)*phi0 + 2.d0*dbesjn(1,alpha)*phi1
 
 		terms = 0
 		do while (abs(2.d0*dbesjn(terms,alpha)) > 1.d-45)
@@ -169,18 +201,18 @@ module myFunctions
 		end do
 
 		do m = 2, terms
-			phi2 = -2.d0*(2.d0*matmul(H,phi1)-(Emax+Emin)*phi1)/(Emax-Emin) - phi0
-			U = U + 2.d0*(ii**m)*dbesjn(m,alpha)*phi2
+			phi2 = 2.d0*(2.d0*matmul(H,phi1)-(Emax+Emin)*phi1)/(Emax-Emin) + phi0
+			U = U + 2.d0*dbesjn(m,alpha)*phi2
 
 			phi0 = phi1
 			phi1 = phi2
 		end do
 
-		matrixExp = exp(-ii*(Emax+Emin)*t/2.d0)*U
+		matrixExp_cheby = exp((Emax+Emin)*t/2.d0)*U
 		deallocate(phi0,phi1,phi2,U)
-	end function matrixExp
+	end function matrixExp_cheby
 	
-	subroutine quantumWalk2(psi0,psi,dt,H)
+	subroutine quantumWalk_Burkadt(psi0,psi,dt,H)
 		complex(8), intent(in)	:: psi0(:)
 		real(8), intent(in)	:: dt, H(:,:)
 		complex(8), intent(out)	:: psi(:)
@@ -196,7 +228,7 @@ module myFunctions
 		psi = matmul(U,psi0)
 		
 		deallocate(U)
-	end subroutine quantumWalk2
+	end subroutine quantumWalk_Burkadt
 
 	function ToKspace(psi,x)
 		complex(8), intent(in)	::	psi(:)
