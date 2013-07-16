@@ -1,5 +1,6 @@
 module myFunctions
 	use IFPORT
+	use iso_c_binding
 	implicit none
 	complex(8), parameter	::	ii = (0.d0,1.d0)
 	real(8), parameter		::	pi = 4.d0*atan(1.d0)
@@ -45,33 +46,31 @@ module myFunctions
 		endif		
 	end function marginal
 
-	function identity(n)
-		integer, intent(in)	:: n
-		integer			:: i
-		real(8)			:: identity(n,n)
+	subroutine identity(mat,n)
+		integer, intent(in) :: n
+		real(8), intent(out) :: mat(n,n)
+		
+		integer :: i
 
-		identity = 0.d0
+		mat = 0.d0
 		do i = 1, n
-			identity(i,i)=1.d0
+			mat(i,i)=1.d0
 		end do
-	end function identity
+	end subroutine identity
 	
-	function kron(M1, M2)
-		real(8), intent(in)	:: M1(:,:), M2(:,:)
-		real(8), allocatable	:: kron(:,:)
+	subroutine kron(M1,r1,c1, M2,r2,c2, kronProd)
+		integer, intent(in)	:: r1, c1, r2, c2
+		real(8), intent(in)	:: M1(r1,c1), M2(r2,c2)
+		real(8), intent(out)	:: kronProd(r1*r2,c1*c2)
 
 		! local variables
-		integer :: i, j, dim1(2), dim2(2), r1, c1, r2, c2
-		dim1 = shape(M1); r1=dim1(1); c1=dim1(2)
-		dim2 = shape(M2); r2=dim2(1); c2=dim2(2)
+		integer :: i, j
 		
-		allocate(kron(r1*r2,c1*c2))
-		kron = (0.d0,0.d0)
-
+		kronProd = 0.d0
 		forall (i=1:r1, j=1:c1)
-			kron(r2*(i-1)+1:r2*i, c2*(j-1)+1:c2*j) = M1(i,j)*M2
+			kronProd(r2*(i-1)+1:r2*i, c2*(j-1)+1:c2*j) = M1(i,j)*M2
 		end forall
-	end function kron
+	end subroutine kron
 	
 	subroutine hamiltonian_1p(H,d1,a1,d2,a2,N)
 		real(8), intent(out)	:: H(N,N)
@@ -100,9 +99,15 @@ module myFunctions
 	subroutine hamiltonian_2p_noint(H1,H2,N)
 		integer, intent(in)	:: N
 		real(8), intent(in)	:: H1(N,N)
-		real(8), intent(out)	:: H2(N,N)
+		real(8), intent(out)	:: H2(N*N,N*N)
 		
-		H2 = kron(H1,identity(N)) + kron(identity(N),H1)		
+		real(8)	:: ident(N,N), temp(N*N,N*N)
+		
+		call identity(ident,N)
+		call kron(H1,N,N,ident,N,N,H2)
+		call kron(ident,N,N,H1,N,N,temp)
+
+		H2 = H2 + temp		
 	end subroutine hamiltonian_2p_noint
 
 	subroutine extremeEv(H,Emin,Emax)
@@ -182,17 +187,21 @@ module myFunctions
 		! local variables
 		integer			::	N, m, terms, i, j
 		real(8)			::	alpha, Emax, Emin
-		complex(8), allocatable	::	phi0(:,:), phi1(:,:), phi2(:,:), U(:,:), matrixExp_cheby(:,:)
+		real(8), allocatable	::	ident(:,:)
+		complex(8), allocatable	::	phi0(:,:), phi1(:,:), phi2(:,:), &
+						 & U(:,:), matrixExp_cheby(:,:)
 
 		N = size(H,1)
-		allocate(phi0(N,N),phi1(N,N),phi2(N,N),U(N,N),matrixExp_cheby(N,N))
+		allocate(phi0(N,N),phi1(N,N),phi2(N,N),U(N,N),matrixExp_cheby(N,N),ident(N,N))
 
 		! set Chebyshev variables
 		call extremeEv(H,Emin,Emax)
 		alpha = (Emax-Emin)*t/2.d0
 
-		phi0 = identity(N)
-		phi1 = (2.d0*H-(Emax+Emin)*identity(N))/(Emax-Emin)
+		call identity(ident,N)
+
+		phi0 = ident
+		phi1 = (2.d0*H-(Emax+Emin)*ident)/(Emax-Emin)
 		U = dbesjn(0,alpha)*phi0 + 2.d0*dbesjn(1,alpha)*phi1
 
 		terms = 0
@@ -209,7 +218,7 @@ module myFunctions
 		end do
 
 		matrixExp_cheby = exp((Emax+Emin)*t/2.d0)*U
-		deallocate(phi0,phi1,phi2,U)
+		deallocate(phi0,phi1,phi2,U,ident)
 	end function matrixExp_cheby
 	
 	subroutine quantumWalk_Burkadt(psi0,psi,dt,H)

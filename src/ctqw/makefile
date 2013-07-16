@@ -10,12 +10,14 @@ ifeq ($(FC),gfortran)
 	switch = -O2 -fbackslash
 	libName = _gcc
 	lapack = -llapack
+	pylapack = -llapack
 else
 	FC = ifort
 	fcompiler=intelem
 	switch = -O2 -assume bscc
 	libName = _intel
 	lapack = -lmkl_lapack95_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
+	pylapack = -lmkl_lapack95_lp64 -lmkl_rt -lpthread
 endif
 
 # fftw3 library location
@@ -50,7 +52,7 @@ main.o: FFT.o myFunctions.o fileOps.o main.f90
 python: pyctqw.so
 	
 pyctqw.so: myFunctions.f90
-	f2py $(lapack) $(fftw) $(matExp) -m pyctqw -c --fcompiler=$(fcompiler) myFunctions.f90
+	f2py $(pylapack) $(fftw) $(matExp) -m pyctqw -c --fcompiler=$(fcompiler) myFunctions.f90
 
 #Cleaning files
 clean:
