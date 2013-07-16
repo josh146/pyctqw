@@ -1,28 +1,35 @@
-#Makefile for CtQW
-#Variables
-progname = CtQW
-mf = main
-compiler = ifort
-objects = FFT.o myFunctions.o fileOps.o $(mf).o
-switch = -O2 -assume bscc
+#!/usr/bin/make -f
 
-fftw = -L/ivec/devel/intel/12.1/fftw/3.3.3/lib -lfftw3
-lapack = -lmkl_lapack95_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
-matExp = -L/home/jizaac/lib -lmatExp_intel -lc8_intel -lr8_intel
+progname = ctqw
+BIN_INSTALL = bin
+LIB_INSTALL = lib
+
+ifeq ($(FC),gfortran)
+	libName = _gcc
+else
+	FC = ifort
+	libName = _intel
+endif
+
+binary = $(BIN_INSTALL)/$(progname)
+LibmatExp = $(LIB_INSTALL)/libr8$(libName).a $(LIB_INSTALL)/libc8$(libName).a $(LIB_INSTALL)/libmatExp$(libName).a
 
 #Makefile
-$(progname): $(objects)
-	$(compiler) $(objects) -o $(progname) $(switch) $(lapack) $(fftw) $(matExp)
-FFT.o: FFT.f90
-	$(compiler) -c $(switch) FFT.f90
-myFunctions.o: FFT.o myFunctions.f90
-	$(compiler) -c $(switch) myFunctions.f90
-fileOps.o: fileOps.f90
-	$(compiler) -c $(switch) fileOps.f90
-$(mf).o: FFT.o myFunctions.o fileOps.o $(mf).f90
-	$(compiler) -c $(switch) $(mf).f90
+$(binary): $(LibmatExp)
+	$(MAKE) -C src/ctqw
+	
+$(LibmatExp):
+	$(MAKE) -C src/burkadt
+
 #Cleaning files
 clean:
-	rm *.o
-	rm *.mod
-	rm $(progname)
+	$(MAKE) clean -C src/ctqw
+	$(MAKE) clean -C src/burkadt
+	rm $(binary)
+
+fullclean:
+	$(MAKE) clean -C src/ctqw
+	$(MAKE) clean -C src/burkadt
+	rm -rf $(BIN_INSTALL)/*
+	rm -rf $(LIB_INSTALL)/*
+
