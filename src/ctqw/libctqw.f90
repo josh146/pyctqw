@@ -1,6 +1,5 @@
 module ctqw
 	use IFPORT
-	use iso_c_binding
 	implicit none
 	complex(8), parameter	::	ii = (0.d0,1.d0)
 	real(8), parameter		::	pi = 4.d0*atan(1.d0)
@@ -13,6 +12,15 @@ module ctqw
 			real(8) 	:: RWORK(*)
 			complex(8) 	:: A(*), VL(*), VR(*), W(*), WORK(*)
 		end subroutine zgeev
+	end interface
+	
+	interface
+		subroutine dsbevd(JOBZ, UPLO, N, KD, AB, LDAB, W, Z, LDZ, WORK, LWORK, &
+		& IWORK, LIWORK, INFO)
+			integer		:: N, KD, LDAB, LDZ, LWORK, IWORK(*), LIWORK, INFO
+			real(8)		:: AB(LDAB,*), W(*), Z(LDZ,*), WORK(*)
+			character	:: JOBZ, UPLO
+		end subroutine dsbevd
 	end interface
 
 	contains
@@ -81,23 +89,21 @@ module ctqw
 		end forall
 	end subroutine kron
 	
-	subroutine hamiltonian_1p(H,d1,a1,d2,a2,N)
+	subroutine hamiltonian_1p(H,d,a,nd,N)
+		integer, intent(in)	:: nd, N
+		real(8), intent(in)	:: a(nd)
+		integer, intent(in)	:: d(nd)
 		real(8), intent(out)	:: H(N,N)
-		real(8), intent(in)	:: a1, a2
-		integer, intent(in)	:: d1, d2, N
 		
 		! local variables
-		integer	:: j, k
+		integer	:: i, j, k
 		
 		H = 0.d0
 		do j = 1, N
-			if (floor(j-N/2.d0)==real(d1,8)) then
-				H(j,j) = 2.d0 + a1
-			elseif (floor(j-N/2.d0)==real(d2,8) .and. floor(j-N/2.d0)/=real(d1,8)) then
-				H(j,j) = 2.d0 + a2
-			else
-				H(j,j) = 2.d0
-			end if
+			H(j,j) = 2.d0
+			do i=1, nd
+				H(int(d(i)+N/2.d0),int(d(i)+N/2.d0)) = 2.d0 + a(i)
+			end do
 
 			do k = 1, N
 				if (abs(k-j)==1) H(j,k) = -1.d0
@@ -121,7 +127,56 @@ module ctqw
 		H2 = H2 + temp
 		deallocate(ident, temp)
 	end subroutine hamiltonian_2p_noint
+	
+	subroutine sym_band_storage(A,AB,UPLO,kd,N)
+		integer, intent(in)		:: N, kd
+		character(len=1), intent(in)	:: UPLO
+		real(8), intent(in)		:: A(N,N)
+		real(8), intent(out)		:: AB(kd+1,N)
+		
+		integer	:: i, j
+		
+		AB = 0.d0
+		select case(UPLO)
+			case('U')
+				do j=1, N
+					AB(kd+1+max(1,j-kd)-j:kd+1,j) = A(max(1,j-kd):j,j)
+					!(AB(kd+1+i-j,j) = A(i,j), i=max(1,j-kd), j)
+				end do
+			case('L')
+				do j=1, N
+					AB(1:1+min(N,j+kd)-j,j) = A(j:min(N,j+kd),j)
+					!(AB(1+i-j,j) = A(i,j), i=j, min(N,j+kd))
+				end do
+		end select
+	end subroutine sym_band_storage
 
+	subroutine sband_extremeEv(H,Emin,Emax)
+		real(8), intent(in)	::	H(:,:)
+		real(8), intent(out)	::	Emin, Emax
+
+		! local variables
+		integer			::	N, i, j, kd, IWORK(1), INFO
+		real(8)			::	Z(1,1)
+		real(8), allocatable	::	eigenvalues(:), AB(:,:), WORK(:)
+
+		N = size(H,1)
+		kd = sqrt(real(N))
+
+		! allocate the arrays required for LAPACK
+		allocate(AB(kd+1,N), eigenvalues(N), WORK(2*N))
+				
+		call sym_band_storage(H,AB,'L',kd,N)
+
+		! find the eigenvalues of H
+		call dsbevd('N', 'L', N, kd, AB, 1+kd, eigenvalues, Z, 1, WORK, 2*N, IWORK, 1, INFO)
+		!call dsbevd(AB, eigenvalues, 'L')
+
+		Emin = minval(real(eigenvalues))
+		Emax = maxval(real(eigenvalues))
+		deallocate(AB, eigenvalues)
+	end subroutine sband_extremeEv
+	
 	subroutine extremeEv(H,Emin,Emax)
 		real(8), intent(in)	::	H(:,:)
 		real(8), intent(out)	::	Emin, Emax
@@ -173,20 +228,19 @@ module ctqw
 			terms = terms + 1
 		end do
 
-		!open(26,file="coeff.txt",status='replace')
+		open(26,file="coeff.txt",status='replace')
 		do m = 2, terms
 			call progressbar(m,terms)
 			phi2 = -2.d0*(2.d0*matmul(H,phi1)-(Emax+Emin)*phi1)/(Emax-Emin) - phi0
 			U = U + 2.d0*(ii**m)*dbesjn(m,alpha)*phi2
 
-			!if (writecoeff) write(26,"(E24.15E3)")abs(2.d0*dbesjn(m,alpha))
+			if (writecoeff) write(26,"(E24.15E3)")abs(2.d0*dbesjn(m,alpha))
 
 			phi0 = phi1
 			phi1 = phi2
 		end do
-		!close(26)
+		close(26)
 		
-		write(*,*)"\n"
 		psiT = exp(-ii*(Emax+Emin)*dt/2.d0)*U
 		deallocate(phi0,phi1,phi2,U)
 	end subroutine qw_cheby
@@ -257,84 +311,23 @@ module ctqw
 		deallocate(U)
 	end subroutine qw_Burkadt
 
-	function ToKspace(psi,x)
-		complex(8), intent(in)	::	psi(:)
-		real(8), intent(in)	::	x(:)
-		complex(8), allocatable	::	toKspace(:)
-
-		! local variables
-		integer			::	j, N
-		real(8), allocatable	::	kgrid(:)
-				
-		N = size(psi)
-		allocate(toKspace(N),kgrid(N))
-
-		kgrid = [(-pi+2.d0*pi*j/N, j=0, N-1)]
-		toKspace = 0.d0
-		do j=1, N
-			toKspace(j) = sum(psi*exp(-ii*kgrid(j)*x)) / sqrt(real(N,8))
-		end do
-
-		deallocate(kgrid)
-	end function toKspace
-
-	function tCoeff(psi0,psiT,x)
-		complex(8), intent(in)	::	psi0(:), psiT(:)
-		real(8), intent(in)	::	x(:)
-
-		! local variables
-		integer			::	j, m, N
-		integer, allocatable	::	T0pnts(:)
-		real(8)			::	kpsi0Max
-		real(8), allocatable	::	tCoeff(:,:), kgrid(:)
-		complex(8), allocatable	::	kpsi0(:), kpsiT(:)
-
-		N = size(psi0)
-		allocate(kpsi0(N),kpsiT(N),kgrid(N),T0pnts(N))
-
-		! Transform to k-space
-		kpsi0 = ToKspace(psi0,x)
-		kpsiT = ToKspace(psiT,x)
-		kgrid = [(-pi+2.d0*pi*j/N, j=0, N-1)]
-
-		! find the max values of kpsi0
-		m = 0
-		kpsi0Max = maxval(abs(kpsi0)**2.d0)
-		do j = 1, N
-			if (abs(kpsi0(j))**2.d0 .ge. 0.001d0*kpsi0Max) then
-				m = m+1
-				T0pnts(m) = j
-			end if
-		end do
-
-		if (m>0) then
-			allocate(tCoeff(2,m))
-			do j = 1, m
-				tCoeff(:,j) = [kgrid(T0pnts(j)), &
-						& abs(kpsiT(T0pnts(j))/kpsi0(T0pnts(j)))**2.d0]
-			end do
-		endif
-
-		deallocate(kpsi0,kpsiT)
-	end function tCoeff
-
 	subroutine progressbar(i,NN)
 		integer, intent(in)	::	i, NN
 		integer			::	k
-		character(len=39)	::	bar=" \r???%|                              |"
+		character(len=39)	::	bar="  \r?% |                              |"
 
 		! updates the fraction of calculation done
 		write(unit=bar(3:5),fmt="(i3)") (100*i)/NN
-		do k = 1, (i*30)/NN
+		do k = 2, (i*30)/NN+1
 			bar(7+k:7+k)="="
 		enddo
 
 		open (unit=6, carriagecontrol='fortran')
-		write(6,'(3a)',advance='no')'+',CHAR(13),bar
+		write(6,'(3a)',advance='no')' ',CHAR(13),bar
 		flush 6
 
 		! once the progress bar is full, clear it for further use
-		if ((100*i)/NN == 100) bar=" \r???%|                              |"
+		if ((100*i)/NN == 100) bar="  \r?% |                              |"
 	end subroutine progressbar
 
 end module ctqw

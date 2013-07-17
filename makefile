@@ -27,7 +27,7 @@ $(LibmatExp):
 $(sourcecode):
 	
 # Python wrappers
-python: $(LibmatExp)
+python: src/ctqw/libctqw.f90 $(LibmatExp) 
 	$(MAKE) python -C src/ctqw
 
 #Cleaning files
