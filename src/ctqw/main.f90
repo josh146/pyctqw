@@ -4,15 +4,16 @@ program main
 	use fileOps
 	implicit none
 
-	integer			::	narg, i, j, k, N, steps, d1, d2
-	real(8)			::	t, a1, a2
-	real(8), allocatable	:: 	H(:,:), H2(:,:)
-	complex(8), allocatable	::	psi(:),psi0(:)
-	logical			::	writecoeff, burkadt=.false.
-	character(len=32)	::	arg
+	integer			:: narg, i, j, k, N, steps, d1, d2
+	real(8)			:: t, a1, a2, Emin, Emax
+	real(8), allocatable	:: H(:,:), H2(:,:)
+	complex(8), allocatable	:: psi(:),psi0(:)
+	logical			:: writecoeff, burkadt=.false.
+	character(len=32)	:: arg
+	integer			:: t1,t2,rate
 
 	! set the variables
-	N = 20
+	N = 50
 	t = 1.d0;
 	a1 = 1.d0;	d1 = 3
 	a2 = 1.d0;	d2 = 4
@@ -44,13 +45,21 @@ program main
 	writecoeff = .false.
 	
 	! create the Hamiltonian matrix
+	call system_clock(t1, rate)
 	call hamiltonian_1p(H,d1,a1,d2,a2,N)
 	call hamiltonian_2p_noint(H,H2,N)
+	call system_clock(t2, rate)
+	write(*,*) "Hamiltonian creation time: ", real(t2 - t1) / real(rate)
 	
+	call system_clock(t1, rate)
 	select case(burkadt)
-		case(.true.); call quantumWalk_Burkadt(psi0,psi,t,H2)
-		case default; psi = quantumWalk(psi0,t,H2,writecoeff)
+		case(.true.); call qw_Burkadt(psi0,psi,t,H2,N**2)
+		case default
+			call extremeEv(H2,Emin,Emax)
+			call qw_cheby(psi0,psi,t,H2, Emin, Emin,writecoeff,N**2)
 	end select
+	call system_clock(t2, rate)
+	write(*,*) "QW propagation time: ", real(t2 - t1) / real(rate)
 	
 	call writemarginal(marginal(psi,'x'),1,'x')
 	call writemarginal(marginal(psi,'y'),1,'y')

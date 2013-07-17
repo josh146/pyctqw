@@ -45,6 +45,15 @@ module ctqw
 			end do	
 		endif		
 	end function marginal
+	
+	subroutine pymarginal(psi,NN,p,psip,N)
+		character, intent(in)	:: p
+		integer, intent(in)	:: N, NN
+		complex(8), intent(in)	:: psi(NN)
+		complex(8), intent(out)	:: psip(N)
+		
+		psip = marginal(psi,p)	
+	end subroutine pymarginal
 
 	subroutine identity(mat,n)
 		integer, intent(in) :: n
@@ -101,13 +110,16 @@ module ctqw
 		real(8), intent(in)	:: H1(N,N)
 		real(8), intent(out)	:: H2(N*N,N*N)
 		
-		real(8)	:: ident(N,N), temp(N*N,N*N)
+		real(8), allocatable	:: ident(:,:), temp(:,:)
+		
+		allocate(ident(N,N), temp(N**2,N**2))
 		
 		call identity(ident,N)
 		call kron(H1,N,N,ident,N,N,H2)
 		call kron(ident,N,N,H1,N,N,temp)
 
-		H2 = H2 + temp		
+		H2 = H2 + temp
+		deallocate(ident, temp)
 	end subroutine hamiltonian_2p_noint
 
 	subroutine extremeEv(H,Emin,Emax)
@@ -135,21 +147,21 @@ module ctqw
 		deallocate(rwork,work,eigenvalues,leftvectors,rightvectors)
 	end subroutine extremeEv
 
-	function quantumWalk(psi,dt,H,writecoeff)
-		complex(8), intent(in)	::	psi(:)
-		real(8), intent(in)	::	dt, H(:,:)
-		logical, intent(in)	::	writecoeff
+	subroutine qw_cheby(psi,psiT,dt,H,Emin,Emax,writecoeff,N)
+		integer, intent(in)	:: N
+		complex(8), intent(in)	:: psi(N)
+		real(8), intent(in)	:: dt, H(N,N), Emax, Emin
+		logical, intent(in)	:: writecoeff
+		complex(8), intent(out)	:: psiT(N)
 
 		! local variables
-		integer			::	N, m, terms, i, j
-		real(8)			::	alpha, Emax, Emin
-		complex(8), allocatable	::	phi0(:), phi1(:), phi2(:), U(:), quantumWalk(:)
+		integer			:: m, terms, i, j
+		real(8)			:: alpha
+		complex(8),allocatable	:: phi0(:), phi1(:), phi2(:), U(:)
 
-		N = size(psi)
-		allocate(phi0(N),phi1(N),phi2(N),U(N),quantumWalk(N))
+		allocate(phi0(N),phi1(N),phi2(N),U(N))
 
 		! set Chebyshev variables
-		call extremeEv(H,Emin,Emax)
 		alpha = (Emax-Emin)*dt/2.d0
 
 		phi0 = 1.d0*psi
@@ -161,23 +173,23 @@ module ctqw
 			terms = terms + 1
 		end do
 
-		open(26,file="coeff.txt",status='replace')
+		!open(26,file="coeff.txt",status='replace')
 		do m = 2, terms
 			call progressbar(m,terms)
 			phi2 = -2.d0*(2.d0*matmul(H,phi1)-(Emax+Emin)*phi1)/(Emax-Emin) - phi0
 			U = U + 2.d0*(ii**m)*dbesjn(m,alpha)*phi2
 
-			if (writecoeff) write(26,"(E24.15E3)")abs(2.d0*dbesjn(m,alpha))
+			!if (writecoeff) write(26,"(E24.15E3)")abs(2.d0*dbesjn(m,alpha))
 
 			phi0 = phi1
 			phi1 = phi2
 		end do
-		close(26)
+		!close(26)
 		
 		write(*,*)"\n"
-		quantumWalk = exp(-ii*(Emax+Emin)*dt/2.d0)*U
+		psiT = exp(-ii*(Emax+Emin)*dt/2.d0)*U
 		deallocate(phi0,phi1,phi2,U)
-	end function quantumWalk
+	end subroutine qw_cheby
 
 	! finds the matrix exponential exp(Ht) using Chebyshev
 	function matrixExp_cheby(H,t)
@@ -221,23 +233,29 @@ module ctqw
 		deallocate(phi0,phi1,phi2,U,ident)
 	end function matrixExp_cheby
 	
-	subroutine quantumWalk_Burkadt(psi0,psi,dt,H)
-		complex(8), intent(in)	:: psi0(:)
-		real(8), intent(in)	:: dt, H(:,:)
-		complex(8), intent(out)	:: psi(:)
-
-		! local variables
-		integer			:: N
-		complex(8), allocatable	:: U(:,:)
-
-		N = size(psi0)
+	subroutine pyexpm_cheby(H,t,expHt,N)
+		integer, intent(in)	:: N
+		real(8), intent(in)	:: H(N,N), t
+		complex(8), intent(out)	:: expHt(N,N)
+		
+		expHt = matrixExp_cheby(H,t)		
+	end subroutine pyexpm_cheby
+	
+	subroutine qw_Burkadt(psi0,psi,dt,H,N)
+		integer, intent(in)	:: N
+		complex(8), intent(in)	:: psi0(N)
+		real(8), intent(in)	:: dt, H(N,N)
+		complex(8), intent(out)	:: psi(N)
+		
+		complex(8),allocatable	:: U(:,:)
+		
 		allocate(U(N,N))
 		
 		call c8mat_expm1(N,-ii*H*dt,U)
 		psi = matmul(U,psi0)
 		
 		deallocate(U)
-	end subroutine quantumWalk_Burkadt
+	end subroutine qw_Burkadt
 
 	function ToKspace(psi,x)
 		complex(8), intent(in)	::	psi(:)

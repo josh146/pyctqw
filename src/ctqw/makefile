@@ -35,8 +35,8 @@ matExp = -L../../lib -lmatExp$(libName) -lc8$(libName) -lr8$(libName)
 #Makefile
 all: $(progname) clean
 	mkdir -p $(BIN_PATH)
-	cp ctqw $(BIN_PATH)
-	rm ctqw
+	cp $(progname) $(BIN_PATH)
+	rm $(progname)
 
 # Fortran source code
 $(progname): $(objects)
