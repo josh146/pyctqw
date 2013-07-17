@@ -1,9 +1,11 @@
 #!/usr/bin/make -f
 
 progname = ctqw
-objects = FFT.o myFunctions.o fileOps.o main.o
+objects = FFT.o libctqw.o fileOps.o main.o
 BIN_INSTALL = bin
 BIN_PATH = ../../$(BIN_INSTALL)
+LIB_INSTALL = lib
+LIB_PATH = ../../$(LIB_INSTALL)
 
 ifeq ($(FC),gfortran)
 	fcompiler=gfortran
@@ -41,23 +43,25 @@ $(progname): $(objects)
 	$(FC) $(objects) -o $(progname) $(switch) $(lapack) $(fftw) $(matExp)
 FFT.o: FFT.f90
 	$(FC) -c $(switch) FFT.f90
-myFunctions.o: FFT.o myFunctions.f90
-	$(FC) -c $(switch) myFunctions.f90
+libctqw.o: FFT.o libctqw.f90
+	$(FC) -c $(switch) libctqw.f90
 fileOps.o: fileOps.f90
 	$(FC) -c $(switch) fileOps.f90
-main.o: FFT.o myFunctions.o fileOps.o main.f90
+main.o: FFT.o libctqw.o fileOps.o main.f90
 	$(FC) -c $(switch) main.f90
 
 #Python wrappers
-python: pyctqw.so
+python: libpyctqw.so
 	
-pyctqw.so: myFunctions.f90
-	f2py $(pylapack) $(fftw) $(matExp) -m pyctqw -c --fcompiler=$(fcompiler) myFunctions.f90
+libpyctqw.so: libctqw.f90
+	f2py $(pylapack) $(fftw) $(matExp) -m libpyctqw -c --fcompiler=$(fcompiler) libctqw.f90
+	cp libpyctqw.so $(LIB_PATH)
 
 #Cleaning files
 clean:
 	rm -f *.o
 	rm -f *.mod
+	rm -f *.so
 
 
 

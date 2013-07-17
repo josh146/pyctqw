@@ -1,6 +1,6 @@
-program CtQW
+program main
 	use iso_fortran_env
-	use myFunctions
+	use ctqw
 	use fileOps
 	implicit none
 
@@ -56,4 +56,4 @@ program CtQW
 	call writemarginal(marginal(psi,'y'),1,'y')
 
 	deallocate(psi,psi0,H,H2)
-end program CtQW
+end program main

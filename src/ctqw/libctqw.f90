@@ -1,4 +1,4 @@
-module myFunctions
+module ctqw
 	use IFPORT
 	use iso_c_binding
 	implicit none
@@ -319,4 +319,4 @@ module myFunctions
 		if ((100*i)/NN == 100) bar=" \r???%|                              |"
 	end subroutine progressbar
 
-end module myFunctions
+end module ctqw
