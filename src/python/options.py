@@ -8,7 +8,7 @@ def parse_args():
 	# program info
 	progname = "PyCTQW"
 	libname = "libpyctqw"
-	configFile = "config.txt"
+	configFile = "input.pyqw"
 	progversion = "PyCTQW v0.1\n Josh Izaac\n josh.izaac@uwa.edu.au"
 	info = '{0} is a Python interface to the Fortran library {1}.\
 		\nThis library contains functions that allow continuous-time\
@@ -23,7 +23,7 @@ def parse_args():
 	conf_parser = argparse.ArgumentParser(add_help=False)
 
 	conf_parser.add_argument("-c", "--conf",
-		help="Specify config file", metavar="FILE")
+		help="specify input file", metavar="FILE")
 		
 	args, remaining_argv = conf_parser.parse_known_args()
 	
