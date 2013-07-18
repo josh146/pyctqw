@@ -11,16 +11,17 @@ else
 endif
 
 progname = ctqw$(libName)
-
+pylibpath = $(LIB_INSTALL)/libpyctqw$(libName).so
 binary = $(BIN_INSTALL)/$(progname)
-sourcecode = $(shell ls src/ctqw/*.f90)
+
+#sourcecode = $(shell ls src/ctqw/*.f90)
+sourcecode = src/ctqw/FFT.f90 src/ctqw/libctqw$(libName).f90 src/ctqw/fileOps.f90 src/ctqw/main.f90
 LibmatExp = $(LIB_INSTALL)/libr8$(libName).a $(LIB_INSTALL)/libc8$(libName).a $(LIB_INSTALL)/libmatExp$(libName).a
 
 #Makefile
-all: $(binary) python
+all: $(binary) $(pylibpath)
 
 $(binary): $(LibmatExp) $(sourcecode)
-	cd src/ctqw; sed 's/^\tuse/!\tuse/g;s/dbesjn/bessel_jn/g;/^\tsubroutine progressbar.*/,/^\tend subroutine progressbar.*/s/^/!/;/call progressbar(m,terms)/s/^/!/' libctqw_intel.f90 > libctqw_gcc.f90
 	$(MAKE) -C src/ctqw
 	
 $(LibmatExp):
@@ -29,16 +30,20 @@ $(LibmatExp):
 $(sourcecode):
 	
 # Python wrappers
-python: src/ctqw/libctqw$(libName).f90 $(LibmatExp) 
+python: $(pylibpath)
+
+$(pylibpath): src/ctqw/libctqw$(libName).f90 $(LibmatExp) 
 	$(MAKE) python -C src/ctqw
 
 #Cleaning files
 clean:
 	$(MAKE) clean -C src/ctqw
-	$(MAKE) clean -C src/burkadt
 	rm -f $(binary)
 
 fullclean: clean
+	rm -rf src/python/out
+	rm -rf src/python/*.pyc
+	$(MAKE) clean -C src/burkadt
 	rm -rf $(BIN_INSTALL)/*
 	rm -rf $(LIB_INSTALL)/*
 

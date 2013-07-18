@@ -10,20 +10,17 @@ ifeq ($(FC),gfortran)
 	switch = -O2 -fbackslash
 	libName = _gcc
 	lapack = -llapack
-	pylapack = -llapack
-	
-	#sed 's/^\tuse/!\tuse/g;s/dbesjn/bessel_jn/g' libctqw_intel.f90 > libctqw_gcc.f90
 else
 	FC = ifort
 	fcompiler=intelem
 	switch = -O2 -assume bscc
 	libName = _intel
-	lapack = -lmkl_lapack95_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
-	pylapack = -lmkl_lapack95_lp64 -lmkl_rt -lpthread
+	lapack = -lmkl_lapack95_lp64 -lmkl_rt -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
 endif
 
-progname = ctqw$(libName)
-objects = FFT.o libctqw$(libName).o fileOps.o main.o
+progname = $(BIN_PATH)/ctqw$(libName)
+pylibpath = $(LIB_PATH)/libpyctqw$(libName).so
+objects = FFT$(libName).o libctqw$(libName).o fileOps$(libName).o main$(libName).o
 
 # fftw3 library location
 ifeq ($(target),ivec)
@@ -36,30 +33,33 @@ endif
 matExp = -L../../lib -lmatExp$(libName) -lc8$(libName) -lr8$(libName)
 
 #Makefile
-all: $(progname) clean
-	mkdir -p $(BIN_PATH)
-	cp $(progname) $(BIN_PATH)
-	rm $(progname)
+all: $(progname)
 
 # Fortran source code
 $(progname): $(objects)
 	$(FC) $(objects) -o $(progname) $(switch) $(lapack) $(fftw) $(matExp)
-FFT.o: FFT.f90
-	$(FC) -c $(switch) FFT.f90
-libctqw$(libName).o: FFT.o libctqw$(libName).f90
-	$(FC) -c $(switch) libctqw$(libName).f90
-fileOps.o: fileOps.f90
-	$(FC) -c $(switch) fileOps.f90
-main.o: FFT.o libctqw$(libName).o fileOps.o main.f90
-	$(FC) -c $(switch) main.f90
+	rm -f *.mod
+FFT$(libName).o: FFT.f90
+	$(FC) -c $(switch) FFT.f90 -o FFT$(libName).o
+libctqw$(libName).o: FFT$(libName).o libctqw$(libName).f90
+	$(FC) -c $(switch) libctqw$(libName).f90 -o libctqw$(libName).o
+fileOps$(libName).o: fileOps.f90
+	$(FC) -c $(switch) fileOps.f90 -o fileOps$(libName).o
+main$(libName).o: FFT$(libName).o libctqw$(libName).o fileOps$(libName).o main.f90
+	$(FC) -c $(switch) main.f90 -o main$(libName).o
+	
+libctqw_gcc.f90: libctqw_intel.f90
+	echo "making gcc fortran file"
+	sed 's/^\tuse/!\tuse/g;s/dbesjn/bessel_jn/g;/^\tsubroutine progressbar.*/,/^\tend subroutine progressbar.*/s/^/!/;/call progressbar(m,terms)/s/^/!/' libctqw_intel.f90 > libctqw_gcc.f90
 
 #Python wrappers
-python: libpyctqw$(libName).so
+python: $(pylibpath)
 	
-libpyctqw$(libName).so: libctqw$(libName).f90
-	f2py $(pylapack) $(fftw) $(matExp) -m libpyctqw$(libName) -c --fcompiler=$(fcompiler) libctqw$(libName).f90
+$(pylibpath): libctqw$(libName).f90
+	f2py $(lapack) $(fftw) $(matExp) -m libpyctqw$(libName) -c --fcompiler=$(fcompiler) libctqw$(libName).f90
 	cp libpyctqw$(libName).so $(LIB_PATH)
 	rm -f *.so
+	rm -f *.mod
 
 #Cleaning files
 clean:

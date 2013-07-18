@@ -226,7 +226,7 @@ module ctqw
 		do while (abs(2.d0*dbesjn(terms,alpha)) > 1.d-45)
 			terms = terms + 1
 		end do
-
+!
 		open(26,file="coeff.txt",status='replace')
 		do m = 2, terms
 			call progressbar(m,terms)
