@@ -9,6 +9,7 @@ import shutil
 import errno
 
 args = options.parse_args()
+print args.input_state
 
 # set the variables
 N = args.grid_length
@@ -28,20 +29,33 @@ if args.particles == 1:
 	initialState = args.p1_initial_state
 elif args.particles == 2:
 	# 2P initial state
-	initialState = args.p2_initial_state
-
+	initialState = args.p2_initial_state		
+else:
+	print '\nERROR: only 1 or 2 particle quantum walks supported'
+	sys.exit()
+	
+#~~~~~~~~~~~~~~~~~~~~~~~~~ Print out simulation info ~~~~~~~~~~~~~~~~~~~~~~~~
 print "Performing a {} particle CTQW\n".format(args.particles)
 print "\t N={0} \t t={1}".format(N,t)
 
 IS_disp = ()
 disp = "\t Initial state: "
+
 for i in range(len(initialState)):
-	IS_disp = IS_disp + ("{2}|{0},{1}>".format(*(initialState[i])),)
+	if args.particles == 1:
+		IS_disp = IS_disp + ("{1}|{0}>".format(*(initialState[i])),)
+	else:
+		IS_disp = IS_disp + ("{2}|{0},{1}>".format(*(initialState[i])),)
+	
 	if i == 0:
 		disp = disp + "{" + str(i) + "} "
 	else:
 		disp = disp + "+ {" + str(i) + "} "
-print disp.format(*IS_disp)
+		
+if args.input_state=="":
+	print disp.format(*IS_disp)
+else:
+	print "\t Loading initial state from file " + args.input_state
 
 for i in range(len(d)):
 	print "\t Defect {0}: node {1}, amplitude {2}".format(i+1,d[i],a[i])
@@ -56,11 +70,11 @@ if args.particles == 1:
 elif args.particles == 2:
 	psi0 = [0. for i in range(N**2)]
 	
-	for i in range(len(initialState)):
-		psi0[ctqw.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
-else:
-	print '\nERROR: only 1 or 2 particle quantum walks supported'
-	sys.exit()
+	if args.input_state=="":
+		for i in range(len(initialState)):
+			psi0[ctqw.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
+	else:
+		psi0 = np.loadtxt(args.input_state,dtype=complex).reshape(N**2)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Hamiltonian ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 print '\nCreating the Hamiltonian....'
@@ -121,15 +135,11 @@ else:
 end = time.time()
 print '\ttime: {: .12f}\n'.format(end-start)
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Post processing ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# marginal probabilities
-if args.particles == 1:
-	psiX = np.abs(psi)**2
-		
-elif args.particles == 2:
-	psiX = ctqw.pymarginal(psi,'x',N)
-	psiY = ctqw.pymarginal(psi,'y',N)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Output ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	
+def write_psi(psi, filename):
+	with open(filename,'w') as f:
+		for i in range(len(psi)):
+			f.write('{0}\t{1: .12e}\n'.format(i-np.floor(N/2)+1,psi[i].real))
 
 try:
 	os.mkdir(args.output)
@@ -137,9 +147,28 @@ except OSError as exception:
 	if exception.errno != errno.EEXIST:
 		raise
 
-with open(args.output + "/" + "output_psiX_t"+str(t)+".txt",'w') as f:
-	for i in range(len(psiX)):
-		f.write('{0}\t{1: .12e}\n'.format(i-np.floor(N/2)+1,psiX[i].real))
+# marginal probabilities and statespace output
+if args.particles == 1:
+	psiX = np.abs(psi)**2
+	write_psi(psiX, args.output + "/output_psi_t"+str(t)+".txt")
+		
+elif args.particles == 2:
+	psiX = ctqw.pymarginal(psi,'x',N)
+	psiY = ctqw.pymarginal(psi,'y',N)
+	write_psi(psiX, args.output + "/" + "output_psiX_t"+str(t)+".txt")
+	write_psi(psiY, args.output + "/" + "output_psiY_t"+str(t)+".txt")
+	if args.statespace:
+		nn = int(np.sqrt(len(psi)))
+		state_space = psi.reshape((nn,nn))		
+		with open(args.output + "/output_statespace_t"+str(t)+".txt",'w') as f:
+			for i in range(nn):
+				ss_disp = ""
+				for j in range(nn):
+					ss_disp = ss_disp + '{0: .12e}\t'.format(state_space[i,j])
+				f.write(ss_disp+'\n')
+				
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plotting ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 
 

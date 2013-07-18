@@ -31,10 +31,12 @@ def parse_args():
 	# config settings
 	config = ConfigParser.SafeConfigParser()
 	if args.conf:
+		print "Input script " + args.conf + " found!"
 		config.read([args.conf])
 		defaults = dict(config.items("DEFAULTS"))
 		
 	elif os.path.exists(configFile):
+		print "Input script " + configFile + " found!"
 		config.read([configFile])
 		
 		# add configuration to the dictionary, and convert to proper type
@@ -51,7 +53,8 @@ def parse_args():
 								
 	else:
 		# No config defaults
-		defaults =	{ "output" 	: "./out",
+		defaults =	{ "input_state"	: "",
+				  "output" 	: "./out",
 				  "statespace"	: False,
 				  "particles"	: 2,
 				  "grid_length"	: 50,
@@ -71,6 +74,9 @@ def parse_args():
 	
 	parser.set_defaults(**defaults)
 	
+	parser.add_argument('-i', '--input-state', metavar='FILE',
+		help='specify an input state', type=str)
+	
 	parser.add_argument('-o', dest='output', metavar='DIR',
 		help='specify an output directory', type=str)
 	
@@ -79,15 +85,15 @@ def parse_args():
 	
 	parser.add_argument('-p', '--particles',
 		help='set the number of quantum walkers',			
-		type=int, metavar='1|2', nargs=1)
+		type=int, metavar='1|2')
 		
 	parser.add_argument('-t', '--time',
 		help='QW propagation time',			
-		type=float, metavar='T', nargs=1)
+		type=float, metavar='T')
 	
 	parser.add_argument('-N','--grid-length',
 		help='set the number of vertices (must be an even & > 2)',			
-		type=int, metavar='NUMBER', nargs=1)
+		type=int, metavar='NUMBER')
 
 	parser.add_argument('-d', '--defect-nodes',
 		help='location of defects',			
@@ -108,9 +114,9 @@ def parse_args():
 	parser.add_argument('--expm', dest='expm',
 		help='choose the algorithm used to calculate the matrix exponential,\
 		\'Chebyshev\' (default), or \'Burkadt\'',			
-		type=str, metavar='METHOD', nargs=1)
+		type=str, metavar='METHOD')
 		
-	parser.add_argument('-evg', '--eval-gen', dest='evalgen', action="store_true",
+	parser.add_argument('-evg', '--evalgen', dest='evalgen', action="store_true",
 		help='when calculating the eigenvalues, force the linear algebra library\
 		to treat the Hamiltonian as a general complex matrix, rather than as a\
 		real, symmetric	band matrix (the default)')
@@ -119,7 +125,7 @@ def parse_args():
 		help='choose the library used to calculate the eigenvalues,\
 		\'lapack\' (default) or \'numpy\'. Note that lapack is significantly\
 		faster, however requires either intel-mkl or LAPACK be installed',			
-		type=str, metavar='LIB', nargs=1)
+		type=str, metavar='LIB')
 
 	return parser.parse_args(remaining_argv)
 	
