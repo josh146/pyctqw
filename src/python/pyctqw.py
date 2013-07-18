@@ -134,7 +134,7 @@ start = time.time()
 
 if args.expm == 'chebyshev':
 	print 'Calculating exp(-iHt) via the Chebyshev method....'
-	psi = ctqw.qw_cheby(psi0,t,H,Emin,Emax,False)
+	psi = ctqw.qw_cheby(psi0,t,H,Emin,Emax)
 elif args.expm == 'burkadt':
 	print 'Calculating exp(-iHt) via the Burkadt method....'
 	psi = ctqw.qw_burkadt(psi0,t,H)
@@ -144,6 +144,8 @@ else:
 
 end = time.time()
 print '\ttime: {: .12f}\n'.format(end-start)
+
+coeff = np.loadtxt('coeff.txt')
 os.remove('coeff.txt')
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Output ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	

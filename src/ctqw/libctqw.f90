@@ -202,11 +202,10 @@ module ctqw
 		deallocate(rwork,work,eigenvalues,leftvectors,rightvectors)
 	end subroutine extremeEv
 
-	subroutine qw_cheby(psi,psiT,dt,H,Emin,Emax,writecoeff,N)
+	subroutine qw_cheby(psi,psiT,dt,H,Emin,Emax,N)
 		integer, intent(in)	:: N
 		complex(8), intent(in)	:: psi(N)
 		real(8), intent(in)	:: dt, H(N,N), Emax, Emin
-		logical, intent(in)	:: writecoeff
 		complex(8), intent(out)	:: psiT(N)
 
 		! local variables
@@ -234,7 +233,7 @@ module ctqw
 			phi2 = -2.d0*(2.d0*matmul(H,phi1)-(Emax+Emin)*phi1)/(Emax-Emin) - phi0
 			U = U + 2.d0*(ii**m)*dbesjn(m,alpha)*phi2
 
-			if (writecoeff) write(26,"(E24.15E3)")abs(2.d0*dbesjn(m,alpha))
+			write(26,"(E24.15E3)")abs(2.d0*dbesjn(m,alpha))
 
 			phi0 = phi1
 			phi1 = phi2

@@ -1,3 +1,3 @@
 #!/bin/sh
 export PYTHONPATH=$PYTHONPATH:../../lib
-./main.py $@
+./pyctqw.py $@

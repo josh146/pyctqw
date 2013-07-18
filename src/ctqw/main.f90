@@ -8,7 +8,7 @@ program main
 	real(8)			:: t, a(2), Emin, Emax
 	real(8), allocatable	:: H(:,:), H2(:,:)
 	complex(8), allocatable	:: psi(:),psi0(:), psiX(:)
-	logical			:: writecoeff, burkadt=.false.
+	logical			:: burkadt=.false.
 	character(len=32)	:: arg
 	integer			:: t1,t2,rate
 
@@ -42,7 +42,6 @@ program main
 	call writestate(marginal(psi0,'y'),0,'y')
 
 	write(*,*)"Propagating the continuous time quantum walk..."
-	writecoeff = .false.
 	
 	! create the Hamiltonian matrix
 	call system_clock(t1, rate)
@@ -56,7 +55,7 @@ program main
 		case(.true.); call qw_Burkadt(psi0,psi,t,H2,N**2)
 		case default
 			call sband_extremeEv(H2,Emin,Emax)
-			call qw_cheby(psi0,psi,t,H2, Emin, Emax,writecoeff,N**2)
+			call qw_cheby(psi0,psi,t,H2, Emin, Emax,N**2)
 	end select
 	call system_clock(t2, rate)
 	write(*,*)
