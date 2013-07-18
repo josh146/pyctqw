@@ -3,6 +3,7 @@ import os
 import argparse
 import ConfigParser
 from math import *
+import re
 
 def parse_args():
 	# program info
@@ -32,12 +33,25 @@ def parse_args():
 	if args.conf:
 		config.read([args.conf])
 		defaults = dict(config.items("DEFAULTS"))
+		
 	elif os.path.exists(configFile):
 		config.read([configFile])
-		defaults = dict(config.items("DEFAULTS"))
+		
+		# add configuration to the dictionary, and convert to proper type
+		defaults = {}
+		for sec in config.sections():
+			for option,value in config.items(sec):
+				if value.lower()=='true' or value.lower()=='false':
+					defaults[option] = config.getboolean(sec,option)
+				else:
+					try:
+						defaults[option] = eval(value)
+					except:
+						defaults[option] = value
+								
 	else:
 		# No config defaults
-		defaults =	{ "output" 	: "none",
+		defaults =	{ "output" 	: "./out",
 				  "statespace"	: False,
 				  "particles"	: 2,
 				  "grid_length"	: 50,
@@ -57,8 +71,8 @@ def parse_args():
 	
 	parser.set_defaults(**defaults)
 	
-	parser.add_argument('-o', dest='output', const='./out', metavar='DIR',
-		help='specify an output directory', type=str, nargs='?')
+	parser.add_argument('-o', dest='output', metavar='DIR',
+		help='specify an output directory', type=str)
 	
 	parser.add_argument('-s', "--statespace", action="store_true",
 		help="specify whether the statespace is exported")

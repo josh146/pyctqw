@@ -5,6 +5,8 @@ import numpy as np
 from libpyctqw import ctqw
 import time
 import options
+import shutil
+import errno
 
 args = options.parse_args()
 
@@ -27,6 +29,22 @@ if args.particles == 1:
 elif args.particles == 2:
 	# 2P initial state
 	initialState = args.p2_initial_state
+
+print "Performing a {} particle CTQW\n".format(args.particles)
+print "\t N={0} \t t={1}".format(N,t)
+
+IS_disp = ()
+disp = "\t Initial state: "
+for i in range(len(initialState)):
+	IS_disp = IS_disp + ("{2}|{0},{1}>".format(*(initialState[i])),)
+	if i == 0:
+		disp = disp + "{" + str(i) + "} "
+	else:
+		disp = disp + "+ {" + str(i) + "} "
+print disp.format(*IS_disp)
+
+for i in range(len(d)):
+	print "\t Defect {0}: node {1}, amplitude {2}".format(i+1,d[i],a[i])
 	
 #~~~~~~~~~~~~~~~~~~~~~~~ Create the initial statespace ~~~~~~~~~~~~~~~~~~~~~~~
 if args.particles == 1:
@@ -41,11 +59,11 @@ elif args.particles == 2:
 	for i in range(len(initialState)):
 		psi0[ctqw.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
 else:
-	print 'ERROR: only 1 or 2 particle quantum walks supported'
+	print '\nERROR: only 1 or 2 particle quantum walks supported'
 	sys.exit()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Hamiltonian ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-print 'Creating the Hamiltonian....'
+print '\nCreating the Hamiltonian....'
 
 start = time.time()
 
@@ -80,7 +98,7 @@ elif args.evallib == 'numpy':
 	Emax = max(evals.real)
 	Emin = min(evals.real)
 else:
-	print 'ERROR: Unknown linear algebra library'
+	print '\nERROR: Unknown linear algebra library'
 	sys.exit()
 
 end = time.time()
@@ -97,7 +115,7 @@ elif args.expm == 'burkadt':
 	print 'Calculating exp(-iHt) via the Burkadt method....'
 	psi = ctqw.qw_burkadt(psi0,t,H)
 else:
-	print 'ERROR: Unknown matrix exponential method'
+	print '\nERROR: Unknown matrix exponential method'
 	sys.exit()
 
 end = time.time()
@@ -108,16 +126,20 @@ print '\ttime: {: .12f}\n'.format(end-start)
 # marginal probabilities
 if args.particles == 1:
 	psiX = np.abs(psi)**2
-	for i in range(len(psiX)):
-		print '{0}\t{1: .12e}'.format(i-np.floor(N/2)+1,psiX[i].real)
 		
 elif args.particles == 2:
 	psiX = ctqw.pymarginal(psi,'x',N)
 	psiY = ctqw.pymarginal(psi,'y',N)
+
+try:
+	os.mkdir(args.output)
+except OSError as exception:
+	if exception.errno != errno.EEXIST:
+		raise
+
+with open(args.output + "/" + "output_psiX_t"+str(t)+".txt",'w') as f:
 	for i in range(len(psiX)):
-		print '{0}\t{1: .12e}'.format(i-np.floor(N/2)+1,psiX[i].real)
-
-
+		f.write('{0}\t{1: .12e}\n'.format(i-np.floor(N/2)+1,psiX[i].real))
 
 
 
