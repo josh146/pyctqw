@@ -2,7 +2,7 @@
 ; simulation settings
 particles = 2  
 grid_length = 50  
-time =   1.0  
+time = 1.0  
 
 ; set the location of the defect
 ; nodes and the respective amplitudes.
@@ -24,7 +24,7 @@ p2_initial_state = [(0,0,1/sqrt(2)), (1,1,1/sqrt(2))]
 ; dimensions GRID_LENGTH*1; for 2P, this is a
 ; textfile with dimensions GRID_LENGTH*GRID*LENGTH
 ;	NOTE: this overides p*_initial_state
-input_state =
+input_state = 
 
 [options]
 ; set calculation options
@@ -38,4 +38,4 @@ evallib = lapack
 output = ./out
 ; whether the final statespace is
 ; outputted in the case of a 2pQW
-statespace = False
+statespace = true

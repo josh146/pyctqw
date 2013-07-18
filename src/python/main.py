@@ -9,7 +9,6 @@ import shutil
 import errno
 
 args = options.parse_args()
-print args.input_state
 
 # set the variables
 N = args.grid_length
@@ -35,7 +34,7 @@ else:
 	sys.exit()
 	
 #~~~~~~~~~~~~~~~~~~~~~~~~~ Print out simulation info ~~~~~~~~~~~~~~~~~~~~~~~~
-print "Performing a {} particle CTQW\n".format(args.particles)
+print "Performing a {} particle CTQW:\n".format(args.particles)
 print "\t N={0} \t t={1}".format(N,t)
 
 IS_disp = ()
@@ -64,8 +63,15 @@ for i in range(len(d)):
 if args.particles == 1:
 	psi0 = [0. for i in range(N)]
 	
-	for i in range(len(initialState)):
-		psi0[int(initialState[i][0])+N/2-1] = initialState[i][1]
+	if args.input_state=="":
+		for i in range(len(initialState)):
+			psi0[int(initialState[i][0])+N/2-1] = initialState[i][1]
+	else:
+		try:	psi0 = np.loadtxt(args.input_state,dtype=complex).reshape(N)
+		except:
+			print "\nERROR: input state space file " + args.input_state\
+				+ " does not exist or is in an incorrect format"
+			sys.exit()
 
 elif args.particles == 2:
 	psi0 = [0. for i in range(N**2)]
@@ -74,7 +80,11 @@ elif args.particles == 2:
 		for i in range(len(initialState)):
 			psi0[ctqw.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
 	else:
-		psi0 = np.loadtxt(args.input_state,dtype=complex).reshape(N**2)
+		try:	psi0 = np.loadtxt(args.input_state,dtype=complex).reshape(N**2)
+		except:	
+			print "\nERROR: input state space file " + args.input_state\
+				+ " does not exist or is in an incorrect format"
+			sys.exit()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Hamiltonian ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 print '\nCreating the Hamiltonian....'
@@ -134,6 +144,7 @@ else:
 
 end = time.time()
 print '\ttime: {: .12f}\n'.format(end-start)
+os.remove('coeff.txt')
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Output ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	
 def write_psi(psi, filename):
@@ -150,14 +161,30 @@ except OSError as exception:
 # marginal probabilities and statespace output
 if args.particles == 1:
 	psiX = np.abs(psi)**2
+	
+	print "Creating marginal probability:\t"+args.output+"/output_psi_t"+str(t)+".txt"
 	write_psi(psiX, args.output + "/output_psi_t"+str(t)+".txt")
+	
+	if args.statespace:
+		print "Outputting final state space:\t"+args.output+"/output_statespace_t"+str(t)+".txt"
+		with open(args.output + "/output_statespace_t"+str(t)+".txt",'w') as f:
+			for i in range(N):
+				f.write('{0: .12e}\n'.format(psi[i]))
 		
 elif args.particles == 2:
 	psiX = ctqw.pymarginal(psi,'x',N)
 	psiY = ctqw.pymarginal(psi,'y',N)
+	
+	print "Creating marginal probability for particle 1:\t"\
+		+args.output+"/output_psiX_t"+str(t)+".txt"
 	write_psi(psiX, args.output + "/" + "output_psiX_t"+str(t)+".txt")
+	
+	print "Creating marginal probability for particle 2:\t"\
+		+args.output+"/output_psiX_t"+str(t)+".txt"
 	write_psi(psiY, args.output + "/" + "output_psiY_t"+str(t)+".txt")
+	
 	if args.statespace:
+		print "Outputting final state space:\t\t\t"+args.output+"/output_statespace_t"+str(t)+".txt"
 		nn = int(np.sqrt(len(psi)))
 		state_space = psi.reshape((nn,nn))		
 		with open(args.output + "/output_statespace_t"+str(t)+".txt",'w') as f:
@@ -167,7 +194,7 @@ elif args.particles == 2:
 					ss_disp = ss_disp + '{0: .12e}\t'.format(state_space[i,j])
 				f.write(ss_disp+'\n')
 				
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plotting ~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plotting ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
