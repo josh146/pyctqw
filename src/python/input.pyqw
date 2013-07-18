@@ -1,0 +1,41 @@
+[ctqw]
+; simulation settings
+particles = 2  
+grid_length = 50  
+time =   1.0  
+
+; set the location of the defect
+; nodes and the respective amplitudes.
+; 	Note that both lists must be
+;	the same length!
+defect_nodes = [ 3 , 4 ]  
+defect_amp = [1.,1.]  
+
+; set the initial state of the walker.
+; For 1 walker, this is of the form
+;	[(J1,AMP1), (J2,AMP2),...]
+; For 2 walkers, this is of the form
+;	[(X1,Y1,AMP1), (X2,Y2,AMP2),...]
+p1_initial_state = [(0,1/sqrt(2)), (1,1j/sqrt(2))]
+p2_initial_state = [(0,0,1/sqrt(2)), (1,1,1/sqrt(2))]
+
+; Alternatively, set the location of an input 
+; statespace. For 1P, this is a textfile with
+; dimensions GRID_LENGTH*1; for 2P, this is a
+; textfile with dimensions GRID_LENGTH*GRID*LENGTH
+;	NOTE: this overides p*_initial_state
+input_state =
+
+[options]
+; set calculation options
+expm = chebyshev
+evalgen = False
+evallib = lapack
+
+[output]
+; set output settings
+; output directory
+output = ./out
+; whether the final statespace is
+; outputted in the case of a 2pQW
+statespace = False
