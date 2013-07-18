@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.7
+import os
 import argparse
 import ConfigParser
 from math import *
@@ -7,6 +8,7 @@ def parse_args():
 	# program info
 	progname = "PyCTQW"
 	libname = "libpyctqw"
+	configFile = "config.txt"
 	progversion = "PyCTQW v0.1\n Josh Izaac\n josh.izaac@uwa.edu.au"
 	info = '{0} is a Python interface to the Fortran library {1}.\
 		\nThis library contains functions that allow continuous-time\
@@ -24,16 +26,21 @@ def parse_args():
 		help="Specify config file", metavar="FILE")
 		
 	args, remaining_argv = conf_parser.parse_known_args()
-		
+	
+	# config settings
+	config = ConfigParser.SafeConfigParser()
 	if args.conf:
-		config = ConfigParser.SafeConfigParser()
 		config.read([args.conf])
-		defaults = dict(config.items("Defaults"))
+		defaults = dict(config.items("DEFAULTS"))
+	elif os.path.exists(configFile):
+		config.read([configFile])
+		defaults = dict(config.items("DEFAULTS"))
 	else:
 		# No config defaults
 		defaults =	{ "output" 	: "none",
 				  "statespace"	: False,
 				  "particles"	: 2,
+				  "grid_length"	: 50,
 				  "time"	: 1.0,
 				  "expm"	: 'chebyshev',
 				  "evalgen"	: False,
@@ -64,7 +71,7 @@ def parse_args():
 		help='QW propagation time',			
 		type=float, metavar='T', nargs=1)
 	
-	parser.add_argument('-N',
+	parser.add_argument('-N','--grid-length',
 		help='set the number of vertices (must be an even & > 2)',			
 		type=int, metavar='NUMBER', nargs=1)
 

@@ -9,12 +9,10 @@ import options
 args = options.parse_args()
 
 # set the variables
-N = 50
-t = 1.0
+N = args.grid_length
+t = args.time
 
 # defect locations
-print args.defect_nodes
-print args.defect_amp
 if len(args.defect_nodes) == len(args.defect_amp):
 	d=args.defect_nodes
 	a=args.defect_amp
