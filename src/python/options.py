@@ -55,6 +55,7 @@ def parse_args():
 		# No config defaults
 		defaults =	{ "input_state"	: "",
 				  "output" 	: "./out",
+				  "fortran"	: "intel",
 				  "statespace"	: False,
 				  "particles"	: 2,
 				  "grid_length"	: 50,
@@ -79,6 +80,9 @@ def parse_args():
 	
 	parser.add_argument('-o', dest='output', metavar='DIR',
 		help='specify an output directory', type=str)
+		
+	parser.add_argument('-fc', '--fortran',
+		help='specify the fortran library to use (either \'intel\' or \'gcc\')', type=str)
 	
 	parser.add_argument('-s', "--statespace", action="store_true",
 		help="specify whether the statespace is exported")

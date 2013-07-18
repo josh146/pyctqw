@@ -1,8 +1,8 @@
 [ctqw]
 ; simulation settings
-particles = 2  
-grid_length = 50  
-time = 1.0  
+particles = 2 
+grid_length = 70 
+time = 5.0  
 
 ; set the location of the defect
 ; nodes and the respective amplitudes.
@@ -17,7 +17,7 @@ defect_amp = [1.,1.]
 ; For 2 walkers, this is of the form
 ;	[(X1,Y1,AMP1), (X2,Y2,AMP2),...]
 p1_initial_state = [(0,1/sqrt(2)), (1,1j/sqrt(2))]
-p2_initial_state = [(0,0,1/sqrt(2)), (1,1,1/sqrt(2))]
+p2_initial_state = [(0,0,1/sqrt(2)), (2,2,1/sqrt(2))]
 
 ; Alternatively, set the location of an input 
 ; statespace. For 1P, this is a textfile with
@@ -31,6 +31,7 @@ input_state =
 expm = chebyshev
 evalgen = False
 evallib = lapack
+fortran = intel
 
 [output]
 ; set output settings

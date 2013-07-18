@@ -2,13 +2,32 @@
 import sys
 import os
 import numpy as np
-from libpyctqw import ctqw
 import time
 import options
 import shutil
 import errno
+import plots
 
 args = options.parse_args()
+
+if args.fortran=="gcc":
+	print "Importing libpyctqw_gcc.so..."
+	try:	from libpyctqw_gcc import ctqw
+	except:
+		print "\nWARNING: libpyctqw_gcc.so cannot be found. Using libpyctqw_intel.so"
+		try:	from libpyctqw_intel import ctqw
+		except:
+			print "\nERROR: libpyctqw_intel.so cannot be found"
+			sys.exit()
+else:
+	print "Importing libpyctqw_intel.so..."
+	try:	from libpyctqw_intel import ctqw
+	except:
+		print "\nWARNING: libpyctqw_intel.so cannot be found. Using libpyctqw_gcc.so"
+		try:	from libpyctqw_gcc import ctqw
+		except:
+			print "\nERROR: libpyctqw_gcc.so cannot be found"
+			sys.exit()
 
 # set the variables
 N = args.grid_length
@@ -34,7 +53,7 @@ else:
 	sys.exit()
 	
 #~~~~~~~~~~~~~~~~~~~~~~~~~ Print out simulation info ~~~~~~~~~~~~~~~~~~~~~~~~
-print "Performing a {} particle CTQW:\n".format(args.particles)
+print "\nPerforming a {} particle CTQW:\n".format(args.particles)
 print "\t N={0} \t t={1}".format(N,t)
 
 IS_disp = ()
@@ -197,7 +216,17 @@ elif args.particles == 2:
 				f.write(ss_disp+'\n')
 				
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plotting ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+if args.particles == 1:
+	print "Creating probability plot:\t\t"+args.output+"/output_prob_t"+str(t)+".png"
+	plots.prob_plot_p1(args.output+"/output_psi_t"+str(t)+".txt",
+			args.output+"/output_prob_t"+str(t)+".png",
+			t,initialState,d,a)
+else:
+	print "Creating marginal probability plot:\t\t"+args.output+"/output_prob_t"+str(t)+".png"
+	plots.prob_plot_p2(args.output+"/output_psiX_t"+str(t)+".txt",
+			args.output+"/output_psiY_t"+str(t)+".txt",
+			args.output+"/output_prob_t"+str(t)+".png",
+			t,initialState,d,a)
 
 
 

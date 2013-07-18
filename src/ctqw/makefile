@@ -1,7 +1,5 @@
 #!/usr/bin/make -f
 
-progname = ctqw
-objects = FFT.o libctqw.o fileOps.o main.o
 BIN_INSTALL = bin
 BIN_PATH = ../../$(BIN_INSTALL)
 LIB_INSTALL = lib
@@ -13,6 +11,8 @@ ifeq ($(FC),gfortran)
 	libName = _gcc
 	lapack = -llapack
 	pylapack = -llapack
+	
+	#sed 's/^\tuse/!\tuse/g;s/dbesjn/bessel_jn/g' libctqw_intel.f90 > libctqw_gcc.f90
 else
 	FC = ifort
 	fcompiler=intelem
@@ -21,6 +21,9 @@ else
 	lapack = -lmkl_lapack95_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
 	pylapack = -lmkl_lapack95_lp64 -lmkl_rt -lpthread
 endif
+
+progname = ctqw$(libName)
+objects = FFT.o libctqw$(libName).o fileOps.o main.o
 
 # fftw3 library location
 ifeq ($(target),ivec)
@@ -43,19 +46,20 @@ $(progname): $(objects)
 	$(FC) $(objects) -o $(progname) $(switch) $(lapack) $(fftw) $(matExp)
 FFT.o: FFT.f90
 	$(FC) -c $(switch) FFT.f90
-libctqw.o: FFT.o libctqw.f90
-	$(FC) -c $(switch) libctqw.f90
+libctqw$(libName).o: FFT.o libctqw$(libName).f90
+	$(FC) -c $(switch) libctqw$(libName).f90
 fileOps.o: fileOps.f90
 	$(FC) -c $(switch) fileOps.f90
-main.o: FFT.o libctqw.o fileOps.o main.f90
+main.o: FFT.o libctqw$(libName).o fileOps.o main.f90
 	$(FC) -c $(switch) main.f90
 
 #Python wrappers
-python: libpyctqw.so
+python: libpyctqw$(libName).so
 	
-libpyctqw.so: libctqw.f90
-	f2py $(pylapack) $(fftw) $(matExp) -m libpyctqw -c --fcompiler=$(fcompiler) libctqw.f90
-	cp libpyctqw.so $(LIB_PATH)
+libpyctqw$(libName).so: libctqw$(libName).f90
+	f2py $(pylapack) $(fftw) $(matExp) -m libpyctqw$(libName) -c --fcompiler=$(fcompiler) libctqw$(libName).f90
+	cp libpyctqw$(libName).so $(LIB_PATH)
+	rm -f *.so
 
 #Cleaning files
 clean:
