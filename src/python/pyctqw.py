@@ -3,33 +3,45 @@ import sys
 import os
 import numpy as np
 import time
-import options
 import shutil
 import errno
+
+import options
 import plots
-from scipy import sparse
-from scipy.sparse.linalg import eigsh, eigs
+import func
 
 args = options.parse_args()
 
-if args.fortran=="gcc":
-	print "Importing libpyctqw_gcc.so..."
-	try:	from libpyctqw_gcc import ctqw
-	except:
-		print "\nWARNING: libpyctqw_gcc.so cannot be found. Using libpyctqw_intel.so"
-		try:	from libpyctqw_intel import ctqw
+if (args.expm[:5]=='python' and args.eig_lib[:5]=='python') or args.sparse:
+	Fortran = False
+	if args.sparse or args.eig_lib=='python-scipy' or arg.expm=='python-chebyshev':
+		try:
+			from scipy import sparse
+			from scipy.sparse.linalg import eigsh, eigs
 		except:
 			print "\nERROR: libpyctqw_intel.so cannot be found"
 			sys.exit()
+			
 else:
-	print "Importing libpyctqw_intel.so..."
-	try:	from libpyctqw_intel import ctqw
-	except:
-		print "\nWARNING: libpyctqw_intel.so cannot be found. Using libpyctqw_gcc.so"
+	Fortran = True
+	if args.fortran=="gcc":
+		print "Importing libpyctqw_gcc.so..."
 		try:	from libpyctqw_gcc import ctqw
 		except:
-			print "\nERROR: libpyctqw_gcc.so cannot be found"
-			sys.exit()
+			print "\nWARNING: libpyctqw_gcc.so cannot be found. Using libpyctqw_intel.so"
+			try:	from libpyctqw_intel import ctqw
+			except:
+				print "\nERROR: libpyctqw_intel.so cannot be found"
+				sys.exit()
+	else:
+		print "Importing libpyctqw_intel.so..."
+		try:	from libpyctqw_intel import ctqw
+		except:
+			print "\nWARNING: libpyctqw_intel.so cannot be found. Using libpyctqw_gcc.so"
+			try:	from libpyctqw_gcc import ctqw
+			except:
+				print "\nERROR: libpyctqw_gcc.so cannot be found"
+				sys.exit()
 
 # set the variables
 N = args.grid_length
@@ -82,11 +94,16 @@ for i in range(len(d)):
 	
 #~~~~~~~~~~~~~~~~~~~~~~~ Create the initial statespace ~~~~~~~~~~~~~~~~~~~~~~~
 if args.particles == 1:
-	psi0 = [0. for i in range(N)]
 	
 	if args.input_state=="":
-		for i in range(len(initialState)):
-			psi0[int(initialState[i][0])+N/2-1] = initialState[i][1]
+		if args.sparse:
+			psi0 = sparse.lil_matrix((N,1),dtype=complex)
+			for i in range(len(initialState)):
+				psi0[int(initialState[i][0])+N/2-1,0] = initialState[i][1]
+		else:
+			psi0 = np.array([0. for i in range(N)],dtype=complex)
+			for i in range(len(initialState)):
+				psi0[int(initialState[i][0])+N/2-1] = initialState[i][1]
 	else:
 		try:	psi0 = np.loadtxt(args.input_state,dtype=complex).reshape(N)
 		except:
@@ -95,11 +112,19 @@ if args.particles == 1:
 			sys.exit()
 
 elif args.particles == 2:
-	psi0 = [0. for i in range(N**2)]
-	
 	if args.input_state=="":
-		for i in range(len(initialState)):
-			psi0[ctqw.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
+		if args.sparse:
+			psi0 = sparse.lil_matrix((N**2,1),dtype=complex)
+			for i in range(len(initialState)):
+				if Fortran:	psi0[ctqw.coord(*initialState[i][:2]+(N,))-1,0] = initialState[i][-1]
+				else:		psi0[func.coord(*initialState[i][:2]+(N,))-1,0] = initialState[i][-1]
+		else:	
+			psi0 = np.array([0. for i in range(N**2)],dtype=complex)
+			for i in range(len(initialState)):
+				if Fortran:	psi0[ctqw.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
+				else:		psi0[func.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
+
+			
 	else:
 		try:	psi0 = np.loadtxt(args.input_state,dtype=complex).reshape(N**2)
 		except:	
@@ -108,90 +133,148 @@ elif args.particles == 2:
 			sys.exit()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Hamiltonian ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-print '\nCreating the Hamiltonian....'
-
 start = time.time()
+if args.sparse:
+	print '\nCreating the Hamiltonian sparsely using SciPy....'
+	
+	H1 = sparse.lil_matrix((N, N))
+	
+	H1.setdiag([2.0 for x in range(N)], k=0)
+	H1.setdiag([-1.0 for x in range(N)], k=1)
+	H1.setdiag([-1.0 for x in range(N)], k=-1)
+	
+	for i in range(len(d)):
+		H1[d[i]+N/2-1,d[i]+N/2-1] = 2.0 + a[i]
+		
+	if args.particles == 1:
+		H = H1.tocsc()
+	elif args.particles == 2:
+		H = sparse.kronsum(H1, H1, format='csc')
+	
+else:
+	print '\nCreating the Hamiltonian using Fortran....'
 
-H1 = ctqw.hamiltonian_1p(d,a,N)
+	H1 = ctqw.hamiltonian_1p(d,a,N)
 
-if args.particles == 1:
-	H = H1
-elif args.particles == 2:
-	H = ctqw.hamiltonian_2p_noint(H1)
-
+	if args.particles == 1:
+		H = H1
+	elif args.particles == 2:
+		H = ctqw.hamiltonian_2p_noint(H1)
+		
 end = time.time()
 print '\t\t\t\t\ttime: {: .12f}\n'.format(end-start)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ eigenvalues ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-start = time.time()
-
-if args.eig_lib == 'lapack':
-	if args.eig_general:
-		print 'Finding eigenvalues via Lapack....'
-		(Emin,Emax) = ctqw.extremeev(H)
-	else:
-		print 'Finding eigenvalues via Lapack and band storage....'
-		(Emin,Emax) = ctqw.sband_extremeev(H)
-	print Emin,Emax
+if args.expm!='burkadt':
+	start = time.time()
+	
+	if args.eig_lib == 'python-scipy' or args.sparse:
+		if args.sparse:	H_sparse = H
+		else:		H_sparse = sparse.csc_matrix(H)		
 		
-elif args.eig_lib == 'numpy':
-	if args.eig_general:
-		print 'Finding eigenvalues via NumPy....'
-		evals = np.linalg.eigvals(H)
-	else:
-		print 'Finding eigenvalues via NumPy and band storage....'
-		evals = np.linalg.eigvalsh(H)
+		Emax = 'none'
+		Emin = 'none'
+		count = 1
 		
-	Emax = max(evals.real)
-	Emin = min(evals.real)
-	
-elif args.eig_lib == 'scipy-arpack':
-	if args.eig_general:
-		print 'Finding eigenvalues via SciPy\'s ARPACK bindings....'
-		H_sparse = sparse.csc_matrix(H)
-		Emax = eigs(H_sparse,1,which='LA')[0][-1].real
-		Emin = eigs(H_sparse,1,which='LA',sigma=0)[0][-1].real
-	else:
-		print 'Finding eigenvalues via SciPy\'s ARPACK bindings and band storage....'
-		H_sparse = sparse.csc_matrix(H)
-		Emax = eigsh(H_sparse,1,which='LA')[0][-1].real
-		Emin = eigsh(H_sparse,1,which='LA',sigma=0)[0][-1].real
-	
-	print Emin, Emax
-	
-else:
-	print '\nERROR: Unknown linear algebra library'
-	sys.exit()
+		if args.eig_general:
+			sys.stdout.write('Finding eigenvalues via SciPy\'s ARPACK bindings....'+'\b')
+			while (Emin=='none' or Emax=='none') and count<11:
+				sys.stdout.write('Attempt {0:02d}'.format(count)+"\b"*10)
+				sys.stdout.flush()
+				try:
+					start = time.time()
+					Emax = eigs(H_sparse,count,which='LA')[0][-1].real
+					Emin = eigs(H_sparse,count,which='LA',sigma=0)[0][-1].real
+					break
+				except:
+					count += 1
+			else:
+				print "\nERROR: SciPy band storage eigenvalue solver could not converge"
+				sys.exit()
+		else:
+			sys.stdout.write('Finding eigenvalues via SciPy\'s ARPACK bindings and band storage....'+'\b')
+			while (Emin=='none' or Emax=='none') and count<11:
+				sys.stdout.write('Attempt {0:02d}'.format(count)+"\b"*10)
+				sys.stdout.flush()
+				try:
+					start = time.time()
+					Emax = eigsh(H_sparse,count,which='LA')[0][-1].real
+					Emin = eigsh(H_sparse,count,which='LA',sigma=0)[0][-1].real
+					sys.stdout.write("\n")
+					break
+				except:
+					count += 1
+			else:
+				print "\nERROR: SciPy band storage eigenvalue solver could not converge"
+				sys.exit()
 
-end = time.time()
-print '\t\t\t\t\ttime: {: .12f}\n'.format(end-start)
+	elif args.eig_lib == 'lapack':
+		if args.eig_general:
+			print 'Finding eigenvalues via Lapack....'
+			(Emin,Emax) = ctqw.extremeev(H)
+		else:
+			print 'Finding eigenvalues via Lapack and band storage....'
+			(Emin,Emax) = ctqw.sband_extremeev(H)
+		
+	elif args.eig_lib == 'python-numpy':
+		if args.eig_general:
+			print 'Finding eigenvalues via NumPy....'
+			evals = np.linalg.eigvals(H)
+		else:
+			print 'Finding eigenvalues via NumPy and band storage....'
+			evals = np.linalg.eigvalsh(H)
+		
+		Emax = max(evals.real)
+		Emin = min(evals.real)
+	
+	else:
+		print '\nERROR: Unknown linear algebra library'
+		sys.exit()
+
+	print 'Min eigenvalue: {0: .4f}  Max eigenvalue: {1: .4f}'.format(Emin, Emax)
+
+	end = time.time()
+	print '\t\t\t\t\ttime: {: .12f}\n'.format(end-start)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Quantum Walk ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 start = time.time()
 
-if args.expm == 'chebyshev':
+if args.expm == 'python-chebyshev' or args.sparse:
+	print 'Calculating exp(-iHt) via the Chebyshev method in Python....'
+	if args.sparse:
+		psi0 = psi0.tocsc()	
+	else:
+		psi0 = np.matrix(psi0).T
+		H = np.matrix(H)
+		
+	psi = func.qw_cheby(psi0,t,H,Emin,Emax)
+	
+	if not args.sparse:
+		psi = np.array(psi.T)[0]
+	
+elif args.expm == 'chebyshev':
 	print 'Calculating exp(-iHt) via the Chebyshev method....'
 	psi = ctqw.qw_cheby(psi0,t,H,Emin,Emax)
+	
 elif args.expm == 'burkadt':
 	print 'Calculating exp(-iHt) via the Burkadt method....'
 	psi = ctqw.qw_burkadt(psi0,t,H)
+	
 else:
 	print '\nERROR: Unknown matrix exponential method'
 	sys.exit()
 
 end = time.time()
-print '\ttime: {: .12f}\n'.format(end-start)
+if Fortran:	print '\ttime: {: .12f}\n'.format(end-start)
+else:		print '\t\t\t\t\ttime: {: .12f}\n'.format(end-start)
 
-coeff = np.loadtxt('coeff.txt')
-os.remove('coeff.txt')
+if os.path.exists('coeff.txt'):
+	coeff = np.loadtxt('coeff.txt')
+	os.remove('coeff.txt')
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Output ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	
-def write_psi(psi, filename):
-	with open(filename,'w') as f:
-		for i in range(len(psi)):
-			f.write('{0}\t{1: .12e}\n'.format(i-np.floor(N/2)+1,psi[i].real))
-
+# create output directory if it doesn't exist
 try:
 	os.mkdir(args.output)
 except OSError as exception:
@@ -200,43 +283,42 @@ except OSError as exception:
 
 # marginal probabilities and statespace output
 if args.particles == 1:
-	psiX = np.abs(psi)**2
+	if args.sparse: psi = np.array(psi.T.todense())[0]
+	
+	psiX = np.abs(psi)**2.0
 	
 	print "Creating marginal probability:\t"+args.output+"/output_psi_t"+str(t)+".txt"
-	write_psi(psiX, args.output + "/output_psi_t"+str(t)+".txt")
+	func.write_psi(psiX, args.output + "/output_psi_t"+str(t)+".txt")
 	
 	if args.statespace:
 		print "Outputting final state space:\t"+args.output+"/output_statespace_t"+str(t)+".txt"
-		with open(args.output + "/output_statespace_t"+str(t)+".txt",'w') as f:
-			for i in range(N):
-				f.write('{0: .12e}\n'.format(psi[i]))
+		func.write_statespace(psi, args.output+"/output_statespace_t"+str(t)+".txt", 1)
 		
 elif args.particles == 2:
-	psiX = ctqw.pymarginal(psi,'x',N)
-	psiY = ctqw.pymarginal(psi,'y',N)
+	if args.sparse:	psi = np.array(psi.T.todense())[0]
+	
+	if Fortran:
+		psiX = ctqw.pymarginal(psi,'x',N)
+		psiY = ctqw.pymarginal(psi,'y',N)
+	else:	
+		psiX = func.pymarginal(psi,'x',N)
+		psiY = func.pymarginal(psi,'y',N)
 	
 	print "Creating marginal probability for particle 1:\t"\
 		+args.output+"/output_psiX_t"+str(t)+".txt"
-	write_psi(psiX, args.output + "/" + "output_psiX_t"+str(t)+".txt")
+	func.write_psi(psiX, args.output + "/" + "output_psiX_t"+str(t)+".txt")
 	
 	print "Creating marginal probability for particle 2:\t"\
 		+args.output+"/output_psiX_t"+str(t)+".txt"
-	write_psi(psiY, args.output + "/" + "output_psiY_t"+str(t)+".txt")
+	func.write_psi(psiY, args.output + "/" + "output_psiY_t"+str(t)+".txt")
 	
 	if args.statespace:
 		print "Outputting final state space:\t\t\t"+args.output+"/output_statespace_t"+str(t)+".txt"
-		nn = int(np.sqrt(len(psi)))
-		state_space = psi.reshape((nn,nn))		
-		with open(args.output + "/output_statespace_t"+str(t)+".txt",'w') as f:
-			for i in range(nn):
-				ss_disp = ""
-				for j in range(nn):
-					ss_disp = ss_disp + '{0: .12e}\t'.format(state_space[i,j])
-				f.write(ss_disp+'\n')
+		func.write_statespace(psi, args.output+"/output_statespace_t"+str(t)+".txt", 2)
 				
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Plotting ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if args.particles == 1:
-	print "Creating probability plot:\t\t"+args.output+"/output_prob_t"+str(t)+".png"
+	print "Creating probability plot:\t"+args.output+"/output_prob_t"+str(t)+".png"
 	plots.prob_plot_p1(args.output+"/output_psi_t"+str(t)+".txt",
 			args.output+"/output_prob_t"+str(t)+".png",
 			t,initialState,d,a)

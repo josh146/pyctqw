@@ -19,6 +19,24 @@ def parse_args():
 			\n\t   infinite line in the presence of defects\
 			\n\t * Propagate a two particle non-interacting\
 			\n\t   CTQW on an infinite line in the presence of defects'
+	
+	# config defaults
+	defaults =	{ "input_state"	: "",
+			  "output" 	: "./out",
+			  "fortran"	: "intel",
+			  "sparse"	: False,
+			  "statespace"	: False,
+			  "particles"	: 1,
+			  "grid_length"	: 160,
+			  "time"	: 30.0,
+			  "expm"	: 'chebyshev',
+			  "eig_method"	: False,
+			  "eig_lib"	: 'lapack',
+			  "defect_nodes": [0],
+			  "defect_amp"	: [0],
+			  "p1_initial_state": [(0,1)],
+			  "p2_initial_state": [(0,5,1/sqrt(2))]
+			}
 			 	 
 	# look for config file		 	 
 	conf_parser = argparse.ArgumentParser(add_help=False)
@@ -30,17 +48,15 @@ def parse_args():
 	
 	# config settings
 	config = ConfigParser.SafeConfigParser()
-	if args.conf:
-		print "Input script " + args.conf + " found!"
-		config.read([args.conf])
-		defaults = dict(config.items("DEFAULTS"))
-		
-	elif os.path.exists(configFile):
-		print "Input script " + configFile + " found!"
-		config.read([configFile])
-		
+	if args.conf or os.path.exists(configFile):
+		if args.conf:
+			print "Input script " + args.conf + " found!"
+			config.read([args.conf])
+		elif os.path.exists(configFile):
+			print "Input script " + configFile + " found!"
+			config.read([configFile])
+			
 		# add configuration to the dictionary, and convert to proper type
-		defaults = {}
 		for sec in config.sections():
 			for option,value in config.items(sec):
 				if value.lower()=='true' or value.lower()=='false':
@@ -50,25 +66,7 @@ def parse_args():
 						defaults[option] = eval(value)
 					except:
 						defaults[option] = value
-								
-	else:
-		# No config defaults
-		defaults =	{ "input_state"	: "",
-				  "output" 	: "./out",
-				  "fortran"	: "intel",
-				  "statespace"	: False,
-				  "particles"	: 2,
-				  "grid_length"	: 50,
-				  "time"	: 1.0,
-				  "expm"	: 'chebyshev',
-				  "eig_method"	: False,
-				  "eig_lib"	: 'lapack',
-				  "defect_nodes": [0],
-				  "defect_amp"	: [0],
-				  "p1_initial_state": [(0,1/sqrt(2)), (1,1j/sqrt(2))],
-				  "p2_initial_state": [(0,0,1/sqrt(2)), (1,1,1/sqrt(2))]
-				}
-	
+
 	# command line arguments
 	parser = argparse.ArgumentParser(parents=[conf_parser],description=info.format(progname,libname),
 			version=progversion, add_help=True, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -117,7 +115,7 @@ def parse_args():
 		
 	parser.add_argument('--expm', dest='expm',
 		help='choose the algorithm used to calculate the matrix exponential,\
-		\'Chebyshev\' (default), or \'Burkadt\'',			
+		\'chebyshev\' (default, fortran), \'burkadt\' (fortran), or \'python-chebyshev\'',			
 		type=str, metavar='METHOD')
 		
 	parser.add_argument('-eg', '--eig-general', action="store_true",
@@ -125,9 +123,15 @@ def parse_args():
 		to treat the Hamiltonian as a general complex matrix, rather than as a\
 		real, symmetric	band matrix (the default)')
 		
+	parser.add_argument('--sparse', action="store_true",
+		help='use SciPy and ARPACK to create sparse matrices. Note that this overrides\
+		the \'expm\'  and \'eig-lib\' setting, as it requires expm=\'python-chebyshev\'\
+		and eig-lib=\'scipy-arpack\'')
+		
 	parser.add_argument('--eig-lib',
 		help='choose the library used to calculate the eigenvalues,\
-		\'lapack\' (default), \'scipy-arpack\' or \'numpy\'. Note that lapack is significantly\
+		\'lapack\' (default), \'python-scipy\' (with ARPACK bindings)\
+		or \'python-numpy\'. Note that lapack is significantly\
 		faster, however requires either intel-mkl or LAPACK be installed',			
 		type=str, metavar='LIB')
 

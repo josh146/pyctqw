@@ -1,15 +1,15 @@
 [ctqw]
 ; simulation settings
 particles = 2
-grid_length = 200
-time = 5.0  
+grid_length = 50
+time = 20.0
 
 ; set the location of the defect
 ; nodes and the respective amplitudes.
 ; 	Note that both lists must be
 ;	the same length!
-defect_nodes = [0 , 1]  
-defect_amp = [1.,1.]  
+defect_nodes = [10 , 11]
+defect_amp = [0.,0.]
 
 ; set the initial state of the walker.
 ; For 1 walker, this is of the form
@@ -26,12 +26,31 @@ p2_initial_state = [(0,0,1/sqrt(2)), (2,2,1/sqrt(2))]
 ;	NOTE: this overides p*_initial_state
 input_state = 
 
+
+
 [options]
 ; set calculation options
+; choose the algorithm used to calculate the matrix
+; exponential, 'chebyshev' (default, fortran),
+; 'burkadt' (fortran), or 'python-chebyshev'
 expm = chebyshev
+; when calculating the eigenvalues, force the linear algebra library
+; to treat the Hamiltonian as a general complex matrix, rather than as a
+; real, symmetric band matrix (the default)
 eig_general = False
-eig_lib = scipy-arpack
+; choose the library used to calculate the eigenvalues,
+; 'lapack' (default), 'python-scipy' (with ARPACK bindings)
+; or 'python-numpy'. Note that lapack is significantly
+; faster, however requires either intel-mkl or LAPACK be installed
+eig_lib = lapack
+; use SciPy and ARPACK to create sparse matrices.
+; Note that this overrides the 'expm'  and 'eig-lib' setting,
+; as it requires expm='python-chebyshev' and eig-lib='scipy-arpack'
+sparse = False
+; specify the fortran library to use (either 'intel' or 'gcc')
 fortran = intel
+
+
 
 [output]
 ; set output settings

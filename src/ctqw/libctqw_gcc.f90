@@ -201,6 +201,33 @@ module ctqw
 		Emax = maxval(real(eigenvalues))
 		deallocate(rwork,work,eigenvalues,leftvectors,rightvectors)
 	end subroutine extremeEv
+	
+	subroutine cextremeEv(H,Emin,Emax)
+		complex(8), intent(in)	::	H(:,:)
+		complex(8), intent(out)	::	Emin, Emax
+
+		! local variables
+		integer			::	N, info, i, j, eminIndex, emaxIndex
+		real(8), allocatable	::	rwork(:)
+		complex(8), allocatable	::	UpperArray(:,:), leftvectors(:,:), &
+						& array(:,:), rightvectors(:,:), eigenvalues(:), work(:)
+
+		N = size(H,1)
+
+		! allocate the arrays required for LAPACK
+		allocate(eigenvalues(N), work(2*N), rwork(2*N), leftvectors(N, N), rightvectors(N, N),array(N,N))
+		array = H
+
+		! find the eigenvalues of H
+		call zgeev('N', 'N', N, array, N, eigenvalues, leftvectors, &
+				& N, rightvectors, N, work, 2*N, rwork, info)
+
+		eminIndex = minloc(real(eigenvalues),1)
+		Emin = eigenvalues(eminIndex)
+		emaxIndex = maxloc(real(eigenvalues),1)
+		Emax = eigenvalues(emaxIndex)
+		deallocate(rwork,work,eigenvalues,leftvectors,rightvectors)
+	end subroutine cextremeEv
 
 	subroutine qw_cheby(psi,psiT,dt,H,Emin,Emax,N)
 		integer, intent(in)	:: N
@@ -245,13 +272,15 @@ module ctqw
 	end subroutine qw_cheby
 
 	! finds the matrix exponential exp(Ht) using Chebyshev
-	function matrixExp_cheby(H,t)
+	function matrixExp_cheby(H,t,NegI)
 		real(8), intent(in)	::	H(:,:)
 		real(8), intent(in)	::	t
+		logical, intent(in)	::	NegI
 
 		! local variables
 		integer			::	N, m, terms, i, j
-		real(8)			::	alpha, Emax, Emin
+		real(8)			::	alpha, Emax, Emin, neg
+		complex(8)		::	ii2
 		real(8), allocatable	::	ident(:,:)
 		complex(8), allocatable	::	phi0(:,:), phi1(:,:), phi2(:,:), &
 						 & U(:,:), matrixExp_cheby(:,:)
@@ -264,10 +293,18 @@ module ctqw
 		alpha = (Emax-Emin)*t/2.d0
 
 		call identity(ident,N)
+		
+		if (NegI) then
+			neg = -1.d0
+			ii2 = ii
+		else
+			neg = 1.d0
+			ii2 = (1.d0,0.d0)
+		end if
 
 		phi0 = ident
-		phi1 = (2.d0*H-(Emax+Emin)*ident)/(Emax-Emin)
-		U = bessel_jn(0,alpha)*phi0 + 2.d0*bessel_jn(1,alpha)*phi1
+		phi1 = neg*(2.d0*H-(Emax+Emin)*ident)/(Emax-Emin)
+		U = bessel_jn(0,alpha)*phi0 + 2.d0*ii2*bessel_jn(1,alpha)*phi1
 
 		terms = 0
 		do while (abs(2.d0*bessel_jn(terms,alpha)) > 1.d-45)
@@ -275,24 +312,25 @@ module ctqw
 		end do
 
 		do m = 2, terms
-			phi2 = 2.d0*(2.d0*matmul(H,phi1)-(Emax+Emin)*phi1)/(Emax-Emin) + phi0
-			U = U + 2.d0*bessel_jn(m,alpha)*phi2
+			phi2 = neg*2.d0*(2.d0*matmul(H,phi1)-(Emax+Emin)*phi1)/(Emax-Emin) + neg*phi0
+			U = U + 2.d0*(ii2**m)*bessel_jn(m,alpha)*phi2
 
 			phi0 = phi1
 			phi1 = phi2
 		end do
 
-		matrixExp_cheby = exp((Emax+Emin)*t/2.d0)*U
+		matrixExp_cheby = exp(neg*ii2*(Emax+Emin)*t/2.d0)*U
 		deallocate(phi0,phi1,phi2,U,ident)
 	end function matrixExp_cheby
 	
-	subroutine pyexpm_cheby(H,t,expHt,N)
+	subroutine expm_cheby(H,expHt,NegI,N)
 		integer, intent(in)	:: N
-		real(8), intent(in)	:: H(N,N), t
+		logical, intent(in)	:: NegI
+		real(8), intent(in)	:: H(N,N)
 		complex(8), intent(out)	:: expHt(N,N)
 		
-		expHt = matrixExp_cheby(H,t)		
-	end subroutine pyexpm_cheby
+		expHt = matrixExp_cheby(H,1.d0,NegI)		
+	end subroutine expm_cheby
 	
 	subroutine qw_Burkadt(psi0,psi,dt,H,N)
 		integer, intent(in)	:: N
@@ -309,6 +347,15 @@ module ctqw
 		
 		deallocate(U)
 	end subroutine qw_Burkadt
+	
+	subroutine expm_Burkadt(H,matExp,N)
+		integer, intent(in)	:: N
+		complex(8), intent(in)	:: H(N,N)
+		complex(8), intent(out)	:: matExp(N,N)
+		
+		call c8mat_expm1(N,H,matExp)
+		
+	end subroutine expm_Burkadt
 
 !	subroutine progressbar(i,NN)
 !		integer, intent(in)	::	i, NN

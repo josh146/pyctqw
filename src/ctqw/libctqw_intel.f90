@@ -250,7 +250,7 @@ module ctqw
 		U = dbesjn(0,alpha)*phi0 + 2.d0*ii*dbesjn(1,alpha)*phi1
 
 		terms = 0
-		do while (abs(2.d0*dbesjn(terms,alpha)) > 1.d-45)
+		do while (abs(2.d0*dbesjn(terms,alpha)) > 1.d-18)
 			terms = terms + 1
 		end do
 !
