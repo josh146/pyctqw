@@ -9,25 +9,29 @@ ifeq ($(FC),gfortran)
 	fcompiler=gfortran
 	switch = -O2 -fbackslash
 	libName = _gcc
-	lapack = -llapack
+	ifeq ($(target),ivec)
+		lapack = -L/ivec/apps/gcc/4.4.6/lapack/3.4.2/lib -llapack
+		fftw = -L/ivec/devel/gcc/4.4.6/fftw/3.3.3/lib -lfftw3
+	else
+		lapack = -llapack
+		fftw = -lfftw3
+	endif
 else
 	FC = ifort
 	fcompiler=intelem
 	switch = -O2 -assume bscc
 	libName = _intel
 	lapack = -lmkl_lapack95_lp64 -lmkl_rt -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
+	ifeq ($(target),ivec)
+		fftw = -L/ivec/devel/intel/12.1/fftw/3.3.3/lib -lfftw3
+	else
+		fftw = -lfftw3
+	endif
 endif
 
 progname = $(BIN_PATH)/ctqw$(libName)
 pylibpath = $(LIB_PATH)/libpyctqw$(libName).so
 objects = FFT$(libName).o libctqw$(libName).o fileOps$(libName).o main$(libName).o
-
-# fftw3 library location
-ifeq ($(target),ivec)
-	fftw = -L/ivec/devel/intel/12.1/fftw/3.3.3/lib -lfftw3
-else
-	fftw = -lfftw3
-endif
 
 # burkadt matrix exp library location
 matExp = -L../../lib -lmatExp$(libName) -lc8$(libName) -lr8$(libName)

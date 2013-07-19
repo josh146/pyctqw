@@ -61,8 +61,8 @@ def parse_args():
 				  "grid_length"	: 50,
 				  "time"	: 1.0,
 				  "expm"	: 'chebyshev',
-				  "evalgen"	: False,
-				  "evallib"	: 'lapack',
+				  "eig_method"	: False,
+				  "eig_lib"	: 'lapack',
 				  "defect_nodes": [0],
 				  "defect_amp"	: [0],
 				  "p1_initial_state": [(0,1/sqrt(2)), (1,1j/sqrt(2))],
@@ -120,14 +120,14 @@ def parse_args():
 		\'Chebyshev\' (default), or \'Burkadt\'',			
 		type=str, metavar='METHOD')
 		
-	parser.add_argument('-evg', '--evalgen', dest='evalgen', action="store_true",
+	parser.add_argument('-eg', '--eig-general', action="store_true",
 		help='when calculating the eigenvalues, force the linear algebra library\
 		to treat the Hamiltonian as a general complex matrix, rather than as a\
 		real, symmetric	band matrix (the default)')
 		
-	parser.add_argument('--evallib', dest='evallib',
+	parser.add_argument('--eig-lib',
 		help='choose the library used to calculate the eigenvalues,\
-		\'lapack\' (default) or \'numpy\'. Note that lapack is significantly\
+		\'lapack\' (default), \'scipy-arpack\' or \'numpy\'. Note that lapack is significantly\
 		faster, however requires either intel-mkl or LAPACK be installed',			
 		type=str, metavar='LIB')
 

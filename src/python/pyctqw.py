@@ -7,6 +7,8 @@ import options
 import shutil
 import errno
 import plots
+from scipy import sparse
+from scipy.sparse.linalg import eigsh, eigs
 
 args = options.parse_args()
 
@@ -123,15 +125,17 @@ print '\t\t\t\t\ttime: {: .12f}\n'.format(end-start)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ eigenvalues ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 start = time.time()
 
-if args.evallib == 'lapack':
-	if args.evalgen:
+if args.eig_lib == 'lapack':
+	if args.eig_general:
 		print 'Finding eigenvalues via Lapack....'
 		(Emin,Emax) = ctqw.extremeev(H)
 	else:
 		print 'Finding eigenvalues via Lapack and band storage....'
 		(Emin,Emax) = ctqw.sband_extremeev(H)
-elif args.evallib == 'numpy':
-	if args.evalgen:
+	print Emin,Emax
+		
+elif args.eig_lib == 'numpy':
+	if args.eig_general:
 		print 'Finding eigenvalues via NumPy....'
 		evals = np.linalg.eigvals(H)
 	else:
@@ -140,6 +144,21 @@ elif args.evallib == 'numpy':
 		
 	Emax = max(evals.real)
 	Emin = min(evals.real)
+	
+elif args.eig_lib == 'scipy-arpack':
+	if args.eig_general:
+		print 'Finding eigenvalues via SciPy\'s ARPACK bindings....'
+		H_sparse = sparse.csc_matrix(H)
+		Emax = eigs(H_sparse,1,which='LA')[0][-1].real
+		Emin = eigs(H_sparse,1,which='LA',sigma=0)[0][-1].real
+	else:
+		print 'Finding eigenvalues via SciPy\'s ARPACK bindings and band storage....'
+		H_sparse = sparse.csc_matrix(H)
+		Emax = eigsh(H_sparse,1,which='LA')[0][-1].real
+		Emin = eigsh(H_sparse,1,which='LA',sigma=0)[0][-1].real
+	
+	print Emin, Emax
+	
 else:
 	print '\nERROR: Unknown linear algebra library'
 	sys.exit()

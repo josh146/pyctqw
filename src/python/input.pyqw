@@ -1,14 +1,14 @@
 [ctqw]
 ; simulation settings
-particles = 2 
-grid_length = 70 
+particles = 2
+grid_length = 200
 time = 5.0  
 
 ; set the location of the defect
 ; nodes and the respective amplitudes.
 ; 	Note that both lists must be
 ;	the same length!
-defect_nodes = [ 3 , 4 ]  
+defect_nodes = [0 , 1]  
 defect_amp = [1.,1.]  
 
 ; set the initial state of the walker.
@@ -29,8 +29,8 @@ input_state =
 [options]
 ; set calculation options
 expm = chebyshev
-evalgen = False
-evallib = lapack
+eig_general = False
+eig_lib = scipy-arpack
 fortran = intel
 
 [output]
