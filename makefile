@@ -29,15 +29,20 @@ $(LibmatExp):
 
 $(sourcecode):
 	
-# Python wrappers
-python: $(pylibpath)
+# Python library wrappers
+libpyctqw: $(pylibpath)
 
 $(pylibpath): src/ctqw/libctqw$(libName).f90 $(LibmatExp) 
 	$(MAKE) python -C src/ctqw
+	
+# python CLI
+pyctqw: $(pylibpath)
+	$(MAKE) -C src/python
 
 #Cleaning files
 clean:
 	$(MAKE) clean -C src/ctqw
+	$(MAKE) clean -C src/python
 	rm -f $(binary)
 
 fullclean: clean
