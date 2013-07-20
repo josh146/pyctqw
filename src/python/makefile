@@ -20,6 +20,7 @@ $(CONFIG): input.pyqw
 #Cleaning files
 clean:
 	rm -f *.pyc
+	rm -f $(PROG) $(CONFIG)
 
 
 
