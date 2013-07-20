@@ -12,38 +12,56 @@ import func
 
 args = options.parse_args()
 
-if (args.expm[:5]=='python' and args.eig_lib[:5]=='python') or args.sparse:
-	Fortran = False
-	if args.sparse or args.eig_lib=='python-scipy' or arg.expm=='python-chebyshev':
-		try:
-			from scipy import sparse
-			from scipy.sparse.linalg import eigsh, eigs
-		except:
-			print "\nERROR: libpyctqw_intel.so cannot be found"
-			sys.exit()
-			
-else:
-	Fortran = True
+#~~~~~~~~~~~ determine what modules must be imported ~~~~~~~~~~~~~~~~~~~~~~~~
+sparseMat = False
+if args.matrix_form[-6:]=='sparse': sparseMat = True
+
+calc_eig = False
+if args.propagator[-9:]=='chebyshev': calc_eig = True
+
+LoadFortran = False
+if sparseMat: pass
+elif args.matrix_form[:4]=='fort'\
+    or (args.eig_lib=='lapack' and calc_eig)\
+    or args.propagator[:4]=='fort':
+	LoadFortran = True
+	
+LoadSciPy = False
+if sparseMat or (args.eig_lib[-5:]=='scipy' and calc_eig)\
+    or args.propagator[:5]=='python':
+    	LoadSciPy = True
+
+if LoadSciPy:
+	try:
+		from scipy import sparse
+		from scipy.sparse.linalg import eigsh, eigs
+	except:
+		print "\nERROR: SciPy python module cannot be found"
+		sys.exit()
+
+if LoadFortran:
 	if args.fortran=="gcc":
 		print "Importing libpyctqw_gcc.so..."
-		try:	from libpyctqw_gcc import ctqw
+		try:	from libpyctqw_gcc import ctqw as fctqw
 		except:
 			print "\nWARNING: libpyctqw_gcc.so cannot be found. Using libpyctqw_intel.so"
-			try:	from libpyctqw_intel import ctqw
+			try:	from libpyctqw_intel import ctqw as fctqw
 			except:
 				print "\nERROR: libpyctqw_intel.so cannot be found"
 				sys.exit()
 	else:
 		print "Importing libpyctqw_intel.so..."
-		try:	from libpyctqw_intel import ctqw
+		try:	from libpyctqw_intel import ctqw as fctqw
 		except:
 			print "\nWARNING: libpyctqw_intel.so cannot be found. Using libpyctqw_gcc.so"
-			try:	from libpyctqw_gcc import ctqw
+			try:	from libpyctqw_gcc import ctqw as fctqw
 			except:
 				print "\nERROR: libpyctqw_gcc.so cannot be found"
-				sys.exit()
+				sys.exit()	
+else:
+	fctqw = func
 
-# set the variables
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~ set the variables ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 N = args.grid_length
 t = args.time
 
@@ -96,7 +114,7 @@ for i in range(len(d)):
 if args.particles == 1:
 	
 	if args.input_state=="":
-		if args.sparse:
+		if sparseMat:
 			psi0 = sparse.lil_matrix((N,1),dtype=complex)
 			for i in range(len(initialState)):
 				psi0[int(initialState[i][0])+N/2-1,0] = initialState[i][1]
@@ -113,18 +131,15 @@ if args.particles == 1:
 
 elif args.particles == 2:
 	if args.input_state=="":
-		if args.sparse:
+		if sparseMat:
 			psi0 = sparse.lil_matrix((N**2,1),dtype=complex)
 			for i in range(len(initialState)):
-				if Fortran:	psi0[ctqw.coord(*initialState[i][:2]+(N,))-1,0] = initialState[i][-1]
-				else:		psi0[func.coord(*initialState[i][:2]+(N,))-1,0] = initialState[i][-1]
+				psi0[fctqw.coord(*initialState[i][:2]+(N,))-1,0] = initialState[i][-1]
 		else:	
 			psi0 = np.array([0. for i in range(N**2)],dtype=complex)
 			for i in range(len(initialState)):
-				if Fortran:	psi0[ctqw.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
-				else:		psi0[func.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
+				psi0[fctqw.coord(*initialState[i][:2]+(N,))-1] = initialState[i][-1]
 
-			
 	else:
 		try:	psi0 = np.loadtxt(args.input_state,dtype=complex).reshape(N**2)
 		except:	
@@ -134,7 +149,7 @@ elif args.particles == 2:
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Hamiltonian ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 start = time.time()
-if args.sparse:
+if sparseMat:
 	print '\nCreating the Hamiltonian sparsely using SciPy....'
 	
 	H1 = sparse.lil_matrix((N, N))
@@ -150,46 +165,59 @@ if args.sparse:
 		H = H1.tocsc()
 	elif args.particles == 2:
 		H = sparse.kronsum(H1, H1, format='csc')
-	
-else:
+
+elif args.matrix_form[:4]=='fort':
 	print '\nCreating the Hamiltonian using Fortran....'
 
-	H1 = ctqw.hamiltonian_1p(d,a,N)
+	H1 = fctqw.hamiltonian_1p(d,a,N)
 
 	if args.particles == 1:
 		H = H1
 	elif args.particles == 2:
-		H = ctqw.hamiltonian_2p_noint(H1)
+		H = fctqw.hamiltonian_2p_noint(H1)
+
+else:
+	print '\nCreating the Hamiltonian using NumPy....'
+	
+	H1 = np.zeros((N,N))
+	np.fill_diagonal(H1,2.0)
+	H1.reshape(H1.size)[1:H1.shape[1]*(H1.shape[0]-1):H1.shape[1]+1] = -np.ones((N-1,))
+	H1.reshape(H1.size)[H1.shape[1]::H1.shape[1]+1] = -np.ones((N-1,))
+	
+	for i in range(len(d)):
+		H1[d[i]+N/2-1,d[i]+N/2-1] = 2.0 + a[i]
+		
+	if args.particles == 1:
+		H = H1
+	elif args.particles == 2:
+		H = np.kron(np.identity(N),H1)+np.kron(H1,np.identity(N))
 		
 end = time.time()
 print '\t\t\t\t\ttime: {: .12f}\n'.format(end-start)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ eigenvalues ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if args.expm!='burkadt':
+if calc_eig:
 	start = time.time()
 	
-	if args.eig_lib == 'python-scipy' or args.sparse:
-		if args.sparse:	H_sparse = H
-		else:		H_sparse = sparse.csc_matrix(H)		
-		
+	if args.eig_lib == 'python-scipy' or sparseMat:		
 		Emax = 'none'
 		Emin = 'none'
 		count = 1
 		
-		if args.eig_general:
+		if args.eig_solver == 'general':
 			sys.stdout.write('Finding eigenvalues via SciPy\'s ARPACK bindings....'+'\b')
 			while (Emin=='none' or Emax=='none') and count<11:
 				sys.stdout.write('Attempt {0:02d}'.format(count)+"\b"*10)
 				sys.stdout.flush()
 				try:
 					start = time.time()
-					Emax = eigs(H_sparse,count,which='LA')[0][-1].real
-					Emin = eigs(H_sparse,count,which='LA',sigma=0)[0][-1].real
+					Emax = eigs(H,count,which='LA')[0][-1].real
+					Emin = eigs(H,count,which='LA',sigma=0)[0][-1].real
 					break
 				except:
 					count += 1
 			else:
-				print "\nERROR: SciPy band storage eigenvalue solver could not converge"
+				print "\nERROR: SciPy eigenvalue solver could not converge"
 				sys.exit()
 		else:
 			sys.stdout.write('Finding eigenvalues via SciPy\'s ARPACK bindings and band storage....'+'\b')
@@ -198,8 +226,8 @@ if args.expm!='burkadt':
 				sys.stdout.flush()
 				try:
 					start = time.time()
-					Emax = eigsh(H_sparse,count,which='LA')[0][-1].real
-					Emin = eigsh(H_sparse,count,which='LA',sigma=0)[0][-1].real
+					Emax = eigsh(H,count,which='LA')[0][-1].real
+					Emin = eigsh(H,count,which='LA',sigma=0)[0][-1].real
 					sys.stdout.write("\n")
 					break
 				except:
@@ -209,15 +237,15 @@ if args.expm!='burkadt':
 				sys.exit()
 
 	elif args.eig_lib == 'lapack':
-		if args.eig_general:
+		if args.eig_solver == 'general':
 			print 'Finding eigenvalues via Lapack....'
-			(Emin,Emax) = ctqw.extremeev(H)
+			(Emin,Emax) = fctqw.extremeev(H)
 		else:
 			print 'Finding eigenvalues via Lapack and band storage....'
-			(Emin,Emax) = ctqw.sband_extremeev(H)
+			(Emin,Emax) = fctqw.sband_extremeev(H)
 		
 	elif args.eig_lib == 'python-numpy':
-		if args.eig_general:
+		if args.eig_solver == 'general':
 			print 'Finding eigenvalues via NumPy....'
 			evals = np.linalg.eigvals(H)
 		else:
@@ -239,34 +267,40 @@ if args.expm!='burkadt':
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Quantum Walk ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 start = time.time()
-
-if args.expm == 'python-chebyshev' or args.sparse:
-	print 'Calculating exp(-iHt) via the Chebyshev method in Python....'
-	if args.sparse:
-		psi0 = psi0.tocsc()	
+if sparseMat:
+	if args.propagator == 'python-expm':
+		print 'Calculating exp(-iHt) via SciPy....'
+		pass
+		
 	else:
+		print 'Calculating exp(-iHt) via the Chebyshev method in Python....'
+		psi0 = psi0.tocsc()
+		psi = func.qw_cheby(psi0,t,H,Emin,Emax)
+		
+else:
+	if args.propagator == 'python-chebyshev':
+		print 'Calculating exp(-iHt) via the Chebyshev method in Python....'
 		psi0 = np.matrix(psi0).T
 		H = np.matrix(H)
 		
-	psi = func.qw_cheby(psi0,t,H,Emin,Emax)
+		psi = func.qw_cheby(psi0,t,H,Emin,Emax)
 	
-	if not args.sparse:
 		psi = np.array(psi.T)[0]
 	
-elif args.expm == 'chebyshev':
-	print 'Calculating exp(-iHt) via the Chebyshev method....'
-	psi = ctqw.qw_cheby(psi0,t,H,Emin,Emax)
+	elif args.propagator == 'fortran-chebyshev':
+		print 'Calculating exp(-iHt) via the Chebyshev method in Fortran....'
+		psi = fctqw.qw_cheby(psi0,t,H,Emin,Emax)
 	
-elif args.expm == 'burkadt':
-	print 'Calculating exp(-iHt) via the Burkadt method....'
-	psi = ctqw.qw_burkadt(psi0,t,H)
+	elif args.propagator == 'fortran-burkadt':
+		print 'Calculating exp(-iHt) via the Burkadt method in Fortran....'
+		psi = fctqw.qw_burkadt(psi0,t,H)
 	
-else:
-	print '\nERROR: Unknown matrix exponential method'
-	sys.exit()
+	else:
+		print '\nERROR: Unknown CTQW propagator method'
+		sys.exit()
 
 end = time.time()
-if Fortran:	print '\ttime: {: .12f}\n'.format(end-start)
+if LoadFortran:	print '\ttime: {: .12f}\n'.format(end-start)
 else:		print '\t\t\t\t\ttime: {: .12f}\n'.format(end-start)
 
 if os.path.exists('coeff.txt'):
@@ -283,7 +317,7 @@ except OSError as exception:
 
 # marginal probabilities and statespace output
 if args.particles == 1:
-	if args.sparse: psi = np.array(psi.T.todense())[0]
+	if sparseMat: psi = np.array(psi.T.todense())[0]
 	
 	psiX = np.abs(psi)**2.0
 	
@@ -295,11 +329,11 @@ if args.particles == 1:
 		func.write_statespace(psi, args.output+"/output_statespace_t"+str(t)+".txt", 1)
 		
 elif args.particles == 2:
-	if args.sparse:	psi = np.array(psi.T.todense())[0]
+	if sparseMat:	psi = np.array(psi.T.todense())[0]
 	
-	if Fortran:
-		psiX = ctqw.pymarginal(psi,'x',N)
-		psiY = ctqw.pymarginal(psi,'y',N)
+	if LoadFortran:
+		psiX = fctqw.pymarginal(psi,'x',N)
+		psiY = fctqw.pymarginal(psi,'y',N)
 	else:	
 		psiX = func.pymarginal(psi,'x',N)
 		psiY = func.pymarginal(psi,'y',N)

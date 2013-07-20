@@ -21,21 +21,21 @@ def parse_args():
 			\n\t   CTQW on an infinite line in the presence of defects'
 	
 	# config defaults
-	defaults =	{ "input_state"	: "",
-			  "output" 	: "./out",
-			  "fortran"	: "intel",
-			  "sparse"	: False,
-			  "statespace"	: False,
-			  "particles"	: 1,
+	defaults =	{ "particles"	: 1,
 			  "grid_length"	: 160,
 			  "time"	: 30.0,
-			  "expm"	: 'chebyshev',
-			  "eig_method"	: False,
-			  "eig_lib"	: 'lapack',
 			  "defect_nodes": [0],
 			  "defect_amp"	: [0],
 			  "p1_initial_state": [(0,1)],
-			  "p2_initial_state": [(0,5,1/sqrt(2))]
+			  "p2_initial_state": [(0,5,1)],
+			  "input_state"	: "",
+			  "fortran"	: "intel",
+			  "matrix_form"	: "fortran-dense",
+			  "propagator"	: 'fortran-chebyshev',
+			  "eig_lib"	: 'lapack',
+			  "eig_solver"	: 'SH',
+			  "output" 	: "./out",
+			  "statespace"	: False
 			}
 			 	 
 	# look for config file		 	 
@@ -106,33 +106,38 @@ def parse_args():
 		type=float, metavar='A', nargs='+')
 	
 	parser.add_argument('-2p0', '--p2-initial-state',
-		help='initial state of the quantum walker',			
+		help=argparse.SUPPRESS,			
 		type=float, metavar='(X,Y,C)', nargs='+')
 	
 	parser.add_argument('-1p0', '--p1-initial-state',
-		help='initial state of the quantum walker',			
+		help=argparse.SUPPRESS,			
 		type=float, metavar='(J,C)', nargs='+')
 		
-	parser.add_argument('--expm', dest='expm',
-		help='choose the algorithm used to calculate the matrix exponential,\
-		\'chebyshev\' (default, fortran), \'burkadt\' (fortran), or \'python-chebyshev\'',			
+	parser.add_argument('--propagator',
+		help='choose the algorithm used to calculate the propagation,\
+		\'fortran-chebyshev\' (default), \'fortran-burkadt\',\
+		\'python-chebyshev\' or \'python-expm\'. Note that the Burkadt\
+		and python-expm methods do NOT require an eigenvalue solver',			
 		type=str, metavar='METHOD')
 		
-	parser.add_argument('-eg', '--eig-general', action="store_true",
-		help='when calculating the eigenvalues, force the linear algebra library\
-		to treat the Hamiltonian as a general complex matrix, rather than as a\
-		real, symmetric	band matrix (the default)')
+	parser.add_argument('--eig-solver',
+		help='choose whether the eigenvalue solver uses a general complex algorithm\
+		 (\'general\'), or uses an algorithm tailored for symmetric Hermitian band\
+		 matrices (\'SH\', default)',
+		 type=str, metavar='ALGORITHM')
 		
-	parser.add_argument('--sparse', action="store_true",
-		help='use SciPy and ARPACK to create sparse matrices. Note that this overrides\
-		the \'expm\'  and \'eig-lib\' setting, as it requires expm=\'python-chebyshev\'\
-		and eig-lib=\'scipy-arpack\'')
+	parser.add_argument('--matrix-form',
+		help='choose the method matrices are created/stored: \'fortran-dense\' (default);\
+		\'python-dense\'; or \'python-sparse\' (uses SciPy and ARPACK to create sparse\
+		matrices). Note that this overrides the \'expm\'  and \'eig-lib\' setting, as it\
+		requires expm=\'python-chebyshev\' and eig-lib=\'python-scipy\')',
+		type=str, metavar='FORM')
 		
 	parser.add_argument('--eig-lib',
 		help='choose the library used to calculate the eigenvalues,\
 		\'lapack\' (default), \'python-scipy\' (with ARPACK bindings)\
-		or \'python-numpy\'. Note that lapack is significantly\
-		faster, however requires either intel-mkl or LAPACK be installed',			
+		or \'python-numpy\'. lapack  requires either intel-mkl or LAPACK\
+		be installed and is often faster for small grids',			
 		type=str, metavar='LIB')
 
 	return parser.parse_args(remaining_argv)
