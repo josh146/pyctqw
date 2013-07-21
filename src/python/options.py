@@ -21,7 +21,14 @@ def parse_args():
 			\n\t   CTQW on an infinite line in the presence of defects'
 	
 	# config defaults
-	defaults =	{ "particles"	: 1,
+	defaults =	{ "mode"	: 'ctqw',
+			  "fortran"	: "intel",
+			  "matrix_form"	: "fortran-dense",
+			  "eig_lib"	: 'lapack',
+			  "eig_solver"	: 'SH',
+			  "output" 	: "./out",
+			  # ctqw parameters
+			  "particles"	: 1,
 			  "grid_length"	: 160,
 			  "time"	: 30.0,
 			  "defect_nodes": [0],
@@ -29,13 +36,13 @@ def parse_args():
 			  "p1_initial_state": [(0,1)],
 			  "p2_initial_state": [(0,5,1)],
 			  "input_state"	: "",
-			  "fortran"	: "intel",
-			  "matrix_form"	: "fortran-dense",
 			  "propagator"	: 'fortran-chebyshev',
-			  "eig_lib"	: 'lapack',
-			  "eig_solver"	: 'SH',
-			  "output" 	: "./out",
-			  "statespace"	: False
+			  "statespace"	: False,
+			  # matrix exp parameters
+			  "matrix"	: [[5,2j,0],[1,0,-0.2],[1,1j,0]],
+			  "leading_dim"	: 3,
+			  "sparse_alg"	: False,
+			  "input_matrix": ""
 			}
 			 	 
 	# look for config file		 	 
@@ -70,9 +77,9 @@ def parse_args():
 	# command line arguments
 	parser = argparse.ArgumentParser(parents=[conf_parser],description=info.format(progname,libname),
 			version=progversion, add_help=True, formatter_class=argparse.RawDescriptionHelpFormatter)
-	
+		
 	parser.set_defaults(**defaults)
-	
+		
 	parser.add_argument('-i', '--input-state', metavar='FILE',
 		help='specify an input state', type=str)
 	
@@ -81,44 +88,6 @@ def parse_args():
 		
 	parser.add_argument('-fc', '--fortran',
 		help='specify the fortran library to use (either \'intel\' or \'gcc\')', type=str)
-	
-	parser.add_argument('-s', "--statespace", action="store_true",
-		help="specify whether the statespace is exported")
-	
-	parser.add_argument('-p', '--particles',
-		help='set the number of quantum walkers',			
-		type=int, metavar='1|2')
-		
-	parser.add_argument('-t', '--time',
-		help='QW propagation time',			
-		type=float, metavar='T')
-	
-	parser.add_argument('-N','--grid-length',
-		help='set the number of vertices (must be an even & > 2)',			
-		type=int, metavar='NUMBER')
-
-	parser.add_argument('-d', '--defect-nodes',
-		help='location of defects',			
-		type=float, metavar='D', nargs='+')
-	
-	parser.add_argument('-a', '--defect-amp',
-		help='defects amplitudes',			
-		type=float, metavar='A', nargs='+')
-	
-	parser.add_argument('-2p0', '--p2-initial-state',
-		help=argparse.SUPPRESS,			
-		type=float, metavar='(X,Y,C)', nargs='+')
-	
-	parser.add_argument('-1p0', '--p1-initial-state',
-		help=argparse.SUPPRESS,			
-		type=float, metavar='(J,C)', nargs='+')
-		
-	parser.add_argument('--propagator',
-		help='choose the algorithm used to calculate the propagation,\
-		\'fortran-chebyshev\' (default), \'fortran-burkadt\',\
-		\'python-chebyshev\' or \'python-expm\'. Note that the Burkadt\
-		and python-expm methods do NOT require an eigenvalue solver',			
-		type=str, metavar='METHOD')
 		
 	parser.add_argument('--eig-solver',
 		help='choose whether the eigenvalue solver uses a general complex algorithm\
@@ -139,7 +108,52 @@ def parse_args():
 		or \'python-numpy\'. lapack  requires either intel-mkl or LAPACK\
 		be installed and is often faster for small grids',			
 		type=str, metavar='LIB')
+	
+	# ctqw mode		
+	parser.add_argument('--propagator',
+		help='choose the algorithm used to calculate the propagation,\
+		\'fortran-chebyshev\' (default), \'fortran-burkadt\',\
+		\'python-chebyshev\' or \'python-expm\'. Note that the Burkadt\
+		and python-expm methods do NOT require an eigenvalue solver',			
+		type=str, metavar='METHOD')
+	
+	parser.add_argument('-s', "--statespace", action="store_true",
+		help="use this flag to indicate that the statespace is to be exported")
+	
+	parser.add_argument('-p', dest='particles',
+		help='set the number of quantum walkers',			
+		type=int, metavar='(1|2)')
+		
+	parser.add_argument('-t', '--time',
+		help='QW propagation time',			
+		type=float, metavar='T')
+	
+	parser.add_argument('-N', dest='grid_length',
+		help='set the number of vertices (must be an even & > 2)',			
+		type=int, metavar='NUMBER')
 
+	parser.add_argument('-d', dest='defect_nodes',
+		help='location of defects',			
+		type=float, metavar='D', nargs='+')
+	
+	parser.add_argument('-a', dest='defect_amp',
+		help='defect amplitudes',			
+		type=float, metavar='A', nargs='+')
+	
+	parser.add_argument('-2p0', '--p2-initial-state',
+		help=argparse.SUPPRESS,			
+		type=float, metavar='(X,Y,C)', nargs='+')
+	
+	parser.add_argument('-1p0', '--p1-initial-state',
+		help=argparse.SUPPRESS,			
+		type=float, metavar='(J,C)', nargs='+')
+	
+	# matrix exp mode
+	parser.add_argument('--mode', help=argparse.SUPPRESS, type=str)
+	parser.add_argument('--matrix', help=argparse.SUPPRESS, type=list)
+	parser.add_argument('--sparse-alg', help=argparse.SUPPRESS, action="store_true")
+	parser.add_argument('--leading-dim', help=argparse.SUPPRESS, type=int)
+	parser.add_argument('--input-matrix', help=argparse.SUPPRESS, type=str)
 	return parser.parse_args(remaining_argv)
 	
 	
