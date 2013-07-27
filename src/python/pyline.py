@@ -14,19 +14,24 @@ args = options.parse_args()
 
 #~~~~~~~~~~~ determine what modules must be imported ~~~~~~~~~~~~~~~~~~~~~~~~
 sparseMat = False
+calc_eig = False
+LoadFortran = False
+LoadSciPy = False
+LoadQutip = False
+
 if args.matrix_form[-6:]=='sparse': sparseMat = True
 
-calc_eig = False
 if args.propagator[-9:]=='chebyshev': calc_eig = True
 
-LoadFortran = False
-if sparseMat: pass
+if args.propagator.lower() == 'qutip-expm':	LoadQutip = True
+
+if sparseMat:
+	pass
 elif args.matrix_form[:4]=='fort'\
     or (args.eig_lib=='lapack' and calc_eig)\
     or args.propagator[:4]=='fort':
 	LoadFortran = True
 
-LoadSciPy = False
 if sparseMat or (args.eig_lib[-5:]=='scipy' and calc_eig)\
     or args.propagator[:6]=='python':
     	LoadSciPy = True
@@ -49,6 +54,13 @@ if LoadSciPy:
 		sys.exit(1)
 	except:
 		print "\nERROR: SciPy python module cannot be found"
+		sys.exit(1)
+
+if LoadQutip:
+	try:
+		import qutip as qt
+	except:
+		print "\nERROR: QuTiP python module cannot be found"
 		sys.exit(1)
 
 if LoadFortran:
@@ -258,6 +270,13 @@ if sparseMat:
 		print 'Calculating exp(-iHt) via SciPy....'
 		psi0 = psi0.tocsc()
 		psi = sparse.linalg.expm(-1j*H*t)*psi0
+		
+	elif args.propagator == 'qutip-expm':
+		print 'Calculating exp(-iHt) via QuTiP\'s Padre approximation....'
+		psi0 = qt.Qobj(psi0.tocsc())
+		H = qt.Qobj(H)
+		psi = H.expm()*psi0
+		psi = psi.full().T[0]
 	
 	else:
 		print 'Calculating exp(-iHt) via the Chebyshev method in Python....'
@@ -271,7 +290,6 @@ else:
 		H = np.matrix(H)
 	
 		psi = func.qw_cheby(psi0,t,H,Emin,Emax)
-
 		psi = np.array(psi.T)[0]
 	
 	elif args.propagator == 'python-expm':

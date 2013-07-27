@@ -2,11 +2,11 @@
 export PYTHONPATH=$PYTHONPATH:../lib
 
 if [ "$#" -lt 1 ]; then
-	../src/python/pyctqw.py $@
-elif [ "$1" == "ctqw" ]; then
-	../src/python/pyctqw.py ${@: 2}
+	../src/python/pyline.py $@
+elif [ "$1" == "line" ]; then
+	../src/python/pyline.py ${@: 2}
 elif [ "$1" == "expm" ]; then
 	../src/python/pyexpm.py ${@: 2}
 else
-	../src/python/pyctqw.py $@
+	../src/python/pyline.py $@
 fi
