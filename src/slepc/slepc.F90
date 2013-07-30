@@ -13,9 +13,45 @@ module eigs
     
     contains
     
+    function coord(x,y,n)
+        integer, intent(in)    :: n, x, y
+        integer                :: coord
+    
+        coord = n*(x + n/2 - 1) + y + n/2 - 1
+    end function coord
+    
+    subroutine marginal(psi,psiM,p,N)
+        character, intent(in)     :: p
+        PetscInt, intent(in)      :: N
+        Vec, intent(in)           :: psi
+        
+        Vec, intent(out)          :: psiM
+        
+        !psip = marginal(psi,p)    
+    end subroutine marginal
+    
+    ! create 2p initial state
+    subroutine p2_init(psi0,init_state,num,N)
+        PetscInt, intent(in)     :: num, N
+        PetscScalar, intent(in)  :: init_state(num,3)
+        
+        Vec, intent(out)         :: psi0
+        
+        ! local variables
+        PetscInt    :: i, ind(num)
+        PetscScalar :: val(num)
+        
+        do i=1, num
+            ind(i) = coord(int(init_state(i,1)),int(init_state(i,2)),N)
+            val(i) = init_state(i,3)
+        end do
+        
+        call VecSetValues(psi0,num,ind,val,INSERT_VALUES,ierr)    
+    end subroutine p2_init
+    
     ! create a sparse hamiltonian matrix of size n
     ! using PETSc's sparse matrix routines
-    subroutine hamiltonian_1p(A,d,amp,nd,n)
+    subroutine hamiltonian_1p_line(A,d,amp,nd,n)
         PetscInt, intent(in)    :: nd, n, d(nd)
         PetscScalar, intent(in) :: amp(nd)
         
@@ -81,7 +117,7 @@ module eigs
         call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
         call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
     
-    end subroutine hamiltonian_1p
+    end subroutine hamiltonian_1p_line
     
     
     ! create a sparse 2P hamiltonian matrix of size n^2 x n^2
@@ -93,6 +129,7 @@ module eigs
         Mat, intent(out)        :: H2
         
         ! local variables
+        PetscViewer    :: output
         VecScatter     :: ctx
         PetscErrorCode :: ierr
         PetscBool      :: flag
@@ -126,7 +163,8 @@ module eigs
         call VecScatterBegin(ctx,diag,diagAll,INSERT_VALUES,SCATTER_FORWARD,ierr)
         call VecScatterEnd(ctx,diag,diagAll,INSERT_VALUES,SCATTER_FORWARD,ierr)
         call VecScatterDestroy(ctx)
-
+        
+        call VecDestroy(diag,ierr)
         call VecGetArrayF90(diagAll,diagArray,ierr)
         
         ! create KronProd(H1,I) matrix and store in temp
@@ -147,7 +185,7 @@ module eigs
         endif
         
         do i=Istart, Iend-1
-            if (mod(1,n)+1==1) then
+            if (mod(i,n)+1==1) then
             
                 col(1:2) = [i,i+1]
                 value(1:2) = [diagArray(mod(i,n)+1),-1.d0+0*PETSC_i]            
@@ -180,7 +218,7 @@ module eigs
         end do
         
         do while (Iend>NN-n)
-            col(1:2) = [Iend-2-n,Iend-1]
+            col(1:2) = [Iend-1-n,Iend-1]
             value(1:2) = [-1.d0+0*PETSC_i,diagArray(n)]            
             call MatSetValues(H2,1,Iend-1,2,col,value,INSERT_VALUES,ierr)
             Iend = Iend - 1
@@ -195,8 +233,8 @@ module eigs
         call MatAssemblyBegin(H2,MAT_FINAL_ASSEMBLY,ierr)
         call MatAssemblyEnd(H2,MAT_FINAL_ASSEMBLY,ierr)
         
-        call VecRestoreArrayF90(diag,diagArray,ierr)
-        call VecDestroy(diag,ierr)
+        call VecRestoreArrayF90(diagAll,diagArray,ierr)
+        call VecDestroy(diagAll,ierr)
         
         ! create 2P hamltonian H2=KronProd(I,H1)+KronProd(H1,I)
         call MatAXPY(H2,1.0+0*PETSC_i,temp,DIFFERENT_NONZERO_PATTERN,ierr)
@@ -204,6 +242,122 @@ module eigs
         call MatDestroy(temp,ierr)
     
     end subroutine hamiltonian_2p
+    
+    
+    ! create a sparse 2P hamiltonian matrix of size n^2 x n^2
+    ! using PETSc's sparse matrix routines
+    subroutine hamiltonian_2p_line(H2,d,amp,nd,n)
+        PetscInt, intent(in)    :: n, nd, d(nd)
+        PetscScalar, intent(in) :: amp(nd)
+        
+        Mat, intent(out)        :: H2
+        
+        ! local variables
+        PetscViewer    :: output
+        VecScatter     :: ctx
+        PetscErrorCode :: ierr
+        PetscBool      :: flag
+        PetscInt       :: NN, i, j, its, Istart, Iend, col(3)
+        PetscScalar    :: value(3)
+        Mat            :: temp
+        PetscScalar    :: diagArray(n)
+        
+        NN = n**2
+        
+        ! create array of 1D diagonal entries
+        diagArray = 2.0
+        do i = 1, n
+            do j = 1, nd
+                if (int(d(j)+n/2.0) == i) then
+                    diagArray(i) = 2.0+amp(j)
+                    exit
+                endif
+            end do
+        end do
+        
+        ! create H2 matrix
+        call MatSetSizes(H2,PETSC_DECIDE,PETSC_DECIDE,NN,NN,ierr)
+        call MatSetFromOptions(H2,ierr)
+        call MatSetUp(H2,ierr)
+        
+        ! create temp matrix
+        call MatCreate(PETSC_COMM_WORLD,temp,ierr)
+        call MatSetSizes(temp,PETSC_DECIDE,PETSC_DECIDE,NN,NN,ierr)
+        call MatSetFromOptions(temp,ierr)
+        call MatSetUp(temp,ierr)
+        
+        ! create KronProd(H1,I) matrix and store in temp
+        call MatGetOwnershipRange(temp,Istart,Iend,ierr)
+        
+        if (Istart == 0) then
+            col(1:2) = [0,1]
+            value(1:2) = [diagArray(1),-1.d0+0*PETSC_i]            
+            call MatSetValues(temp,1,0,2,col,value,INSERT_VALUES,ierr)
+            Istart = Istart + 1
+        end if
+        
+        if (Iend == NN) then
+            col(1:2) = [NN-2,NN-1]
+            value(1:2) = [-1.d0+0*PETSC_i,diagArray(n)]            
+            call MatSetValues(temp,1,NN-1,2,col,value,INSERT_VALUES,ierr)
+            Iend = Iend - 1
+        endif
+        
+        do i=Istart, Iend-1
+            if (mod(i,n)+1==1) then
+            
+                col(1:2) = [i,i+1]
+                value(1:2) = [diagArray(mod(i,n)+1),-1.d0+0*PETSC_i]            
+                call MatSetValues(temp,1,i,2,col,value,INSERT_VALUES,ierr)
+            
+            elseif (mod(i,n)+1==n) then
+            
+                col(1:2) = [i-1,i]
+                value(1:2) = [-1.d0+0*PETSC_i,diagArray(mod(i,n)+1)]            
+                call MatSetValues(temp,1,i,2,col,value,INSERT_VALUES,ierr)
+            
+            else
+                col = [i-1,i,i+1]
+                value = [-1.d0+0*PETSC_i,diagArray(mod(i,n)+1),-1.d0+0*PETSC_i]            
+                call MatSetValues(temp,1,i,3,col,value,INSERT_VALUES,ierr)
+            endif
+        enddo
+        
+        call MatAssemblyBegin(temp,MAT_FINAL_ASSEMBLY,ierr)
+        call MatAssemblyEnd(temp,MAT_FINAL_ASSEMBLY,ierr)
+        
+        ! create KronProd(I,H1) matrix and store in H2
+        call MatGetOwnershipRange(H2,Istart,Iend,ierr)
+        
+        do while (Istart<n)
+            col(1:2) = [Istart,Istart+n]
+            value(1:2) = [diagArray(1),-1.d0+0*PETSC_i]            
+            call MatSetValues(H2,1,Istart,2,col,value,INSERT_VALUES,ierr)
+            Istart = Istart + 1
+        end do
+        
+        do while (Iend>NN-n)
+            col(1:2) = [Iend-1-n,Iend-1]
+            value(1:2) = [-1.d0+0*PETSC_i,diagArray(n)]            
+            call MatSetValues(H2,1,Iend-1,2,col,value,INSERT_VALUES,ierr)
+            Iend = Iend - 1
+        end do
+        
+        do i=Istart, Iend-1
+            col = [i-n,i,i+n]
+            value = [-1.d0+0*PETSC_i,diagArray(int(real(i)/6.0)+1),-1.d0+0*PETSC_i]
+            call MatSetValues(H2,1,i,3,col,value,INSERT_VALUES,ierr)
+        enddo
+        
+        call MatAssemblyBegin(H2,MAT_FINAL_ASSEMBLY,ierr)
+        call MatAssemblyEnd(H2,MAT_FINAL_ASSEMBLY,ierr)
+        
+        ! create 2P hamltonian H2=KronProd(I,H1)+KronProd(H1,I)
+        call MatAXPY(H2,1.0+0*PETSC_i,temp,DIFFERENT_NONZERO_PATTERN,ierr)
+        
+        call MatDestroy(temp,ierr)
+    
+    end subroutine hamiltonian_2p_line
     
     ! calculate y=e^(-iHt).v using SLEPc    
     subroutine expm(A,t,v,y)
@@ -420,7 +574,7 @@ program slepc
     PetscErrorCode :: ierr
     PetscBool      :: flag
     PetscInt       :: i, j, its, n, d(4)
-    PetscScalar    :: Emin, Emax, t, value(3), amp(4)
+    PetscScalar    :: Emin, Emax, t, init_state(2,3), amp(4)
     PetscReal      :: Emin_error, Emax_error
     Mat            :: H1, H2
     Vec            :: psi0, psi
@@ -438,19 +592,20 @@ program slepc
     d = [-2,3,0,2]
     amp = [-0.50,5.0,1.0,0.50]
     call MatCreate(PETSC_COMM_WORLD,H1,ierr)
-    call hamiltonian_1p(H1,d,amp,size(d),n)
+    !call hamiltonian_1p(H1,d,amp,size(d),n)
     !call MatView(H1,PETSC_VIEWER_STDOUT_WORLD,ierr)
     
     ! 2p matrix creater
     call MatCreate(PETSC_COMM_WORLD,H2,ierr)
-    call hamiltonian_2p(H1,H2,n)
+    !call hamiltonian_2p(H1,H2,n)
+    call hamiltonian_2p_line(H2,d,amp,size(d),n)
     !call MatView(H2,PETSC_VIEWER_STDOUT_WORLD,ierr)
     
     ! Eigenvalue solver
     call min_max_eigs(H2,rank,Emin,Emin_error,'min','krylovschur','mpd',50,0.d0,0,.false.,ierr)
-    if (rank==0 .and. ierr==0) write(*,*)'    ',PetscRealPart(Emin),'+-', Emin_error
+    !if (rank==0 .and. ierr==0) write(*,*)'    ',PetscRealPart(Emin),'+-', Emin_error
     call min_max_eigs(H2,rank,Emax,Emax_error,'max','krylovschur','mpd',50,0.d0,0,.false.,ierr)
-    if (rank==0 .and. ierr==0) write(*,*)'    ',PetscRealPart(Emax),'+-',Emax_error
+    !if (rank==0 .and. ierr==0) write(*,*)'    ',PetscRealPart(Emax),'+-',Emax_error
     
     ! create vectors
     call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n**2,psi0,ierr)
@@ -458,7 +613,11 @@ program slepc
     call VecDuplicate(psi0,psi,ierr)
     
     ! create initial state
-    value = [1.0,2.0,-0.5]
+    init_state(1,:) = [0.,0.,1.0/sqrt(2.0)]
+    init_state(2,:) = [1.,1.,1.0/sqrt(2.0)]
+    call p2_init(psi0,init_state,2,N)
+    !call VecView(psi0,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    
     call VecSetValues(psi0,3,[0,1,2],value,INSERT_VALUES,ierr)
     call VecAssemblyBegin(psi0,ierr)
     call VecAssemblyEnd(psi0,ierr)
