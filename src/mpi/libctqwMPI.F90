@@ -1,4 +1,6 @@
-module eigs
+module ctqwMPI
+
+    implicit none
 
 #include <finclude/petscsys.h>
 #include <finclude/petscvec.h>
@@ -13,14 +15,19 @@ module eigs
 #include <finclude/slepcmfn.h>
     
     contains
-    
+
+!~~~~~~~~~~~~~~~~~~~~~~ Convert from 2D to 1D ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~ statespace for 2 particles ~~~~~~~~~~~~~~~~~~~~~~~~
     function coord(x,y,n)
         integer, intent(in)    :: n, x, y
         integer                :: coord
     
         coord = n*(x + n/2 - 1) + y + n/2 - 1
     end function coord
-    
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~ marginal probabilities~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     subroutine marginal(psi,psiM,p,n)
         character, intent(in)     :: p
         PetscInt, intent(in)      :: n
@@ -31,7 +38,7 @@ module eigs
         ! local variables
         PetscErrorCode :: ierr
         PetscMPIInt    :: rank
-        PetscInt    :: NN, Istart, Iend
+        PetscInt    :: i, j, NN, Istart, Iend
         PetscInt, allocatable :: ind(:)
         PetscScalar, allocatable :: temp(:)
         PetscScalar, pointer :: workArray(:)
@@ -99,8 +106,10 @@ module eigs
         call VecAssemblyEnd(psi0,ierr)    
     end subroutine p2_init
     
-    ! create a sparse hamiltonian matrix of size n
-    ! using PETSc's sparse matrix routines
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+!~~~~~~~~~~~~~~ create a sparse hamiltonian matrix of size n ~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~ using PETSc's sparse matrix routines ~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     subroutine hamiltonian_1p_line(A,d,amp,nd,n)
         PetscInt, intent(in)    :: nd, n, d(nd)
         PetscScalar, intent(in) :: amp(nd)
@@ -168,9 +177,11 @@ module eigs
         call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
     
     end subroutine hamiltonian_1p_line
-   
-    ! create a sparse 2P hamiltonian matrix of size n^2 x n^2
-    ! using PETSc's sparse matrix routines
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+!~~~~~~~~~ create a sparse 2P hamiltonian matrix of size n^2 x n^2 ~~~~~~~
+!~~~~~~~~~~~~~~~~~~ using PETSc's sparse matrix routines ~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     subroutine hamiltonian_2p_line(H2,d,amp,nd,n)
         PetscInt, intent(in)    :: n, nd, d(nd)
         PetscScalar, intent(in) :: amp(nd)
@@ -273,7 +284,9 @@ module eigs
     
     end subroutine hamiltonian_2p_line
     
-    ! calculate y=e^(-iHt).v using SLEPc    
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+!~~~~~~~~~~~~~~~~~~~~~ calculate y=e^(-iHt).v using SLEPc ~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     subroutine expm(A,t,v,y)
         Vec, intent(in)         :: v
         Mat, intent(in)         :: A
@@ -299,8 +312,10 @@ module eigs
         call MFNDestroy(mfn,ierr)
     
     end subroutine expm
-    
-    ! calculate the min or max eiganvalue using SLEPc 
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+!~~~~~~~~~~~~ calculate the min or max eiganvalue using SLEPc ~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
     subroutine min_max_eigs(A,rank,Eval,Eval_error,which, &
                 & eig_solver,worktype,worktypeInt,tolIn,max_it,verbose,error)
     
@@ -428,7 +443,10 @@ module eigs
         call EPSDestroy(eps,ierr)
         
     end subroutine min_max_eigs
-    
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Chebyshev method ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
     subroutine qw_cheby(psi0,psi,dt,H,Emin,Emax,rank,N)
         PetscMPIInt, intent(in) :: rank
         PetscInt, intent(in)    :: N
@@ -482,124 +500,4 @@ module eigs
     
     end subroutine qw_cheby
 
-end module eigs
-
-!~~~~~~~~~~~~~~~~~~ Todo ~~~~~~~~~~~~~~~~~~~~~~
-!  1) Marginal prob subroutine
-!  2) Kronecker product
-!  3) Test with f2py
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-program slepc
-
-    use eigs
-    
-    PetscLogStage  :: stage
-    PetscMPIInt    :: rank
-    PetscErrorCode :: ierr
-    PetscBool      :: flag
-    PetscInt       :: i, j, its, n, d(2)
-    PetscScalar    :: Emin, Emax, t, init_state(2,3), amp(2)
-    PetscReal      :: Emin_error, Emax_error
-    Mat            :: H
-    Vec            :: psi0, psi, psix, psiy
-    
-    ! initialize SLEPc and PETSc
-    call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
-    call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
-    
-    ! get command line arguments
-    call PetscOptionsGetInt(PETSC_NULL_CHARACTER,"-n",n,flag,ierr)
-    CHKERRQ(ierr)
-    if (flag .eqv. .false.) n = 10
-    
-    ! create the Hamiltonian
-    d = [3,4]
-    amp = [2.0,1.5]
-    call PetscLogStageRegister('Hamiltonian',stage,ierr)
-    call PetscLogStagePush(stage,ierr)
-    call MatCreate(PETSC_COMM_WORLD,H,ierr)
-    call hamiltonian_2p_line(H,d,amp,size(d),n)
-    call PetscBarrier(H,ierr)
-    call PetscLogStagePop(ierr)
-!    call MatView(H,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    
-    ! Eigenvalue solver
-    call PetscLogStageRegister('Emax',stage,ierr)
-    call PetscLogStagePush(stage,ierr)
-    call min_max_eigs(H,rank,Emax,Emax_error,'max','krylovschur','null',35,0.d0,0,.false.,ierr)
-    call PetscLogStagePop(ierr)
-    !if (rank==0 .and. ierr==0) write(*,*)'    ',PetscRealPart(Emax),'+-',Emax_error
-    
-    call PetscLogStageRegister('Emin',stage,ierr)
-    call PetscLogStagePush(stage,ierr)
-    call min_max_eigs(H,rank,Emin,Emin_error,'min','krylovschur','null',35,0.d0,0,.false.,ierr)
-    call PetscLogStagePop(ierr)
-    call PetscBarrier(H,ierr)
-    !if (rank==0 .and. ierr==0) write(*,*)'    ',PetscRealPart(Emin),'+-', Emin_error
-    
-    ! create vectors
-    call VecCreate(PETSC_COMM_WORLD,psi0,ierr)
-    call VecSetSizes(psi0,PETSC_DECIDE,n**2,ierr)
-    !call VecSetBlockSize(psi0,n,ierr)
-    call VecSetFromOptions(psi0,ierr)
-    
-    call VecDuplicate(psi0,psi,ierr)
-    
-    ! create initial state
-    call PetscLogStageRegister('InitState',stage,ierr)
-    call PetscLogStagePush(stage,ierr)
-    init_state(1,:) = [0.,1.,1.0/sqrt(2.0)]
-    init_state(2,:) = [1.,1.,1.0/sqrt(2.0)]
-    call p2_init(psi0,init_state,2,n)
-!    call VecView(psi0,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    call PetscBarrier(psi0,ierr)
-    call PetscLogStagePop(ierr)
-    
-    ! matrix exponential
-    t = 5.0
-    call PetscLogStageRegister('SLEPc expm',stage,ierr)
-    call PetscLogStagePush(stage,ierr)
-    call expm(H,t,psi0,psi)
-    !call VecView(psi,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    call PetscBarrier(psi,ierr)
-    call PetscLogStagePop(ierr)
-    
-    ! QW chebyshev
-    call PetscLogStageRegister('Chebyshev',stage,ierr)
-    call PetscLogStagePush(stage,ierr)
-    call qw_cheby(psi0,psi,t,H,Emin,Emax,rank,n**2)
-    !call VecView(psi,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    call PetscBarrier(psi,ierr)
-    call PetscLogStagePop(ierr)
-
-    ! get marginal prob
-    call VecCreate(PETSC_COMM_WORLD,psix,ierr)
-    call VecSetSizes(psix,PETSC_DECIDE,n,ierr)
-    call VecSetFromOptions(psix,ierr)
-    call VecDuplicate(psix,psiy,ierr)
-    
-    call PetscLogStageRegister('ProbX',stage,ierr)
-    call PetscLogStagePush(stage,ierr)
-    call marginal(psi,psix,'x',n)
-    !call VecView(psix,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    call PetscBarrier(psiX,ierr)
-    call PetscLogStagePop(ierr)
-    
-    call PetscLogStageRegister('ProbY',stage,ierr)
-    call PetscLogStagePush(stage,ierr)
-    call marginal(psi,psiy,'y',n)
-    !call VecView(psiy,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    call PetscBarrier(psiY,ierr)
-    call PetscLogStagePop(ierr)
-
-    ! destroy matrix/SLEPc
-    call MatDestroy(H,ierr)
-    call VecDestroy(psi,ierr)
-    call VecDestroy(psi0,ierr)
-    call VecDestroy(psix,ierr)
-    call VecDestroy(psiy,ierr)
-    
-    call SlepcFinalize(ierr)
-
-end program slepc
+end module ctqwMPI
