@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 #Makefile
-all: ctqwMPI
+all: ctqwMPI python
 
 .PHONY: clean
 
@@ -28,21 +28,20 @@ F90FLAGS = $(call FILTER_OUT,mpif90, $(FLINKER))
 F90FLAGS += $(SLEPC_LIB) $(PETSC_INCLUDE) $(SLEPC_INCLUDE)
 
 F2PY_FLAGS = --quiet --noarch -DF2PY_REPORT_ON_ARRAY_COPY=1
-F2PY_FLAGS += --fcompiler=gfortran --f90exec=mpif90 --f90flags="$(F90FLAGS)"
+F2PY_FLAGS += --fcompiler=gnu95 --f90exec=mpif90 --f90flags="$(F90FLAGS)"
 	
-python: libpyctqwMPI.so
+python: libctqwMPI.so
 
-libpyctqwMPI.so: libctqwMPI.F90
+libctqwMPI.so: libctqwMPI.F90
 	CC=${CC} F90=${FC} LDSHARED=${FC_LINKER} \
 	python setup.py config_fc --f90flags="-Wno-unused-variable" -q build_ext --inplace
-	${RM} -r build libctqwMPImodule.c
-	
-libpyctqwMPI.so.old: libctqwMPI.F90
-	f2py $(F2PY_FLAGS) -m libpyctqwMPI -c libctqwMPI.F90
-	rm -f *.mod *.s
+	${RM} -r build libctqwMPImodule.c libctqwMPI-f2pywrappers2.f90
 	
 clean::
 	rm -f *.mod
 	rm -f *.o *.so *.s
 	rm -f ctqwMPI *temp.f90
+	rm -f *.py[co]
+	rm -f -r __pycache__
+	rm -f *.c *.f90
 

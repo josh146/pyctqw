@@ -39,16 +39,16 @@ def configuration(parent_package='',top_path=None):
     import petsc4py
     INCLUDE_DIRS += [petsc4py.get_include()]
                   
-#    # SLEPc
-#    import os
-#    SLEPC_DIR  = os.environ['SLEPC_DIR']
-#    from os.path import join, isdir
-#    INCLUDE_DIRS += [join(SLEPC_DIR, 'include')]
-#    LIBRARY_DIRS += [join(SLEPC_DIR, 'lib')]
-#    LIBRARIES += [#'petscts', 'petscsnes', 'petscksp',
-#                  #'petscdm', 'petscmat',  'petscvec',
-#                  'slepc']
-#
+    # SLEPc
+    import os
+    SLEPC_DIR  = os.environ['SLEPC_DIR']
+    from os.path import join, isdir
+    INCLUDE_DIRS += [join(SLEPC_DIR, 'include')]
+    LIBRARY_DIRS += [join(SLEPC_DIR, 'lib')]
+    LIBRARIES += [#'petscts', 'petscsnes', 'petscksp',
+                  #'petscdm', 'petscmat',  'petscvec',
+                  'slepc']
+
 #    # SLEPC for Python
 #    import slepc4py
 #    INCLUDE_DIRS += [slepc4py.get_include()]
@@ -56,8 +56,8 @@ def configuration(parent_package='',top_path=None):
     # Configuration
     from numpy.distutils.misc_util import Configuration
     config = Configuration('', parent_package, top_path)
-    config.add_extension('libpyctqwMPI',
-                         sources = ['libctqwMPI.F90'],
+    config.add_extension('libctqwMPI',
+                         sources = ['libctqwMPI.F90','libctqwMPI.pyf'],
                          f2py_options=['--quiet'],
                          define_macros=[('F2PY_REPORT_ON_ARRAY_COPY',1)],
                          include_dirs=INCLUDE_DIRS + [os.curdir],
