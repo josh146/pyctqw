@@ -1,8 +1,8 @@
 !    -*- f90 -*-
 ! Note: the context of this file is case sensitive.
 
-python module libctqwMPI ! in 
-    interface  ! in :libctqwMPI
+python module libpyctqw_MPI ! in 
+    interface  ! in :libpyctqw-MPI
         module ctqwmpi ! in :libctqwMPI:libctqwMPI.F90
             function coord(x,y,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer intent(in)     :: x
@@ -68,7 +68,7 @@ python module libctqwMPI ! in
             end subroutine qw_cheby
         end module ctqwmpi
     end interface 
-end python module libctqwMPI
+end python module libpyctqw_MPI
 
 ! This file was auto-generated with f2py (version:2).
 ! See http://cens.ioc.ee/projects/f2py2e/

@@ -2,9 +2,7 @@
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ctqwMPI ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~ Todo ~~~~~~~~~~~~~~~~~~~~~~
-!  1) Marginal prob subroutine
-!  2) Kronecker product
-!  3) Test with f2py
+!  1) Kronecker product
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 program main
     
@@ -30,7 +28,10 @@ program main
     ! get command line arguments
     call PetscOptionsGetInt(PETSC_NULL_CHARACTER,"-n",n,flag,ierr)
     CHKERRQ(ierr)
-    if (flag .eqv. .false.) n = 10
+    if (flag .eqv. .false.) n = 100
+    call PetscOptionsGetInt(PETSC_NULL_CHARACTER,"-t",t,flag,ierr)
+    CHKERRQ(ierr)
+    if (flag .eqv. .false.) t = 20.0
     
     ! create the Hamiltonian
     d = [3,4]
@@ -76,7 +77,6 @@ program main
     call PetscLogStagePop(ierr)
     
     ! matrix exponential
-    t = 5.0
     call PetscLogStageRegister('SLEPc expm',stage,ierr)
     call PetscLogStagePush(stage,ierr)
     call expm(H,t,psi0,psi)
@@ -87,7 +87,7 @@ program main
     ! QW chebyshev
     call PetscLogStageRegister('Chebyshev',stage,ierr)
     call PetscLogStagePush(stage,ierr)
-    call qw_cheby(psi0,psi,t,H,Emin,Emax,rank,n**2)
+    call qw_cheby(psi0,psi,t,H,0.*PETSc_i,Emax,rank,n**2)
     !call VecView(psi,PETSC_VIEWER_STDOUT_WORLD,ierr)
     call PetscBarrier(psi,ierr)
     call PetscLogStagePop(ierr)
