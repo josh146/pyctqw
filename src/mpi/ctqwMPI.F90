@@ -24,7 +24,7 @@ program main
     Vec            :: psi0, psi, psix, psiy
     
     ! initialize SLEPc and PETSc
-    call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
+    call PetscInitialize(PETSC_NULL_CHARACTER,ierr)
     call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
     
     ! get command line arguments
@@ -119,6 +119,6 @@ program main
     call VecDestroy(psix,ierr)
     call VecDestroy(psiy,ierr)
     
-    call SlepcFinalize(ierr)
+    call PetscFinalize(ierr)
 
 end program main

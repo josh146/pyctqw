@@ -44,4 +44,5 @@ clean::
 	rm -f *.py[co]
 	rm -f -r __pycache__
 	rm -f *.c *.f90
+	rm -rf out/
 

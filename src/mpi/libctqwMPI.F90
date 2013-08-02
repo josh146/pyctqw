@@ -79,7 +79,10 @@ module ctqwMPI
         deallocate(ind,temp)
     end subroutine marginal
     
-    ! create 2p initial state
+    
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+!~~~~~~~~~~~~~~~~~~~~~~~~~ create 2P state space ~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
     subroutine p2_init(psi0,init_state,num,N)
         PetscInt, intent(in)     :: num, N
         PetscScalar, intent(in)  :: init_state(num,3)
@@ -293,6 +296,8 @@ module ctqwMPI
         PetscScalar    :: alpha
         MFN            :: mfn
         
+        call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
+        
         call MFNCreate(PETSC_COMM_WORLD, mfn, ierr)
         call MFNSetOperator(mfn,A,ierr)
         call MFNSetFunction(mfn,SLEPC_FUNCTION_EXP,ierr)
@@ -305,6 +310,7 @@ module ctqwMPI
         call MatScale(A,1.0/alpha,ierr)
         
         call MFNDestroy(mfn,ierr)
+        call SlepcFinalize(ierr)
     
     end subroutine expm
 
@@ -336,7 +342,8 @@ module ctqwMPI
         ST                :: st
         character(len=12) :: arg
         Vec               :: vec
-    
+        
+        call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
         call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
         call EPSSetOperators(eps,A,PETSC_NULL_OBJECT,ierr)
         
@@ -377,10 +384,10 @@ module ctqwMPI
     ! determine whether min or max Re(lambda) is determined
         select case(which)
             case('max');
-                if (rank==0) write(*,*)'Calculating Emax...'
+                !if (rank==0) write(*,*)'Calculating Emax...'
                 call EPSSetWhichEigenpairs(eps,EPS_LARGEST_REAL,ierr)
             case default
-                if (rank==0) write(*,*)'Calculating Emin...'
+                !if (rank==0) write(*,*)'Calculating Emin...'
                 call EPSSetWhichEigenpairs(eps,EPS_SMALLEST_REAL,ierr)
                 
                 call EPSGetST(eps,st,ierr)
@@ -436,6 +443,7 @@ module ctqwMPI
         endif
         
         call EPSDestroy(eps,ierr)
+        call SlepcFinalize(ierr)
         
     end subroutine min_max_eigs
 

@@ -36,6 +36,26 @@ python module libctqwMPI ! in
                 complex(8), intent(in) :: amp(nd)
                 integer, intent(in)    :: n
             end subroutine hamiltonian_2p_line
+            subroutine expm(a,t,v,y) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+                integer(8), intent(in) :: a
+                complex(8), intent(in) :: t
+                integer(8), intent(in) :: v
+                integer(8)             :: y
+            end subroutine expm
+            subroutine min_max_eigs(a,rank_bn,eval,eval_error,which,eig_solver,worktype,worktypeint,tolin,max_it,verbose,error) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+                integer(8), intent(in)   :: a
+                integer(8), intent(in)   :: rank_bn
+                character*3 intent(in)   :: which
+                character*(*) intent(in) :: eig_solver
+                character*3, intent(in)  :: worktype
+                integer, intent(in)      :: worktypeint
+                real(8), intent(in)      :: tolin
+                integer, intent(in)      :: max_it
+                logical, intent(in)      :: verbose
+                complex(8), intent(out)  :: eval
+                real(8), intent(out)     :: eval_error
+                integer, intent(out)     :: error
+            end subroutine min_max_eigs
             subroutine qw_cheby(psi0,psi,dt,h,emin,emax,rank_bn,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8), intent(in) :: psi0
                 integer(8)	       :: psi

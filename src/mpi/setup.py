@@ -59,7 +59,7 @@ def configuration(parent_package='',top_path=None):
     config.add_extension('libctqwMPI',
                          sources = ['libctqwMPI.F90','libctqwMPI.pyf'],
                          f2py_options=['--quiet'],
-                         define_macros=[('F2PY_REPORT_ON_ARRAY_COPY',1)],
+                         #define_macros=[('F2PY_REPORT_ON_ARRAY_COPY',1)],
                          include_dirs=INCLUDE_DIRS + [os.curdir],
                          libraries=LIBRARIES,
                          library_dirs=LIBRARY_DIRS,
