@@ -19,6 +19,28 @@ module ctqwMPI
     
         coord = n*(x + n/2 - 1) + y + n/2 - 1
     end function coord
+    
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~ 1P  probabilities ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    subroutine p1prob(psi,prob,n)
+        PetscInt, intent(in)      :: n
+        Vec, intent(in)           :: psi
+        
+        Vec, intent(out)          :: prob
+        
+        ! local variables
+        PetscErrorCode :: ierr
+        PetscScalar, pointer :: probArray(:)
+        
+        ! copy psi to prob
+        call VecCopy(psi,prob,ierr)
+        call VecAbs(prob,ierr)
+        
+        call VecGetArrayF90(prob,probArray,ierr)
+        probArray = probArray**2.d0
+        call VecRestoreArrayF90(prob,probArray,ierr)
+    end subroutine p1prob
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~ marginal probabilities~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,7 +80,7 @@ module ctqwMPI
         allocate(ind(Iend-Istart),temp(Iend-Istart))
         ind = [(i,i=Istart,Iend-1)]
         
-    call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
         
         if (p=='x') then
             do i=Istart,Iend-1
@@ -78,10 +100,33 @@ module ctqwMPI
         call VecAssemblyEnd(psiM,ierr)
         deallocate(ind,temp)
     end subroutine marginal
-    
+   
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+!~~~~~~~~~~~~~~~~~~~~~ create 1P line state space ~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+    subroutine p1_init(psi0,init_state,num,N)
+        PetscInt, intent(in)     :: num, N
+        PetscScalar, intent(in)  :: init_state(num,2)
+        
+        Vec, intent(out)         :: psi0
+        
+        ! local variables
+        PetscErrorCode :: ierr
+        PetscInt       :: i, ind(num)
+        PetscScalar    :: val(num)
+        
+        do i=1, num
+            ind(i) = int(init_state(i,1))+N/2-1
+            val(i) = init_state(i,2)
+        end do
+        
+        call VecSetValues(psi0,num,ind,val,INSERT_VALUES,ierr)
+        call VecAssemblyBegin(psi0,ierr)
+        call VecAssemblyEnd(psi0,ierr)    
+    end subroutine p1_init
     
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
-!~~~~~~~~~~~~~~~~~~~~~~~~~ create 2P state space ~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~ create 2P line state space ~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
     subroutine p2_init(psi0,init_state,num,N)
         PetscInt, intent(in)     :: num, N
@@ -90,7 +135,7 @@ module ctqwMPI
         Vec, intent(out)         :: psi0
         
         ! local variables
-    PetscErrorCode :: ierr
+        PetscErrorCode :: ierr
         PetscInt    :: i, ind(num)
         PetscScalar :: val(num)
         

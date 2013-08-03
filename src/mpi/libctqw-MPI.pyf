@@ -2,20 +2,31 @@
 ! Note: the context of this file is case sensitive.
 
 python module libpyctqw_MPI ! in 
-    interface  ! in :libpyctqw-MPI
-        module ctqwmpi ! in :libctqwMPI:libctqwMPI.F90
+    interface  ! in :libpyctqw_MPI
+        module ctqwmpi ! in :libpyctqw_MPI:libctqw-MPI.F90
             function coord(x,y,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer intent(in)     :: x
                 integer intent(in)     :: y
                 integer intent(in)     :: n
                 integer                :: coord
             end function coord
+            subroutine p1prob(psi,prob,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer(8), intent(in) :: psi
+                integer(8)             :: prob
+                integer, intent(in)    :: n
+            end subroutine p1prob
             subroutine marginal(psi,psim,p,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8), intent(in) :: psi
                 integer(8)             :: psim
                 character, intent(in)  :: p
                 integer, intent(in)    :: n
             end subroutine marginal
+            subroutine p1_init(psi0,init_state,num,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer(8)             :: psi0
+                complex(8), intent(in) :: init_state(num,2)
+                integer, intent(in)    :: num
+                integer, intent(in)    :: n
+            end subroutine p1_init
             subroutine p2_init(psi0,init_state,num,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8)             :: psi0
                 complex(8), intent(in) :: init_state(num,3)
