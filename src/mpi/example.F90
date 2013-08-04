@@ -18,7 +18,7 @@ program main
     PetscInt       :: i, j, its, n, d(2)
     PetscScalar    :: Emin, Emax, t, init_state(2,3), amp(2)
     PetscReal      :: Emin_error, Emax_error
-    Mat            :: H
+    Mat            :: H, H2
     Vec            :: psi0, psi, psix, psiy
     
     ! initialize SLEPc and PETSc
@@ -101,16 +101,16 @@ program main
     call PetscLogStageRegister('ProbX',stage,ierr)
     call PetscLogStagePush(stage,ierr)
     call marginal(psi,psix,'x',n)
-    call VecView(psix,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    !call VecView(psix,PETSC_VIEWER_STDOUT_WORLD,ierr)
     call PetscBarrier(psiX,ierr)
     call PetscLogStagePop(ierr)
     
     call PetscLogStageRegister('ProbY',stage,ierr)
     call PetscLogStagePush(stage,ierr)
     call marginal(psi,psiy,'y',n)
-    call VecView(psiy,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    !call VecView(psiy,PETSC_VIEWER_STDOUT_WORLD,ierr)
     call PetscBarrier(psiY,ierr)
-    call PetscLogStagePop(ierr)
+    call PetscLogStagePop(ierr)    
 
     ! destroy matrix/SLEPc
     call MatDestroy(H,ierr)

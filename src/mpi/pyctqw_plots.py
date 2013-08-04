@@ -5,16 +5,31 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pylab as pl
 import matplotlib
+import fileinput
 
 
 def vecToArray(obj):
-	# scatter prob to process 0
+	# scatter vector 'obj' to all processes
 	comm = obj.getComm()
 	rank = comm.getRank()
 	scatter, obj0 = PETSc.Scatter.toAll(obj)
 	scatter.scatter(obj, obj0, False, PETSc.Scatter.Mode.FORWARD)
 
 	return np.asarray(obj0)
+
+	# deallocate
+	comm.barrier()
+	scatter.destroy()
+	obj0.destroy()
+	
+def vecToArray0(obj):
+	# scatter vector 'obj' to process 0
+	comm = obj.getComm()
+	rank = comm.getRank()
+	scatter, obj0 = PETSc.Scatter.toZero(obj)
+	scatter.scatter(obj, obj0, False, PETSc.Scatter.Mode.FORWARD)
+
+	if rank == 0:	return np.asarray(obj0)
 
 	# deallocate
 	comm.barrier()
@@ -123,7 +138,7 @@ def loadVec(filename,filetype):
 		except:
 			print "\nERROR: input state space file " + filename\
 				+ " does not exist or is in an incorrect format"
-			sys.exit()		
+			sys.exit()
 		
 	elif filetype == 'bin':
 		binLoad = PETSc.Viewer().createBinary(filename, 'r')
@@ -160,11 +175,11 @@ def exportMat(mat,filename,filetype):
 		txtSave.destroy()
 		
 		if rank == 0:
-			import fileinput
 			for line in fileinput.FileInput(filename,inplace=1):
 				if line[2] != 't':
 					line = line.replace(" i","j")
 					line = line.replace(" -","-")
+					line = line.replace("+-","-")
 					print line,
 		
 	elif filetype == 'bin':
@@ -177,7 +192,19 @@ def exportMat(mat,filename,filetype):
 def loadMat(filename,filetype):
 	if filetype == 'txt':
 		try:
-			matArray = np.loadtxt(filename,dtype=PETSc.ScalarType)
+			try:
+				matArray = np.loadtxt(filename,dtype=PETSc.ScalarType)
+			except:
+				filefix = []
+				for line in fileinput.FileInput(filename,inplace=0):
+					if line[2] != 't':
+						line = line.replace(" i","j")
+						line = line.replace(" -","-")
+						line = line.replace("+-","-")
+						filefix.append(line)
+						
+				matArray = np.loadtxt(filefix,dtype=PETSc.ScalarType)
+				
 			return arrayToMat(matArray)
 		except:
 			print "\nERROR: input state space file " + filename\
@@ -220,7 +247,6 @@ def exportVecToMat(vec,filename,filetype):
 		txtSave.destroy()
 	
 		if rank == 0:
-			import fileinput
 			for line in fileinput.FileInput(filename,inplace=1):
 				if line[2] != 't':
 					line = line.replace(" i","j")
@@ -237,7 +263,19 @@ def exportVecToMat(vec,filename,filetype):
 def loadMatToVec(filename,filetype):
 	if filetype == 'txt':
 		try:
-			matArray = np.loadtxt(filename,dtype=PETSc.ScalarType)
+			try:
+				matArray = np.loadtxt(filename,dtype=PETSc.ScalarType)
+			except:
+				filefix = []
+				for line in fileinput.FileInput(filename,inplace=0):
+					if line[2] != 't':
+						line = line.replace(" i","j")
+						line = line.replace(" -","-")
+						line = line.replace("+-","-")
+						filefix.append(line)
+						
+				matArray = np.loadtxt(filefix,dtype=PETSc.ScalarType)
+						
 			vecArray = matArray.reshape(matArray.shape[0]**2)
 			return arrayToVec(vecArray)
 		except:

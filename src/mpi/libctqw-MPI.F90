@@ -4,12 +4,343 @@ module ctqwMPI
 
 #include <finclude/petsc.h>
 #include <finclude/petscvec.h90>
+#include <finclude/petscviewer.h90>
 
 #include <finclude/slepcsys.h>
 #include <finclude/slepceps.h>
 #include <finclude/slepcmfn.h>
     
     contains
+
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Vector I/O ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    subroutine exportVec(vec,filename,filetype)
+        Vec, intent(in)                :: vec
+        character(len=50), intent(in)  :: filename
+        character(len=3), intent(in)   :: filetype
+        
+        ! local variables
+        PetscMPIInt          :: rank
+        PetscErrorCode       :: ierr
+        PetscViewer          :: binSave
+        
+        if (filetype == 'bin') then
+            call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(adjustl(filename)), &
+                                         & FILE_MODE_WRITE,binSave,ierr)
+            call VecView(vec,binSave,ierr)
+            call PetscViewerDestroy(binSave,ierr)
+            
+        else if (filetype == 'txt') then
+            call PetscViewerASCIIOpen(PETSC_COMM_WORLD,trim(adjustl(filename)),binSave,ierr)
+            call PetscViewerSetFormat(binSave,PETSC_VIEWER_ASCII_SYMMODU,ierr)
+            call VecView(vec,binSave,ierr)
+            call PetscViewerDestroy(binSave,ierr)
+        endif
+    end subroutine exportVec
+    
+    subroutine importVec(vec,filename,filetype)
+        character(len=50), intent(in)  :: filename
+        character(len=3), intent(in)   :: filetype
+        
+        Vec, intent(out)                :: vec
+        
+        ! local variables
+        PetscMPIInt          :: rank
+        PetscErrorCode       :: ierr
+        PetscViewer          :: binLoad
+        PetscInt             :: stat, line, i, Istart, Iend
+        PetscReal            :: reVec, imVec
+        PetscScalar, allocatable :: vecArray(:)
+        character(len=100)   :: buffer
+        
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+        
+        if (filetype == 'bin') then
+            call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(adjustl(filename)), &
+                                         & FILE_MODE_READ,binLoad,ierr)
+            call VecLoad(vec,binLoad,ierr)
+            call PetscViewerDestroy(binLoad,ierr)
+            
+        else if (filetype == 'txt') then
+            open(15,file=trim(adjustl(filename)),status='old', action='read')
+            call PetscBarrier(vec,ierr)
+            line = 0
+            do
+               read(15,*,iostat=stat)buffer
+               if (stat /= 0) exit
+               line = line + 1
+            end do
+                
+            allocate(vecArray(line))
+        
+            rewind(unit=15)
+            do i=1,line
+               read(15,*,iostat=stat) reVec, imVec
+               if (stat /= 0) exit
+               vecArray(i) = reVec + PETSc_i*imVec
+            end do
+        
+            close(15)
+            
+            call PetscBarrier(vec,ierr)
+            
+            call VecGetOwnershipRange(vec,Istart,Iend,ierr)
+            call VecSetValues(vec,Iend-Istart,[(i,i=Istart,Iend-1)], &
+                              & vecArray(Istart+1:Iend),INSERT_VALUES,ierr)
+            call VecAssemblyBegin(vec,ierr)
+            call VecAssemblyEnd(vec,ierr)
+            
+        endif
+    end subroutine importVec
+    
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Matrix I/O ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    subroutine exportMat(mat,filename,filetype)
+        Mat, intent(in)                :: mat
+        character(len=50), intent(in)  :: filename
+        character(len=3), intent(in)   :: filetype
+        
+        ! local variables
+        PetscErrorCode :: ierr
+        PetscViewer    :: binSave
+        
+        if (filetype == 'bin') then
+            call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(adjustl(filename)), &
+                                         & FILE_MODE_WRITE,binSave,ierr)
+            call MatView(mat,binSave,ierr)
+            call PetscViewerDestroy(binSave,ierr)
+            
+        else if (filetype == 'txt') then
+            call PetscViewerASCIIOpen(PETSC_COMM_WORLD,trim(adjustl(filename)),binSave,ierr)
+            call PetscViewerSetFormat(binSave,PETSC_VIEWER_ASCII_DENSE,ierr)
+            call MatView(mat,binSave,ierr)
+            call PetscViewerDestroy(binSave,ierr)
+            
+        else if (filetype == 'sparse') then
+            call PetscViewerASCIIOpen(PETSC_COMM_WORLD,trim(adjustl(filename)),binSave,ierr)
+            call PetscViewerSetFormat(binSave,PETSC_VIEWER_NATIVE,ierr)
+            call MatView(mat,binSave,ierr)
+            call PetscViewerDestroy(binSave,ierr)
+            
+        else if (filetype == 'mat') then
+            call PetscViewerASCIIOpen(PETSC_COMM_WORLD,trim(adjustl(filename)),binSave,ierr)
+            call PetscViewerSetFormat(binSave,PETSC_VIEWER_ASCII_MATLAB,ierr)
+            call MatView(mat,binSave,ierr)
+            call PetscViewerDestroy(binSave,ierr)
+            
+        endif
+    end subroutine exportMat
+    
+    subroutine importMat(mat,filename,filetype)
+        character(len=50), intent(in)  :: filename
+        character(len=3), intent(in)   :: filetype
+        
+        Mat, intent(out)                :: mat
+        
+        ! local variables
+        PetscMPIInt          :: rank
+        PetscErrorCode       :: ierr
+        PetscViewer          :: binLoad
+        PetscInt             :: stat, line, i, Istart, Iend, j
+        PetscReal            :: reVec, imVec
+        PetscReal, allocatable :: matArray(:,:)
+        PetscInt, allocatable :: adjArray(:,:)
+        character(len=100)   :: buffer
+        
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+        
+        if (filetype == 'bin') then
+            call PetscViewerBinaryOpen(PETSC_COMM_WORLD,trim(adjustl(filename)), &
+                                         & FILE_MODE_READ,binLoad,ierr)
+            call MatLoad(mat,binLoad,ierr)
+            call PetscViewerDestroy(binLoad,ierr)
+            
+        else if (filetype == 'txt') then
+            open(15,file=trim(adjustl(filename)),status='old', action='read')
+            call PetscBarrier(mat,ierr)
+            line = 0
+            do
+               read(15,*,iostat=stat)buffer
+               if (stat /= 0) exit
+               line = line + 1
+            end do
+                
+            allocate(matArray(line,line))
+        
+            rewind(unit=15)
+            do i=1,line
+               read(15,*,iostat=stat) matArray(i,:)
+               if (stat /= 0) exit
+            end do
+        
+            close(15)
+            
+            call PetscBarrier(mat,ierr)
+            
+            call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,line,line,ierr)
+            call MatSetFromOptions(mat,ierr)
+            call MatSetUp(mat,ierr)
+            call MatGetOwnershipRange(mat,Istart,Iend,ierr)
+            
+            do i=Istart, Iend-1
+                do j=1,line
+                    if (matArray(i+1,j) .ne. 0) then
+                        call MatSetValue(mat,i,j-1,matArray(i+1,j)+0*PETSc_i,INSERT_VALUES,ierr)
+                    endif
+                enddo
+            enddo
+            
+            call MatAssemblyBegin(mat,ierr)
+            call MatAssemblyEnd(mat,ierr)
+            
+            deallocate(matArray)
+        endif
+    end subroutine importMat
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~   Some Matrix Array Fuctions  ~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    subroutine identity(mat,n)
+        PetscInt, intent(in) :: n
+        PetscScalar, intent(out) :: mat(n,n)
+        
+        PetscInt :: i
+
+        mat = 0.d0
+        do i = 1, n
+            mat(i,i)=1.d0
+        end do
+    end subroutine identity
+    
+    subroutine kron(M1,r1,c1, M2,r2,c2, kronProd)
+        PetscInt, intent(in)    :: r1, c1, r2, c2
+        PetscScalar, intent(in)    :: M1(r1,c1), M2(r2,c2)
+        PetscScalar, intent(out)    :: kronProd(r1*r2,c1*c2)
+
+        ! local variables
+        PetscInt :: i, j
+        
+        kronProd = 0.d0
+        forall (i=1:r1, j=1:c1)
+            kronProd(r2*(i-1)+1:r2*i, c2*(j-1)+1:c2*j) = M1(i,j)*M2
+        end forall
+    end subroutine kron
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~Import and convert Adjacency matrix to Hamiltonian ~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    subroutine importAdjToH(mat,filename,p,d,amp,nd)            
+        character, intent(in)          :: p            
+        character(len=50), intent(in)  :: filename
+        PetscInt, intent(in)           :: nd, d(nd)
+        PetscScalar, intent(in)        :: amp(nd)
+        
+        Mat, intent(out)                :: mat
+        
+        ! local variables
+        PetscMPIInt          :: rank
+        PetscErrorCode       :: ierr
+        PetscInt             :: stat, N, i, Istart, Iend, j, k
+        PetscInt, allocatable :: adjArray(:,:)
+        PetscScalar, allocatable :: HArray(:,:),ident(:,:), temp(:,:), H2Array(:,:)
+        character(len=100)   :: buffer
+        
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+        
+        open(15,file=trim(adjustl(filename)),status='old', action='read')
+        call PetscBarrier(mat,ierr)
+        N = 0
+        do
+           read(15,*,iostat=stat)buffer
+           if (stat /= 0) exit
+           N = N + 1
+        end do
+        
+        allocate(adjArray(N,N),HArray(N,N))
+
+        rewind(unit=15)
+        do i=1,N
+           read(15,*,iostat=stat) adjArray(i,:)
+           if (stat /= 0) exit
+        end do
+
+        close(15)
+        
+        do i=1, N            
+            do j=1,N
+               if (i==j) then
+                   do k=1,nd
+                       if (d(k)==i-1) then
+                           HArray(i,j) = amp(k)+sum(adjArray(i,:))-adjArray(i,j)
+                           exit
+                       else
+                           HArray(i,j) = sum(adjArray(i,:))-adjArray(i,j)
+                       endif
+                   enddo
+                else
+                    HArray(i,j) = -adjArray(i,j)
+                endif
+            enddo
+        enddo
+        
+        if (p == '2') then
+            allocate(H2Array(N**2,N**2), ident(N,N), temp(N**2,N**2))
+        
+            call identity(ident,N)
+            call kron(HArray,N,N,ident,N,N,H2Array)
+            call kron(ident,N,N,HArray,N,N,temp)
+
+            H2Array = H2Array + temp
+            deallocate(ident,temp,HArray,adjArray)
+            
+            
+            call PetscBarrier(mat,ierr)
+        
+            call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,N**2,N**2,ierr)
+            call MatSetFromOptions(mat,ierr)
+            call MatSetUp(mat,ierr)
+            call MatGetOwnershipRange(mat,Istart,Iend,ierr)
+        
+            do i=Istart, Iend-1            
+                do j=1,N**2
+                    if (H2Array(i+1,j) .ne. 0) then
+                        call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
+                    endif
+                enddo
+            enddo
+        
+            call MatAssemblyBegin(mat,ierr)
+            call MatAssemblyEnd(mat,ierr)
+        
+            deallocate(H2Array)
+        
+        else
+            call PetscBarrier(mat,ierr)
+        
+            call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,N,N,ierr)
+            call MatSetFromOptions(mat,ierr)
+            call MatSetUp(mat,ierr)
+            call MatGetOwnershipRange(mat,Istart,Iend,ierr)
+        
+            do i=Istart, Iend-1            
+                do j=1,N
+                if (HArray(i+1,j) .ne. 0) then
+                    call MatSetValue(mat,i,j-1,HArray(i+1,j),INSERT_VALUES,ierr)
+                endif
+                enddo
+            enddo
+        
+            call MatAssemblyBegin(mat,ierr)
+            call MatAssemblyEnd(mat,ierr)
+        
+            deallocate(adjArray,HArray)
+        endif
+
+    end subroutine importAdjToH 
 
 !~~~~~~~~~~~~~~~~~~~~~~ Convert from 2D to 1D ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~ statespace for 2 particles ~~~~~~~~~~~~~~~~~~~~~~~~
