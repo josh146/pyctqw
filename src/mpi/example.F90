@@ -101,7 +101,7 @@ program main
     call PetscLogStageRegister('ProbX',stage,ierr)
     call PetscLogStagePush(stage,ierr)
     call marginal(psi,psix,'x',n)
-    !call VecView(psix,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    call VecView(psix,PETSC_VIEWER_STDOUT_WORLD,ierr)
     call PetscBarrier(psiX,ierr)
     call PetscLogStagePop(ierr)
     
