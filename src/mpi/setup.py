@@ -3,6 +3,8 @@
 #$ python setup.py build_ext --inplace
 
 # a bit of monkeypatching ...
+import sys
+
 try:
     from numpy.distutils.fcompiler import FCompiler
     def runtime_library_dir_option(self, dir):
@@ -43,8 +45,13 @@ def configuration(parent_package='',top_path=None):
     import os
     SLEPC_DIR  = os.environ['SLEPC_DIR']
     from os.path import join, isdir
-    INCLUDE_DIRS += [join(SLEPC_DIR, 'include')]
-    LIBRARY_DIRS += [join(SLEPC_DIR, 'lib')]
+    if PETSC_ARCH and isdir(join(PETSC_DIR, PETSC_ARCH)):
+        INCLUDE_DIRS += [join(SLEPC_DIR, PETSC_ARCH, 'include'),
+                         join(SLEPC_DIR, 'include')]
+        LIBRARY_DIRS += [join(SLEPC_DIR, PETSC_ARCH, 'lib')]
+    else:
+        INCLUDE_DIRS += [join(SLEPC_DIR, 'include')]
+        LIBRARY_DIRS += [join(SLEPC_DIR, 'lib')]
     LIBRARIES += [#'petscts', 'petscsnes', 'petscksp',
                   #'petscdm', 'petscmat',  'petscvec',
                   'slepc']

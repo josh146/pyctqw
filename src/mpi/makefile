@@ -6,20 +6,21 @@ all: example python
 .PHONY: clean
 
 include $(SLEPC_DIR)/conf/slepc_common
-PETSC_INCLUDE = -I/opt/petsc/petsc-3.4.0/include
+PETSC_INCLUDE = -I$(PETSC_DIR)/include
+PETSC_ARCH_INCLUDE = -I$(PETSC_DIR)/$(PETSC_ARCH)/include
 
 example: libctqw-MPI.o example.o
 	$(FLINKER) libctqw-MPI.o example.o -o example $(SLEPC_LIB)
 
 example.o: example.F90
-	$(FLINKER) -E example.F90 $(PETSC_INCLUDE) > temp.f90
+	$(FLINKER) -E example.F90 $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) > temp.f90
 	sed -i '/implicit none/,/! declare variables/d' temp.f90
 	sed -i '/# 1/,/!~/d' temp.f90
 	$(FLINKER) -c temp.f90 -o example.o
 	rm temp.f90
 	
 libctqw-MPI.o: libctqw-MPI.F90
-	$(FLINKER) -c libctqw-MPI.F90 -o libctqw-MPI.o $(PETSC_INCLUDE) $(SLEPC_INCLUDE)
+	$(FLINKER) -c libctqw-MPI.F90 -o libctqw-MPI.o $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
 
 #Python wrappers	
 python: libctqw-MPI.so

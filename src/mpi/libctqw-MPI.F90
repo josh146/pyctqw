@@ -1,5 +1,9 @@
 module ctqwMPI
 
+#ifdef __INTEL_COMPILER
+    use IFPORT
+#endif
+
     implicit none
 
 #include <finclude/petsc.h>
