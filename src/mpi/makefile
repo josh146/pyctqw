@@ -23,9 +23,9 @@ libctqw-MPI.o: libctqw-MPI.F90
 	$(FLINKER) -c libctqw-MPI.F90 -o libctqw-MPI.o $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
 
 #Python wrappers	
-python: libctqw_MPI.so
+python: libpyctqw_MPI.so
 
-libctqw_MPI.so: libctqw-MPI.F90
+libpyctqw_MPI.so: libctqw-MPI.F90
 	CC=${CC} F90=${FC} LDSHARED=${FC_LINKER} \
 	python setup.py config_fc --f90flags="-Wno-unused-variable" -q build_ext --inplace
 	${RM} -r build libpyctqw_MPImodule.c libpyctqw_MPI-f2pywrappers2.f90

@@ -469,6 +469,7 @@ def plotLine2P(psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 				horizontalalignment='right',multialignment='left', fontsize=11)
 
 		# save plot
+		plt.ylim((0,0.3))
 		plt.subplots_adjust(top=0.85)
 		pl.savefig(savefile)
 	

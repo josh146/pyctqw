@@ -751,6 +751,7 @@ module ctqwMPI
         ! set eigensolver to use
         arg = trim(adjustl(eig_solver))
         select case(arg)
+            case('power');     call EPSSetType(eps,EPSPOWER,ierr)
             case('arnoldi');     call EPSSetType(eps,EPSARNOLDI,ierr)
             case('lanczos');     call EPSSetType(eps,EPSLANCZOS,ierr)
             case('krylovschur'); call EPSSetType(eps,EPSKRYLOVSCHUR,ierr)
@@ -768,7 +769,11 @@ module ctqwMPI
                 call EPSSetWhichEigenpairs(eps,EPS_LARGEST_REAL,ierr)
             case default
                 !if (rank==0) write(*,*)'Calculating Emin...'
-                call EPSSetWhichEigenpairs(eps,EPS_SMALLEST_REAL,ierr)
+                if (arg=='power') then
+                    call EPSSetWhichEigenpairs(eps,EPS_LARGEST_MAGNITUDE,ierr)
+                else
+                    call EPSSetWhichEigenpairs(eps,EPS_SMALLEST_REAL,ierr)
+                endif
                 
                 call EPSGetST(eps,st,ierr)
                 call STSetType(st,STSINVERT,ierr)
@@ -882,5 +887,87 @@ module ctqwMPI
         call VecDestroyVecsF90(4,work,ierr)
     
     end subroutine qw_cheby
+    
+!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Chebyshev method w/ Scaling ~~~~~~~~~~~~~~~~
+!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+!    subroutine qw_cheby_sq(psi0,psi,dt,H,rank,N)
+!        PetscMPIInt, intent(in) :: rank
+!        PetscInt, intent(in)    :: N
+!        PetscScalar, intent(in) :: dt
+!        Vec, intent(in)         :: psi0
+!        Mat, intent(in)         :: H
+!        
+!        Vec, intent(out)        :: psi
+!        
+!        ! local variables
+!        PetscErrorCode :: ierr
+!        PetscInt      :: m, terms, i, j, s
+!        PetscReal     :: alpha, norm
+!        PetscScalar   :: bessj0, bessj1, bessjn
+!        Mat           :: Hnorm, work(4)
+!        PetscBool     :: scaled
+!        
+!        alpha = PetscRealPart(dt)
+!        
+!        call MatNorm(H,NORM_FROBENIUS,norm,ierr)
+!        if (norm<0.5) then
+!            scaled = .true.
+!            call MatDuplicate(H,MAT_COPY_VALUES,Hnorm,ierr)
+!            
+!            s = 0
+!            do while(norm<0.5)
+!                s = s + 1
+!                call MatScale(Hnorm,s,ierr)
+!                call MatNorm(Hnorm,NORM_FROBENIUS,norm,ierr)
+!            enddo
+!        else
+!            scaled = .false.        
+!        end if
+!        
+!        if (scaled) then
+!        call MatDuplicate(Hnorm,MAT_DO_NOT_COPY_VALUES,work(1),ierr)
+!        call MatDuplicate(Hnorm,MAT_COPY_VALUES,work(2),ierr)
+!        call MatDuplicate(Hnorm,MAT_DO_NOT_COPY_VALUES,work(3),ierr)
+!        call MatDuplicate(Hnorm,MAT_DO_NOT_COPY_VALUES,work(4),ierr)
+!    else
+!        call MatDuplicate(H,MAT_DO_NOT_COPY_VALUES,work(1),ierr)
+!        call MatDuplicate(H,MAT_COPY_VALUES,work(2),ierr)
+!        call MatDuplicate(H,MAT_DO_NOT_COPY_VALUES,work(3),ierr)
+!        call MatDuplicate(H,MAT_DO_NOT_COPY_VALUES,work(4),ierr)
+!    endif
+!        
+!        call VecCopy(psi0,work(1),ierr)
+!        call MatScale(work(2),-1.0,ierr)        
+!        call VecAXPBY(work(2), (Emax+Emin)/(Emax-Emin),-2.0/(Emax-Emin), work(1),ierr)
+!        
+!        bessj0 = dbesjn(0,alpha)
+!        bessj1 = dbesjn(1,alpha)
+!        call VecCopy(psi0,work(4),ierr)
+!        call VecAXPBY(work(4), 2.0*PETSC_i*bessj1,bessj0, work(2),ierr)
+!        
+!        terms = 0
+!        do while (abs(2.d0*dbesjn(terms,alpha)) > 1.d-18)
+!            terms = terms + 1
+!        end do
+!        
+!        do m = 2, terms
+!            call MatMult(H,work(2),work(3),ierr)
+!            call VecAXPBY(work(3), 2.0*(Emax+Emin)/(Emax-Emin),-4.0/(Emax-Emin), work(2),ierr)
+!            call VecAXPY(work(3),-1.0+0.*PETSC_i,work(1),ierr)
+!            
+!            bessjn = dbesjn(m,alpha)
+!            call VecAXPY(work(4),2.0*(PETSC_i**m)*bessjn,work(3),ierr)
+
+!            call VecCopy(work(2),work(1),ierr)
+!            call VecCopy(work(3),work(2),ierr)
+!        end do
+!        
+!        call VecScale(work(4),exp(-PETSC_i*(Emax+Emin)*dt/2.0),ierr)
+!        call VecCopy(work(4),psi,ierr)
+!        
+!        call VecDestroyVecsF90(4,work,ierr)
+!    
+!    end subroutine qw_cheby_sq
 
 end module ctqwMPI

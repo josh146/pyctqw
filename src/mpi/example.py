@@ -48,7 +48,7 @@ walk.createInitState(init_state)
 walk.EigSolver.setEigSolver(tol=1.e-3)
 walk.propagate(t,method='chebyshev')
 
-walk.plot('out/testp2.png')
+walk.plot('out/'+str(t)+'.png')
 walk.exportState('out/test.txt','bin')
 
 walk.destroy()
