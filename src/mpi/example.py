@@ -45,11 +45,11 @@ walk = pyctqw_MPI.Line2P(N)
 walk.createH(d,amp)
 walk.createInitState(init_state)
 
-walk.EigSolver.setEigSolver(tol=1.e-3)
-walk.propagate(t,method='chebyshev')
+#walk.EigSolver.setEigSolver(tol=1.e-3)
+walk.propagate(t,method='expm')
 
 walk.plot('out/'+str(t)+'.png')
-walk.exportState('out/test.txt','bin')
+#walk.exportState('out/test.txt','bin')
 
 walk.destroy()
 

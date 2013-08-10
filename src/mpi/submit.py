@@ -2,8 +2,10 @@
 #PBS -W group_list=director565
 #PBS -q workq
 #PBS -l walltime=00:20:00
-#PBS -l select=32:ncpus=12:mem=64gb
+#PBS -l select=20:ncpus=12:mem=64gb
 #PBS -j oe
+#PBS -o /dev/null
+#PBS -e /dev/null
 
 import os
 import sys
@@ -14,8 +16,8 @@ import subprocess
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~Set properties here~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-program = 'mpirun -np 32 example.py -n 1000 -log_summary'
-environment = 'gcc'
+program = 'mpirun -np 2 example -N '
+environment = 'intel'
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def module_add(modulename):
@@ -55,7 +57,9 @@ else:
 os.chdir(workdir)
 
 # run the simulation
-simulation = subprocess.Popen(program.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=myEnv)
-stdout,stderr = simulation.communicate()
-print(stdout)
-print >> sys.stderr, stderr
+for i in range(100000,1000000,10000):
+	program2 = program + str(i)
+	simulation = subprocess.Popen(program2.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=myEnv)
+	stdout,stderr = simulation.communicate()
+	print(stdout)
+	print >> sys.stderr, stderr

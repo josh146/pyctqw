@@ -34,6 +34,8 @@ program main
     CHKERRQ(ierr)
     if (flag .eqv. .false.) t = 10.0
     
+    !write(*,*)'hi'
+    
     ! create the Hamiltonian
     d = [3,4]
     amp = [2.0,1.5]
@@ -125,12 +127,12 @@ program main
     call MatDestroy(H,ierr)
     call VecDestroy(psi,ierr)
     call VecDestroy(psi0,ierr)
-    call VecDestroy(psix,ierr)
-    call VecDestroy(psiy,ierr)
+    !call VecDestroy(psix,ierr)
+    !call VecDestroy(psiy,ierr)
     
     call PetscFinalize(ierr)
     if (rank==0) then
-        open(15,file='petsc1.txt',access='APPEND')
+        open(15,file='petsc20.txt',access='APPEND')
         write(15,'(i10,4E18.10E3)')n,te11-te10,te21-te20,tc1-tc0,ts1-ts0    
         close(15)
     endif
