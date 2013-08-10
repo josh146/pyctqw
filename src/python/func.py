@@ -1,6 +1,7 @@
 #!/usr/bin/env python2.7
 import sys, time
 import numpy as np
+import plots
 
 class ref:
 	def __init__(self, obj):
@@ -67,7 +68,7 @@ def np_extremeev(H,method='gen'):
 	return np.sort(np.linalg.eigvals(H))[[0,-1]].tolist()
 
 #~~~~~~~~~~~~~~~~~~~ ctqw functions ~~~~~~~~~~~~~~~~~~~
-def qw_cheby(psi,dt,H,Emin,Emax):
+def qw_cheby(psi,dt,H,Emin,Emax,coeffPlot=False):
 	from scipy.special import j0, j1, jn
 	
 	alpha = (Emax-Emin)*dt/2.0
@@ -79,16 +80,18 @@ def qw_cheby(psi,dt,H,Emin,Emax):
 	terms = 0
 	while abs(2.0*jn(terms,alpha)) > 1e-18:
 		terms += 1
-		
+	
+	if coeffPlot:	coeff = [np.abs(j0(alpha)),np.abs(j1(alpha))]
 	for m in range(2,terms+1):
-		#ctqw.progressbar(m,terms+1-2)
-		#progressbar(m,terms+1-2)
 		
 		phi2 = -2.0*(2.0*H*phi1 - (Emax+Emin)*phi1)/(Emax-Emin) - phi0
 		U = U + 2.0*(1j**m)*jn(m,alpha)*phi2
 		
 		phi0 = phi1
 		phi1 = phi2
+		if coeffPlot:	coeff.append(np.abs(jn(m,alpha)))
+	
+	if coeffPlot:	plots.plotCoeff(coeff,'coeff.png',alpha)
 	
 	return np.exp(-1j*(Emax+Emin)*dt/2.0)*U
 

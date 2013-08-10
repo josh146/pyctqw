@@ -89,6 +89,9 @@ else:
 N = args.grid_length
 t = args.time
 
+f2 = open('fortran_lapack2.txt','a')
+f2.write('{}\t'.format(N))
+
 # defect locations
 if len(args.defect_nodes) == len(args.defect_amp):
 	d=args.defect_nodes
@@ -256,11 +259,12 @@ if calc_eig:
 		if sparseMat:	(Emin,Emax) = (0,1.5*np.sort(H.data)[-1])
 		else:		(Emin,Emax) = (0,1.5*np.max(H))
 
-	print 'Min eigenvalue: {0: .4f}  Max eigenvalue: {1: .4f}'.format(Emin, Emax)
+	print 'Min eigenvalue: {0: .12f}  Max eigenvalue: {1: .12f}'.format(Emin, Emax)
 	#print 'Min H element: {0: .4f}  Max H element: {1: .4f}'.format(*np.sort(H.data)[[0,-1]])
 
 	end = time.time()
 	print '\t\t\t\t\ttime: {: .12f}\n'.format(end-start)
+	f2.write('{}\t'.format(end-start))
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Quantum Walk ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -313,6 +317,8 @@ else:
 end = time.time()
 if LoadFortran:	print '\ttime: {: .12f}\n'.format(end-start)
 else:		print '\t\t\t\t\ttime: {: .12f}\n'.format(end-start)
+
+f2.write('{}\n'.format(end-start))
 
 if os.path.exists('coeff.txt'):
 	coeff = np.loadtxt('coeff.txt')

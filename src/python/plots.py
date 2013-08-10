@@ -6,6 +6,22 @@ import numpy as np
 import pylab as pl
 import matplotlib
 
+def plotCoeff(coeff,savefile,alpha):	
+	n = np.arange(len(coeff))
+
+	# create plot
+	fig = plt.figure()
+	plt.plot(n, coeff,'r-',marker='.')
+	plt.ylabel("$|J_n(\\alpha)|$",rotation=90)
+	plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
+	plt.xlabel("$n$")
+	plt.yscale('log')
+		
+	plt.title('$\\alpha={}$'.format(alpha))
+
+	# save plot
+	pl.savefig(savefile)
+
 def prob_plot_p1(data,savefile,t,initstate,d,a):
 	# import data
 	x,prob = np.genfromtxt(data, unpack=True)
