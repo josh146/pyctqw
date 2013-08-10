@@ -250,7 +250,7 @@ module ctqwMPI
         PetscErrorCode       :: ierr
         PetscInt             :: stat, N, i, Istart, Iend, j, k
         PetscInt, allocatable :: adjArray(:,:)
-        PetscScalar, allocatable :: HArray(:,:),ident(:,:), temp(:,:), H2Array(:,:)
+        PetscScalar, allocatable :: HArray(:,:),ident(:,:),ident2(:,:), temp(:,:),temp3(:,:), H2Array(:,:)
         character(len=100)   :: buffer
         
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
@@ -263,6 +263,8 @@ module ctqwMPI
            if (stat /= 0) exit
            N = N + 1
         end do
+
+        N = N+1
         
         allocate(adjArray(N,N),HArray(N,N))
 
@@ -316,6 +318,42 @@ module ctqwMPI
                     endif
                 enddo
             enddo
+        
+            call MatAssemblyBegin(mat,ierr)
+            call MatAssemblyEnd(mat,ierr)
+        
+            deallocate(H2Array)
+
+        elseif (p == '3') then
+            allocate(H2Array(N**3,N**3), ident(N,N), ident2(N**2,N**2), temp(N**3,N**3),temp3(N**3,N**3))
+!        
+            call identity(ident,N)
+            call identity(ident2,N**2)
+
+            call kron(ident2,N**2,N**2,HArray,N,N,temp)
+            call kron(HArray,N,N,ident2,N**2,N**2,temp3)
+
+            call kron(ident,N,N,HArray,N,N,ident2)
+            call kron(ident2,N**2,N**2,ident,N,N,H2Array)
+
+            H2Array = temp + H2Array + temp3
+            deallocate(ident,ident2,temp,temp3,HArray,adjArray)
+            
+            
+            call PetscBarrier(mat,ierr)
+        
+            call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,N**3,N**3,ierr)
+            call MatSetFromOptions(mat,ierr)
+            call MatSetUp(mat,ierr)
+            call MatGetOwnershipRange(mat,Istart,Iend,ierr)
+        
+!            do i=Istart, Iend-1            
+!                do j=1,N**3
+!                    if (H2Array(i+1,j) .ne. 0) then
+!                        call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
+!                    endif
+!                enddo
+!            enddo
         
             call MatAssemblyBegin(mat,ierr)
             call MatAssemblyEnd(mat,ierr)

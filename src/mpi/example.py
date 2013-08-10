@@ -8,7 +8,7 @@ import pyctqw_MPI, pyctqw_plots
 
 OptDB = PETSc.Options()
 N = OptDB.getInt('N', 100)
-t = OptDB.getInt('t', 20.0)
+t = OptDB.getReal('t', 20)
 d = [3,4]
 amp = [2.0,1.5]
 
@@ -17,22 +17,23 @@ rank =  PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #------------------------------- Arbitrary CTQW --------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#if rank == 0:	print '\ncycle CTQW\n'
+if rank == 0:	print '3-Caley Tree CTQW\n'
 
-#init_state = [[2,1.0]]
+init_state = [[0,1,1.0/np.sqrt(2.0)], [1,1,1.0j/np.sqrt(2.0)]]
 
-#walk = pyctqw_MPI.ctqwGraph(6)
-#walk.createH('out/test.txt','txt',d=[0,5],amp=[100,100])
-#walk.createInitState(init_state)
+walk = pyctqw_MPI.ctqwGraph2P(10)
+walk.createH('3-caley.txt','txt',d=[0,0],amp=[0,0])
 
-#walk.EigSolver.setEigSolver(tol=1.e-3)
-#walk.propagate(t,method='expm')
+pyctqw_plots.exportMat(walk.H.mat,'3-caley-2p.txt','txt')
+walk.createInitState(init_state)
 
-#walk.plot('out/test-cycle.png')
+walk.EigSolver.setEigSolver(tol=1.e-2,verbose=True,emin_estimate=0.)
+walk.propagate(t,method='chebyshev')
 
-#walk.destroy()
+walk.plot('out/3-caley.png')
 
-#sys.exit()
+
+walk.destroy()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #---------------------------------- 2P line ------------------------------------
@@ -45,10 +46,14 @@ walk = pyctqw_MPI.Line2P(N)
 walk.createH(d,amp)
 walk.createInitState(init_state)
 
-#walk.EigSolver.setEigSolver(tol=1.e-3)
-walk.propagate(t,method='expm')
+walk.EigSolver.setEigSolver(tol=1.e-2)
+walk.EigSolver.setEigSolver(emin_estimate=0)
 
-walk.plot('out/'+str(t)+'.png')
+for t in range(1,21):
+	walk.propagate(1,method='chebyshev')
+	walk.plot('out/'+str(t)+'.png')
+	walk.psiToInit()
+
 #walk.exportState('out/test.txt','bin')
 
 walk.destroy()
@@ -57,20 +62,20 @@ walk.destroy()
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #---------------------------------- 1P line ------------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#if rank == 0:	print '\n1p quantum walk\n'
+if rank == 0:	print '\n1p quantum walk\n'
 
-#init_state = [[0.,1.0/np.sqrt(2.0)], [1.,1.0/np.sqrt(2.0)]]
+init_state = [[0.,1.0/np.sqrt(2.0)], [1.,1.0/np.sqrt(2.0)]]
 
-#walk = pyctqw_MPI.Line(N)
-#walk.createH(d,amp)
-#walk.createInitState(init_state)
+walk = pyctqw_MPI.Line(N)
+walk.createH(d,amp)
+walk.createInitState(init_state)
 
-#walk.EigSolver.setEigSolver(tol=1.e-3)
-#walk.propagate(t,method='chebyshev')
+walk.EigSolver.setEigSolver(tol=1.e-3)
+walk.propagate(t,method='chebyshev')
 
-#walk.plot('out/testp1.png')
+walk.plot('out/testp1.png')
 
-#walk.destroy()
+walk.destroy()
 
 
 

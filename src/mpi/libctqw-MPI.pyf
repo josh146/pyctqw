@@ -4,6 +4,48 @@
 python module libpyctqw_MPI ! in 
     interface  ! in :libpyctqw_MPI
         module ctqwmpi ! in :libpyctqw_MPI:libctqw-MPI.F90
+            use ifport
+            subroutine exportvec(vec,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer(8)              :: vec
+                character*50, intent(in) :: filename
+                character*3, intent(in)  :: filetype
+            end subroutine exportvec
+            subroutine importvec(vec,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer(8)              :: vec
+                character*50, intent(in) :: filename
+                character*3, intent(in)  :: filetype
+            end subroutine importvec
+            subroutine exportmat(mat,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer(8)              :: mat
+                character*50, intent(in) :: filename
+                character*3, intent(in)  :: filetype
+            end subroutine exportmat
+            subroutine importmat(mat,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer(8)              :: mat
+                character*50, intent(in) :: filename
+                character*3, intent(in)  :: filetype
+            end subroutine importmat
+            subroutine identity(mat,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer, intent(in)     :: n
+                complex(8), intent(out) :: mat(n,n)
+            end subroutine identity
+            subroutine kron(m1,r1,c1,m2,r2,c2,kronprod) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                complex(8),intent(in)   :: m1(r1,c1)
+                integer, intent(in)     :: r1
+                integer, intent(in)     :: c1
+                complex(8)              :: m2(r2,c2)
+                integer, intent(in)     :: r2
+                integer, intent(in)     :: c2
+                complex(8), intent(out) :: kronprod(r1*r2,c1*c2)
+            end subroutine kron
+            subroutine importadjtoh(mat,filename,p,d,amp,nd) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer(8)              :: mat
+                character*50, intent(in):: filename
+                character, intent(in)   :: p
+                integer, intent(in)     :: d(nd)
+                complex(8), intent(in)  :: amp
+                integer, intent(in)     :: nd
+            end subroutine importadjtoh
             function coord(x,y,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer intent(in)     :: x
                 integer intent(in)     :: y

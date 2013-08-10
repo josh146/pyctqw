@@ -290,13 +290,12 @@ def loadMatToVec(filename,filetype):
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #----------------------- Plotting functions -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def plotGraph(prob,savefile,t,init_state,d,amp,N,rank):
+
+def plot(x,prob,savefile,t,init_state,d,amp,N,rank):
 
 	def prob_plot_p1(probVec,savefile,t,initstate,d,a,N):
 		# convert vectors to arrays
 		prob = np.real(np.asarray(probVec))
-		# determine the plot range
-		x = np.arange(0,N)
 	
 		# create plot
 		fig = plt.figure()
@@ -352,77 +351,13 @@ def plotGraph(prob,savefile,t,init_state,d,amp,N,rank):
 	scatterX.destroy()
 	prob0.destroy()
 
-def plotLine(prob,savefile,t,init_state,d,amp,N,rank):
-
-	def prob_plot_p1(probVec,savefile,t,initstate,d,a,N):
-		# convert vectors to arrays
-		prob = np.real(np.asarray(probVec))
-		# determine the plot range
-		x = np.arange(1-N/2,N/2+1)
-	
-		# create plot
-		fig = plt.figure()
-		plt.plot(x, prob)
-		plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
-		plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
-		plt.xlabel("$j$")
-	
-		# Plot titles
-		if initstate[0]=='f':
-			disp = "\nInitial state: {0}"
-			IS_disp = [initstate]
-		else:
-			IS_disp = ()
-			disp = "\nInitial state: $|\psi(0)\\rangle="
-
-			for i in range(len(initstate)):
-				IS_disp = IS_disp + ("({1: .3f})|{0}\\rangle".format(*(initstate[i])),)
-	
-				if i == 0:
-					disp = disp + "{" + str(i) + "} "
-				else:
-					disp = disp + "+ {" + str(i) + "} "	
-		
-		plt.suptitle("CTQW probability distribution at time $t={}$".format(t))
-	
-		if (len(list(set(a))) == 1) and (list(set(a))[0] == 0.0):
-			plt.title(disp.format(*IS_disp) + "$",
-				horizontalalignment='right',multialignment='left', fontsize=11)
-		else:
-			def_disp = "\nDefects: $"
-			for i in range(len(d)):
-				def_disp += "{1: .3f}|{0}\\rangle +".format(i+1,d[i],a[i])
-		
-			plt.title(disp.format(*IS_disp) + "$" + def_disp[:-2] + "$",
-				horizontalalignment='right',multialignment='left', fontsize=11)
-
-		# save plot
-		plt.subplots_adjust(top=0.85)
-		pl.savefig(savefile)
-		
-	# scatter prob to process 0
-	commX = prob.getComm()
-	scatterX, prob0 = PETSc.Scatter.toZero(prob)
-	scatterX.scatter(prob, prob0, False, PETSc.Scatter.Mode.FORWARD)
-	
-	# use process 0 to create the plot
-	if rank==0:
-		prob_plot_p1(prob0,savefile,t,init_state,d,amp,N)
-	
-	# deallocate	
-	commX.barrier()
-	scatterX.destroy()
-	prob0.destroy()
-
-def plotLine2P(psiX,psiY,savefile,t,init_state,d,amp,N,rank):
+def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 	
 	def prob_plot_p2(psiX,psiY,savefile,t,initstate,d,a,N):
 	
 		# convert vectors to arrays
 		probX = np.real(np.asarray(psiX))
 		probY = np.real(np.asarray(psiY))
-		# determine the plot range
-		x = np.arange(1-N/2,N/2+1)
 
 		# create plot
 		lbl = [0,1];
@@ -469,7 +404,7 @@ def plotLine2P(psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 				horizontalalignment='right',multialignment='left', fontsize=11)
 
 		# save plot
-		plt.ylim((0,0.3))
+		#plt.ylim((0,0.3))
 		plt.subplots_adjust(top=0.85)
 		pl.savefig(savefile)
 	
