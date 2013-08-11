@@ -49,9 +49,9 @@ walk.createInitState(init_state)
 walk.EigSolver.setEigSolver(tol=1.e-2)
 walk.EigSolver.setEigSolver(emin_estimate=0)
 
-for t in range(1,21):
+for t2 in range(1,21):
 	walk.propagate(1,method='chebyshev')
-	walk.plot('out/'+str(t)+'.png')
+	walk.plot('out/'+str(t2)+'.png')
 	walk.psiToInit()
 
 #walk.exportState('out/test.txt','bin')
