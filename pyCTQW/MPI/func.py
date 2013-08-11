@@ -50,7 +50,7 @@ def arrayToMat(matArray):
 		import scipy.sparse as sparse
 	except:
 		print '\nERROR: loading matrices from txt files requires Scipy!'
-		sys.exit()
+		return
 						
 	matSparse = sparse.csr_matrix(matArray)
 				

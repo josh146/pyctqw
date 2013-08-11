@@ -1,0 +1,112 @@
+Fortran library and Python module to calculate continuous-time quantum walks
+
+This is intended to provide a framework to quickly and easily work with quantum
+walkers, take advantage of high performance computing, and allow visualisation
+
+Features:
+---------
+* Fortran and Python bindings (in the form of a library and module respectively)
+* Supports MPI through the use of the PETSc and SLEPc high-performance sparse
+  matrix libraries (CUDA support planned)
+* Has in-built support for infinite-line hamiltonians
+* Can import custom adjancency matrices
+* Supports both one and two walkers (non-interacting)
+* Import and export matrices/states in binary, text or matlab format
+* Python module supports plotting and visualisation using matplotlib and networkx
+
+TODO:
+-----
+* Support 3 walkers
+* Add graph isomorphism testing
+* CUDA support
+* Calculation of transmission
+* Add fallback modes when PETSc/SLEPc are not present
+* Documentation
+
+Dependencies
+------------
+
+* pyCTQW
+	- Python 2.7
+	- NumPy >= 1.6.0
+	- PETSc >= 3.4.2	(optional, fallback mode requires SciPy)
+	- SLEPc >= 3.4.1	(optional, fallback mode requires SciPy)
+	- petsc4py-dev 		(optional, fallback mode requires SciPy)
+	- matplotlib		(optional, for plotting)
+	- SciPy				(optional, for some I/O operations)
+	- networkx			(optional, graph visualisation)
+
+* fCTQW
+	- PETSc >= 3.4.2	(optional, fallback mode requires LAPACK/Blas)
+	- SLEPc >= 3.4.1	(optional, fallback mode requires LAPACK/Blas)
+
+
+Usage
+-----
+
+0) Install the dependencies listed above.
+
+1) Build the Fortran libraries by opening a terminal in the root directory
+   and entering
+
+   		make fortran
+
+   The fortran library can be found in the 'lib' directory, and the interface
+   ctqw.mod file can be found in the 'include' directory
+
+2) Install the Python module pyCTQW by entering
+
+   		make pyctqw install prefix='/location/to/prefix'
+
+   where the prefix is the location you wish to install the package
+   		i) 	prefix='' (default):
+   				system install - use 'sudo' if root is required
+   		ii) prefix='--user' (RECOMMENDED):
+   				Installs in your home directory
+
+   	If PETSc and SLEPc are installed but cannot be found, pass their
+   	environment variables to the makefile as so:
+
+   		make PETSC_DIR=/loc/to/petsc PETSC_ARCH=arch \
+		SLEPC_DIR=/loc/to/slepc	 pyctqw install prefix='/location/to/prefix'
+
+   	If you would like to install without MPI/PETSc/SLEPc, you can use the
+   	use_mpi variable:
+
+   		make use_mpi=False pyctqw install prefix='/location/to/prefix'
+
+3) Build the examples:
+
+		make examples
+
+	You may need to use the same arguments/flags as before.
+
+	To run the Fortran examples, you will need to add the 'lib' directory
+	to your $LD_LIBRARY_PATH variable. The Python examples should need no
+	configuration. To test the examples, open a terminal in the directory
+	they are in and run
+
+		./example[MPI][.py]
+
+	or
+		mpirun -np [NUM] example[.py]
+
+	to use MPI and PETSc.
+
+	PETSc command line arguments can be passed to the examples, such as
+
+		-eps_tol = 1.e-3
+		-log_summary
+
+	or they can be changed in the programs themselves. See the PETSc and
+	SLEPc documentation for more information.
+
+4) If everything works, have a look at the examples to see how to use this
+   library!
+
+
+Known Issues
+------------
+
+* Non-mpi fallback modes not present yet
+* No documentation

@@ -1,7 +1,41 @@
 #!/usr/bin/env python2.7
 import sys, os
-from os.path import join, isdir
-	
+
+info={
+	'name'			: 'pyCTQW',
+	'version'		: '0.1.0',
+	'author'		: 'Josh Izaac',
+	'author_email' 	: 'josh.izaac@uwa.edu.au',
+	'url' 			: 'http://pypi.python.org/pypi/pyCTQW/',
+	'license' 		: 'LICENSE',
+	'description' 	: 'An MPI enabled CTQW simulator',
+	'long_description' : open('README').read(),
+	'provides' 		: ["pyCTQW"]
+  }
+
+classifiers=[
+	'Development Status :: 2 - Pre-Alpha',
+	'Environment :: Console',
+	'Intended Audience :: Science/Research',
+	'License :: OSI Approved :: BSD License',
+	'Natural Language :: English',
+	'Operating System :: MacOS :: MacOS X',
+	'Operating System :: Microsoft :: Windows',
+	'Operating System :: POSIX',
+	'Programming Language :: Python',
+	'Programming Language :: Fortran',
+	'Topic :: Scientific/Engineering :: Physics'
+  ],
+
+class noMPI(Exception):
+	pass
+
+class dirError(Exception):
+	pass
+
+def warn(msg=''):
+	return sys.stderr.write(msg+'\n')
+
 def MPIpackage(config):
 	try:
 		from numpy.distutils.fcompiler import FCompiler
@@ -15,32 +49,34 @@ def MPIpackage(config):
 	INCLUDE_DIRS = []
 	LIBRARY_DIRS = []
 	LIBRARIES	= []
-
 	# PETSc
 	try:
+		PETSC_ARCH = os.environ.get('PETSC_ARCH', '')
 		PETSC_DIR  = os.environ['PETSC_DIR']
-	except:
-		print "ERROR: PETSC_DIR environment variable not set, pyCTQW.MPI will not be installed"
-		return
-		
-	PETSC_ARCH = os.environ.get('PETSC_ARCH', '')
+		if PETSC_DIR == '':
+			raise KeyError
+		elif not os.path.isfile(PETSC_DIR+PETSC_ARCH+'/lib/libpetsc.so'):
+			raise dirError
+	except KeyError:
+		raise noMPI("WARNING: PETSC_DIR environment variable not set")
+	except dirError:
+		raise noMPI("WARNING: PETSC_DIR does not point towards a valid directory")
 	
-	if PETSC_ARCH and isdir(join(PETSC_DIR, PETSC_ARCH)):
-		INCLUDE_DIRS += [join(PETSC_DIR, PETSC_ARCH, 'include'),
-						 join(PETSC_DIR, 'include')]
-		LIBRARY_DIRS += [join(PETSC_DIR, PETSC_ARCH, 'lib')]
+	if PETSC_ARCH and os.path.isdir(os.path.join(PETSC_DIR, PETSC_ARCH)):
+		INCLUDE_DIRS += [os.path.join(PETSC_DIR, PETSC_ARCH, 'include'),
+						 os.path.join(PETSC_DIR, 'include')]
+		LIBRARY_DIRS += [os.path.join(PETSC_DIR, PETSC_ARCH, 'lib')]
 	else:
 		if PETSC_ARCH: pass
-		INCLUDE_DIRS += [join(PETSC_DIR, 'include')]
-		LIBRARY_DIRS += [join(PETSC_DIR, 'lib')]
+		INCLUDE_DIRS += [os.path.join(PETSC_DIR, 'include')]
+		LIBRARY_DIRS += [os.path.join(PETSC_DIR, 'lib')]
 	LIBRARIES += ['petsc']
 
 	# PETSc for Python
 	try:
 		import petsc4py
-	except:
-		print "ERROR: petsc4py not installed, pyCTQW.MPI will not be installed"
-		return
+	except ImportError:
+		raise noMPI("WARNING: petsc4py not installed")
 		
 	INCLUDE_DIRS += [petsc4py.get_include()]
 				  
@@ -48,26 +84,29 @@ def MPIpackage(config):
 	
 	try:
 		SLEPC_DIR  = os.environ['SLEPC_DIR']
-	except:
-		print "ERROR: SLEPC_DIR environment variable not set, pyCTQW.MPI will not be installed"
-		return
+		if SLEPC_DIR == '':
+			raise KeyError
+		elif not os.path.isfile(SLEPC_DIR+PETSC_ARCH+'/lib/libslepc.so'):
+			raise dirError
+	except KeyError:
+		raise noMPI("WARNING: SLEPC_DIR environment variable not set")
+	except dirError:
+		raise noMPI("WARNING: SLEPC_DIR does not point towards a valid directory")
 	
-	if PETSC_ARCH and isdir(join(PETSC_DIR, PETSC_ARCH)):
-		INCLUDE_DIRS += [join(SLEPC_DIR, PETSC_ARCH, 'include'),
-						 join(SLEPC_DIR, 'include')]
-		LIBRARY_DIRS += [join(SLEPC_DIR, PETSC_ARCH, 'lib')]
+	if PETSC_ARCH and os.path.isdir(os.path.join(PETSC_DIR, PETSC_ARCH)):
+		INCLUDE_DIRS += [os.path.join(SLEPC_DIR, PETSC_ARCH, 'include'),
+						 os.path.join(SLEPC_DIR, 'include')]
+		LIBRARY_DIRS += [os.path.join(SLEPC_DIR, PETSC_ARCH, 'lib')]
 	else:
-		INCLUDE_DIRS += [join(SLEPC_DIR, 'include')]
-		LIBRARY_DIRS += [join(SLEPC_DIR, 'lib')]
+		INCLUDE_DIRS += [os.path.join(SLEPC_DIR, 'include')]
+		LIBRARY_DIRS += [os.path.join(SLEPC_DIR, 'lib')]
 	LIBRARIES += ['slepc']
-
-#	# SLEPC for Python
-#	import slepc4py
-#	INCLUDE_DIRS += [slepc4py.get_include()]
 	
-	os.environ["CC"] = "mpicc"
-	os.environ["F90"] = "mpif90"
-	os.environ["LDSHARED"] = "mpif90"
+	if os.getenv('LDSHARED', '') == '':
+		os.environ["CC"] = "mpicc"
+		os.environ["F90"] = "mpif90"
+		os.environ["LDSHARED"] = "mpif90"
+		
 	config.add_extension('libpyctqw_MPI',
 				 sources = ['src/libctqw-MPI.F90','src/libctqw-MPI.pyf'],
 				 f2py_options=['--quiet'],
@@ -84,34 +123,43 @@ def configuration(parent_package='', top_path=''):
 
 	config = Configuration(None, parent_package, top_path)
 	
-	try:
-		MPIpackage(config)
-	except:
-		print "Can't find PETSc/SLEPc/petsc4py!\
-			\npyCTQW.MPI will not be installed"
+	if os.getenv('use_mpi','True') == 'True':
+		try:
+			MPIpackage(config)
+			mpi = True
+		except noMPI, err:
+			warn(str(err))
+			warn("WARNING: error when looking for PETSc/SLEPc/petsc4py!\
+				 \nIf they are installed, double check $PETSC_DIR, $SLEPC_DIR and $PETSC_ARCH environment varibles.\
+				 \n\npyCTQW.MPI will not be installed\n")
+			mpi = False
+	else:
+		mpi = False
 	
-	config.add_data_files(  ('pyCTQW/examples', 'examples/*'),
+	config.add_data_files(  ('pyCTQW/examples', 'examples/*.py'),
 				('pyCTQW/graphs', 'graphs/*') )
 	
-	return config
+	return config.todict(), mpi
 
 
 def run_setup():
-	from numpy.distutils.core import setup
+	try:
+		from numpy.distutils.core import setup
+	except ImportError:
+		raise DistutilsError("requires NumPy>=1.6")
+
+	config, mpi = configuration(top_path='')
+	if mpi:
+		packages=['pyCTQW', 'pyCTQW.MPI']
+	else:
+		packages=['pyCTQW']
+
+	config = dict(info,**config)
 
 	setup(
-		name='pyCTQW',
-		version='0.1.0',
-		author='Josh Izaac',
-		author_email='josh.izaac@uwa.edu.au',
-		packages=['pyCTQW', 'pyCTQW.MPI'],
-		url='http://pypi.python.org/pypi/pyCTQW/',
-		#license='LICENSE.txt',
-		description='An MPI enabled CTQW simulator',
-		#long_description=open('README.txt').read(),
-		provides=["pyctqw"],
-#		scripts=["examples/exampleMPI.py","examples/example.py"],
-		**(configuration(top_path='').todict())
+		packages=packages,
+		classifiers=classifiers,
+		**(config)
 	)
 
 if __name__ == '__main__':
