@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.7
-import sys, os, errno, petsc4py
+import sys, petsc4py
 petsc4py.init(sys.argv)
 from petsc4py import PETSc
 import numpy as np
