@@ -4,7 +4,6 @@ from petsc4py import PETSc
 from matplotlib import pyplot as plt
 import numpy as np
 import pylab as pl
-import matplotlib
 import fileinput
 
 
@@ -66,6 +65,21 @@ def arrayToMat(matArray):
 	
 	return mat
 	mat.destroy()
+
+def matToSparse(mat):
+	import scipy.sparse as sparse
+
+	data = mat.getValuesCSR()
+
+	(Istart,Iend) = mat.getOwnershipRange()
+	columns = mat.getSize()[0]
+	sparseSubMat = sparse.csr_matrix(data[::-1],shape=(Iend-Istart,columns))
+
+	comm = PETSc.COMM_WORLD
+
+	sparseSubMat = comm.tompi4py().allgather(sparseSubMat)
+
+	return sparse.vstack(sparseSubMat)
 
 def adjToH(adj,d=[0],amp=[0.]):
 	(Istart,Iend) = adj.getOwnershipRange()
@@ -336,6 +350,7 @@ def plot(x,prob,savefile,t,init_state,d,amp,N,rank):
 		# save plot
 		plt.subplots_adjust(top=0.85)
 		pl.savefig(savefile)
+		plt.close()
 		
 	# scatter prob to process 0
 	commX = prob.getComm()
@@ -407,6 +422,7 @@ def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 		#plt.ylim((0,0.3))
 		plt.subplots_adjust(top=0.85)
 		pl.savefig(savefile)
+		plt.close()
 	
 	# scatter psiX to process 0
 	commX = psiX.getComm()
@@ -430,3 +446,111 @@ def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 	commY.barrier()
 	scatterY.destroy()
 	psiY0.destroy()
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#----------------------- Graph plot functions -----------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def getGraphNodes(adj,layout='spring'):
+
+	try:
+		import networkx as nx
+	except:
+		print '\nNetworkX Python module required for graph plotting!'
+		return
+
+	graph = nx.from_scipy_sparse_matrix(matToSparse(adj).real)
+	
+	if layout == 'circle':
+		pos = nx.circular_layout(graph)
+	elif layout == 'spectral':
+		pos = nx.spectral_layout(graph)
+	elif layout == 'random':
+		pos = nx.random_layout(graph)
+	elif layout == 'shell':
+		pos = nx.shell_layout(graph)
+	else:
+		pos = nx.spring_layout(graph,dim=2)
+	
+	testpos = []
+	for i in pos.itervalues():
+		testpos.append(i.tolist())
+	testpos = np.array(testpos)
+
+	lineX = []
+	lineY = []
+	for i in nx.edges(graph):
+		lineX.append([testpos[i[0]][0], testpos[i[1]][0]])
+		lineY.append([testpos[i[0]][1], testpos[i[1]][1]])
+		
+	return testpos, lineX, lineY
+
+def plotGraph(ax,pos,lineX,lineY,prob=None,prob2=None,nodesize=None,barscale=1,output=None,
+	barcolor='green',baralpha=0.25,barcolor2='blue',baralpha2=0.25,
+	bartext=False,bartextcolor='black',bartextbg=None,btoffset=[-0.025,-0.025,0.05],
+	bartext2=False,bartextcolor2='black',bartextbg2=None,btoffset2=[-0.025,-0.025,-0.05],
+	nodecolor='red',nodealpha=0.5,
+	nodetext=True,nodetextcolor='black',nodetextbg=None,nodetextbg2=None,ntoffset=[0,0,-0.15]):
+
+	# use process 0 to create the plot
+	rank = PETSc.COMM_WORLD.Get_rank()
+	if rank==0:
+
+		from matplotlib.colors import ColorConverter as cl
+		from matplotlib.patches import Circle
+		import mpl_toolkits.mplot3d.art3d as art3d
+
+		for i in range(len(lineX)):
+			ax.plot(lineX[i], lineY[i],zs=-0.01,color='black',alpha=0.8, linewidth=2)
+			
+		#ax.scatter3D(pos.T[0], pos.T[1], color = 'orange', marker = "o", s=200)
+		#ax.bar3d([x-0.04 for x in pos.T[0]],[x-0.04 for x in pos.T[1]],
+		#         np.zeros_like(pos.T[0]),0.08,0.08,0, color='orange',alpha=0.3,edgecolor='gray')
+		
+		if nodesize is None:
+			nodesize=[]
+			for i in range(len(lineX)):
+			   nodesize.append(np.sqrt(np.sum(np.square([-np.subtract(*lineX[i]), -np.subtract(*lineY[i])]))))
+			
+			nodesize=min(np.min(nodesize)*0.6/2,0.05)
+		
+		for i in range(len(pos)):
+			p = Circle((pos.T[0][i], pos.T[1][i]), nodesize, color=nodecolor, alpha=nodealpha)
+			ax.add_patch(p)
+			art3d.pathpatch_2d_to_3d(p, z=0.0, zdir="z")
+			
+			if nodetext:
+				ax.text(pos.T[0][i]+ntoffset[0], pos.T[1][i]+ntoffset[1],ntoffset[2],str(i),color=nodetextcolor,
+						bbox=(None if nodetextbg is None else dict(facecolor=nodetextbg, alpha=0.2)))
+		
+		if prob is not None:
+			# probability bars
+			for i,val in enumerate(prob):
+				if val != 0:
+					ax.bar3d(pos.T[0][i]-0.7*nodesize/2,pos.T[1][i]-0.7*nodesize/2,0,0.7*nodesize,0.7*nodesize,val*barscale,
+							 color=barcolor,edgecolor=cl.to_rgba(cl(),barcolor,alpha=baralpha),alpha=baralpha)
+					
+					if bartext:
+						ax.text(pos.T[0][i]+btoffset[0], pos.T[1][i]+btoffset[1],val*barscale+btoffset[2],'{0: .4f}'.format(val),
+								color=bartextcolor,bbox=(None if bartextbg is None else dict(facecolor=nodetextbg, alpha=0.1)))
+		
+		if prob2 is not None:
+			# probability bars
+			for i,val in enumerate(prob2):
+				if val != 0:
+					ax.bar3d(pos.T[0][i]-0.7*nodesize/2,pos.T[1][i]-0.7*nodesize/2,0,0.7*nodesize,0.7*nodesize,-val*barscale,
+							 color=barcolor2,edgecolor=cl.to_rgba(cl(),barcolor2,alpha=baralpha2),alpha=baralpha2)
+					
+					if bartext:
+						ax.text(pos.T[0][i]+btoffset[0], pos.T[1][i]+btoffset[1],-val*barscale-btoffset[2],'{0: .4f}'.format(val),
+								color=bartextcolor2,bbox=(None if bartextbg2 is None else dict(facecolor=nodetextbg2, alpha=0.1)))
+
+		
+		if prob2 is None:
+			ax.set_zlim3d([0,1])
+		else:
+			ax.set_zlim3d([-1,1])
+
+		ax.set_xlim3d([pos.T[0].min(),pos.T[0].max()])
+		ax.set_ylim3d([pos.T[1].min(),pos.T[1].max()])
+		ax.set_axis_off()

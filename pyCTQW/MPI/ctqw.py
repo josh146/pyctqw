@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys, os, errno
+import sys, os, errno, time
 
 from petsc4py import PETSc
 from libpyctqw_MPI import ctqwmpi
@@ -94,7 +94,7 @@ class Hamiltonian(object):
 		self.mat = PETSc.Mat()
 		self.mat.create(PETSc.COMM_WORLD)
 		
-	def importAdj(self,filename,filetype,d=[0],amp=[0.]):
+	def importAdj(self,filename,filetype,d=[0],amp=[0.],layout='spring'):
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
@@ -108,7 +108,9 @@ class Hamiltonian(object):
 		
 		Hamiltonian.pop()
 
-	def importAdjToH(self,filename,filetype,d=[0],amp=[0.],p='1'):
+		self.nodePos, self.lineX, self.lineY = func.getGraphNodes(self.Adj,layout=layout)
+
+	def importAdjToH(self,filename,filetype,d=[0],amp=[0.],p='1',layout='spring'):
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
@@ -117,9 +119,13 @@ class Hamiltonian(object):
 		Hamiltonian = PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
 		
-		ctqwmpi.importAdjToH(self.mat.fortran,filename,p,d,amp)
+		ctqwmpi.importadjtoh(self.mat.fortran,filename,p,d,amp)
 		
 		Hamiltonian.pop()
+
+		# create the adjacency matrix
+		self.Adj = func.loadMat(filename,filetype)
+		self.nodePos, self.lineX, self.lineY = func.getGraphNodes(self.Adj,layout=layout)
 	
 	def createLine2P(self,d=[0],amp=[0.]):
 		try:
@@ -171,6 +177,7 @@ class QuantumWalkP1(object):
 	def __init__(self,N):
 		self.rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 		self.N = N
+		self.t = 0
 		
 		# define vectors
 		self.psi0 = PETSc.Vec()
@@ -191,15 +198,16 @@ class QuantumWalkP1(object):
 		initStateS.push()
 		try:
 			self.psi0 = func.loadVec(filename,filetype)
+			self.marginal(self.psi0)
 		except:
 			print '\nERROR: incorrect state (is it the correct length?'
 			sys.exit()
 		initStateS.pop()
 
-	def marginal(self):
+	def marginal(self,vec):
 		# calculate marginal probabilities
 		Marginal = PETSc.Log.Stage('Marginal'); Marginal.push()
-		ctqwmpi.p1prob(self.psi.fortran,self.prob.fortran,self.N)
+		ctqwmpi.p1prob(vec.fortran,self.prob.fortran,self.N)
 		Marginal.pop()
 		
 	def propagate(self,t,method='chebyshev',**kwargs):
@@ -219,7 +227,7 @@ class QuantumWalkP1(object):
 					self.H.Emin(),self.H.Emax(),self.rank,self.N)
 			chebyS.pop()
 		
-		self.marginal()
+		self.marginal(self.psi)
 	
 	def exportState(self,filename,filetype):
 		func.exportVec(self.psi,filename,filetype)
@@ -240,6 +248,7 @@ class QuantumWalkP2(object):
 	def __init__(self,N):
 		self.rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 		self.N = N
+		self.t = 0
 		
 		# define vectors
 		self.psi0 = PETSc.Vec()
@@ -323,18 +332,19 @@ class QuantumWalkP2(object):
 class ctqwGraph(QuantumWalkP1):
 	def __init__(self,N,filename=None,filetype=None,d=None,amp=None):
 		QuantumWalkP1.__init__(self,N)
+		self.liveplot = False
 		
 		if (filename and filetype) is not None:
 			self.createH(filename,filetype,d=d,amp=amp)
 		
-	def createH(self,filename,filetype,d=None,amp=None):
+	def createH(self,filename,filetype,d=None,amp=None,layout='spring'):
 		if (d and amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
 		else:
 			self.defectNodes = d
 			self.defectAmp = amp
-		self.H.importAdj(filename,filetype,d=self.defectNodes,amp=self.defectAmp)
+		self.H.importAdj(filename,filetype,d=self.defectNodes,amp=self.defectAmp,layout=layout)
 		
 	def createInitState(self,initState):
 		self.initState = np.vstack([np.array(initState).T[0]-self.N/2+1,
@@ -345,6 +355,8 @@ class ctqwGraph(QuantumWalkP1):
 		initStateS.push()
 		ctqwmpi.p1_init(self.psi0.fortran,self.initState,self.N)
 		initStateS.pop()
+
+		self.marginal(self.psi0)
 		
 	def plot(self,filename):
 		if os.path.isabs(filename):
@@ -368,24 +380,119 @@ class ctqwGraph(QuantumWalkP1):
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 
+	def plotGraph(self,size=(12,8),probX=True,output=None,**kwargs):
+
+		rank = PETSc.COMM_WORLD.Get_rank()
+
+		if probX:
+			# scatter prob to process 0
+			commX = self.prob.getComm()
+			rank = PETSc.COMM_WORLD.getRank()
+			scatterX, probX0 = PETSc.Scatter.toZero(self.prob)
+			scatterX.scatter(self.prob, probX0, False, PETSc.Scatter.Mode.FORWARD)
+
+		if rank==0:
+			from matplotlib import pyplot as plt
+			import mpl_toolkits.mplot3d as plt3d
+			self.fig = plt.figure(figsize=size)
+			self.ax = plt3d.Axes3D(self.fig)
+			self.ax.view_init(45, -50)
+			self.ax.set_axis_off()
+
+			if probX:
+				prob = np.real(np.asarray(probX0))
+			else:
+				prob = None
+
+			func.plotGraph(self.ax,self.H.nodePos,self.H.lineX,self.H.lineY,
+				prob=prob,**kwargs)
+		
+			self.ax.set_title('$t={}$'.format(self.t))
+
+			if type(output) is str:
+				plt.savefig(output)
+			else:
+				plt.show(block=True)
+				plt.close()
+
+		if probX:
+			# deallocate	
+			commX.barrier()
+			scatterX.destroy()
+			probX0.destroy()
+
+	def plotLiveGraph(self,dt,size=(12,8),**kwargs):
+
+		rank = PETSc.COMM_WORLD.Get_rank()
+
+		# scatter prob to process 0
+		commX = self.prob.getComm()
+		rank = PETSc.COMM_WORLD.getRank()
+		scatterX, probX0 = PETSc.Scatter.toZero(self.prob)
+		scatterX.scatter(self.prob, probX0, False, PETSc.Scatter.Mode.FORWARD)
+
+		if rank==0:
+			from matplotlib import pyplot as plt
+			import mpl_toolkits.mplot3d as plt3d
+			if not self.liveplot:
+				plt.ion()
+				self.figLive = plt.figure(figsize=size)
+				self.liveplot = True
+			else:
+				plt.cla()
+
+			self.axLive = plt3d.Axes3D(self.figLive)
+			self.axLive.view_init(45, -50)
+			self.axLive.set_axis_off()
+
+			prob = np.real(np.asarray(probX0))
+
+			func.plotGraph(self.axLive,self.H.nodePos,self.H.lineX,self.H.lineY,
+				prob=prob,**kwargs)
+		
+			self.axLive.set_title('$t={}$'.format(self.t))
+
+			plt.draw()#show(block=True)
+			time.sleep(dt)
+
+		# deallocate	
+		commX.barrier()
+		scatterX.destroy()
+		probX0.destroy()
+
+	def clearLiveGraph(self):
+		rank = PETSc.COMM_WORLD.Get_rank()
+
+		if rank == 0:
+			from matplotlib import pyplot as plt
+			plt.show(block=True)
+			self.liveplot = False
+			plt.close()
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #------------------------------- 2P Arbitrary CTQW -----------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class ctqwGraph2P(QuantumWalkP2):
 	def __init__(self,N,filename=None,filetype=None,d=None,amp=None):
 		QuantumWalkP2.__init__(self,N)
+		self.liveplot = False
 		
 		if (filename and filetype) is not None:
 			self.createH(filename,filetype,d=d,amp=amp)
 		
-	def createH(self,filename,filetype,d=None,amp=None):
+	def createH(self,filename,filetype,d=None,amp=None,layout='spring'):
 		if (d and amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
 		else:
 			self.defectNodes = d
 			self.defectAmp = amp
-		ctqwmpi.importadjtoh(self.H.mat.fortran,filename,'2',d=self.defectNodes,amp=self.defectAmp)
+
+		self.H.importAdjToH(filename,filetype,
+			d=self.defectNodes,amp=self.defectAmp,p='2',layout=layout)
+
+		# ctqwmpi.importadjtoh(self.H.mat.fortran,filename,'2',
+		# 	d=self.defectNodes,amp=self.defectAmp,layout=layout)
 		
 	def createInitState(self,initState):
 		self.initState = np.vstack([np.array(initState).T[0]-self.N/2+1,
@@ -418,6 +525,138 @@ class ctqwGraph2P(QuantumWalkP2):
 		func.plot2P(np.arange(self.N),self.psiX,self.psiY,filename,self.t,initstateLabels,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
+
+	def plotGraph(self,size=(12,8),probX=True,probY=True,output=None,**kwargs):
+
+		rank = PETSc.COMM_WORLD.Get_rank()
+
+		if probX:
+			# scatter prob to process 0
+			commX = self.psiX.getComm()
+			rank = PETSc.COMM_WORLD.getRank()
+			scatterX, probX0 = PETSc.Scatter.toZero(self.psiX)
+			scatterX.scatter(self.psiX, probX0, False, PETSc.Scatter.Mode.FORWARD)
+
+		if probY:
+			# scatter prob to process 0
+			commY = self.psiY.getComm()
+			rank = PETSc.COMM_WORLD.getRank()
+			scatterY, probY0 = PETSc.Scatter.toZero(self.psiY)
+			scatterX.scatter(self.psiY, probY0, False, PETSc.Scatter.Mode.FORWARD)
+
+		if rank==0:
+			from matplotlib import pyplot as plt
+			import mpl_toolkits.mplot3d as plt3d
+
+			self.fig = plt.figure(figsize=size)
+			self.ax = plt3d.Axes3D(self.fig)
+			self.ax.view_init(45, -50)
+			self.ax.set_axis_off()
+
+			if probX:
+				prob = np.real(np.asarray(probX0))
+			else:
+				prob = None
+
+			if probY:
+				prob2 = np.real(np.asarray(probY0))
+			else:
+				prob2 = None
+
+			func.plotGraph(self.ax,self.H.nodePos,self.H.lineX,self.H.lineY,
+				prob=prob,prob2=prob2,**kwargs)
+		
+			self.ax.set_title('$t={}$'.format(self.t))
+
+			if type(output) is str:
+				plt.savefig(output)
+			else:
+				plt.show(block=True)
+
+		if probX:
+			# deallocate	
+			commX.barrier()
+			scatterX.destroy()
+			probX0.destroy()
+
+		if probY:
+			# deallocate	
+			commY.barrier()
+			scatterY.destroy()
+			probY0.destroy()
+
+	def plotLiveGraph(self,dt,size=(12,8),
+				probX=True,probY=True,**kwargs):
+
+		rank = PETSc.COMM_WORLD.Get_rank()
+
+		if probX:
+			# scatter prob to process 0
+			commX = self.psiX.getComm()
+			rank = PETSc.COMM_WORLD.getRank()
+			scatterX, probX0 = PETSc.Scatter.toZero(self.psiX)
+			scatterX.scatter(self.psiX, probX0, False, PETSc.Scatter.Mode.FORWARD)
+
+		if probY:
+			# scatter prob to process 0
+			commY = self.psiY.getComm()
+			rank = PETSc.COMM_WORLD.getRank()
+			scatterY, probY0 = PETSc.Scatter.toZero(self.psiY)
+			scatterX.scatter(self.psiY, probY0, False, PETSc.Scatter.Mode.FORWARD)
+
+		if rank==0:
+			from matplotlib import pyplot as plt
+			import mpl_toolkits.mplot3d as plt3d
+			
+			if not self.liveplot:
+				plt.ion()
+				self.figLive = plt.figure(figsize=size)
+				self.liveplot = True
+			else:
+				plt.cla()
+
+			self.axLive = plt3d.Axes3D(self.figLive)
+			self.axLive.view_init(45, -50)
+			self.axLive.set_axis_off()
+
+			if probX:
+				prob = np.real(np.asarray(probX0))
+			else:
+				prob = None
+
+			if probY:
+				prob2 = np.real(np.asarray(probY0))
+			else:
+				prob2 = None
+
+			func.plotGraph(self.axLive,self.H.nodePos,self.H.lineX,self.H.lineY,
+				prob=prob,prob2=prob2,**kwargs)
+		
+			self.axLive.set_title('$t={}$'.format(self.t))
+
+			plt.draw()#show(block=True)
+			time.sleep(dt)
+
+		if probX:
+			# deallocate	
+			commX.barrier()
+			scatterX.destroy()
+			probX0.destroy()
+
+		if probY:
+			# deallocate	
+			commY.barrier()
+			scatterY.destroy()
+			probY0.destroy()
+
+	def clearLiveGraph(self):
+		rank = PETSc.COMM_WORLD.Get_rank()
+
+		if rank == 0:
+			from matplotlib import pyplot as plt
+			plt.show(block=True)
+			self.liveplot = False
+			plt.close()
 		
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #--------------------------- 1 particle CTQW on a line -------------------------
