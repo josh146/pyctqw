@@ -184,7 +184,7 @@ class nodeHandle(object):
 			if Istart <= i < Iend:
 				self.local_nodes.append(i)
 
-		self.local_prob = np.square(np.abs(psi.getValues(self.local_nodes)))
+		self.local_prob = psi.getValues(self.local_nodes)
 
 	def update(self,t,psi):
 		self.time.append(t)
@@ -192,19 +192,18 @@ class nodeHandle(object):
 		prob_update = np.square(np.abs(psi.getValues(self.local_nodes)))
 		self.local_prob = np.vstack([self.local_prob,prob_update])
 
-	def getNode(self,nodes,t=None):
+	def getLocalNodes(self,t=None):
 		if t is not None:
 			try:
-				self.time.index(t)
+				indt = self.time.index(t)
 			except ValueError:
 				if self.rank == 0:	print '\nERROR: time {} was not handled'.format(t)
 				return
 
-			try:
-				self.local_nodes.index(nodes)
-			except ValueError:
-				if self.rank == 0:	print '\nERROR: time {} was not handled'.format(t)
-				return
+			return self.local_prob[indt]
+
+		else:
+			return np.array(self.time), self.local_prob.T
 
 
 
@@ -247,6 +246,9 @@ class QuantumWalkP1(object):
 		Marginal = PETSc.Log.Stage('Marginal'); Marginal.push()
 		ctqwmpi.p1prob(vec.fortran,self.prob.fortran,self.N)
 		Marginal.pop()
+
+	def watch(self,nodes,type='prob'):
+		self.handle = nodeHandle(nodes,self.t,self.prob)
 		
 	def propagate(self,t,method='chebyshev',**kwargs):
 		self.t = t
@@ -266,7 +268,9 @@ class QuantumWalkP1(object):
 			chebyS.pop()
 		
 		self.marginal(self.psi)
-	
+
+		self.handle.update(self.t,self.prob)
+
 	def exportState(self,filename,filetype):
 		func.exportVec(self.psi,filename,filetype)
 
