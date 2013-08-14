@@ -170,6 +170,44 @@ class Hamiltonian(object):
 		except:
 			pass
 
+class nodeHandle(object):
+	def __init__(self,nodes,t,psi):
+		self.rank = PETSc.COMM_WORLD.Get_rank()
+		self.time = [t]
+
+		self.all_nodes = nodes
+
+		self.local_nodes = []
+		(Istart,Iend) = psi.getOwnershipRange()
+
+		for i in self.all_nodes:
+			if Istart <= i < Iend:
+				self.local_nodes.append(i)
+
+		self.local_prob = np.square(np.abs(psi.getValues(self.local_nodes)))
+
+	def update(self,t,psi):
+		self.time.append(t)
+
+		prob_update = np.square(np.abs(psi.getValues(self.local_nodes)))
+		self.local_prob = np.vstack([self.local_prob,prob_update])
+
+	def getNode(self,nodes,t=None):
+		if t is not None:
+			try:
+				self.time.index(t)
+			except ValueError:
+				if self.rank == 0:	print '\nERROR: time {} was not handled'.format(t)
+				return
+
+			try:
+				self.local_nodes.index(nodes)
+			except ValueError:
+				if self.rank == 0:	print '\nERROR: time {} was not handled'.format(t)
+				return
+
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #--------------------------- 1 particle CTQW   -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -607,7 +645,7 @@ class ctqwGraph2P(QuantumWalkP2):
 		if rank==0:
 			from matplotlib import pyplot as plt
 			import mpl_toolkits.mplot3d as plt3d
-			
+
 			if not self.liveplot:
 				plt.ion()
 				self.figLive = plt.figure(figsize=size)

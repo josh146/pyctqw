@@ -6,7 +6,6 @@ import numpy as np
 import pylab as pl
 import fileinput
 
-
 def vecToArray(obj):
 	# scatter vector 'obj' to all processes
 	comm = obj.getComm()

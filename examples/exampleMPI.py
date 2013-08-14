@@ -28,18 +28,15 @@ walk.createInitState(init_state)
 
 walk.EigSolver.setEigSolver(tol=1.e-2,verbose=True,emin_estimate=0.)
 
-for t2 in range(1,6):
-	walk.propagate(t2,method='krylov')
-	walk.plotLiveGraph(0.2)
-	walk.psiToInit()
-
-walk.clearLiveGraph()
+walk.propagate(t,method='krylov')
 
 walk.plot('out/3-caley-p1.png')
+walk.plotGraph(nodetextbg='blue')
 walk.plotGraph(output='out/3-caley-graph-p1.png')
 
 
 walk.destroy()
+sys.exit()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #------------------------------- Arbitrary CTQW --------------------------------
@@ -68,7 +65,6 @@ walk.plotGraph(output='out/plot.png')
 
 
 walk.destroy()
-sys.exit()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #---------------------------------- 2P line ------------------------------------
