@@ -553,3 +553,34 @@ def plotGraph(ax,pos,lineX,lineY,prob=None,prob2=None,nodesize=None,barscale=1,o
 		ax.set_xlim3d([pos.T[0].min(),pos.T[0].max()])
 		ax.set_ylim3d([pos.T[1].min(),pos.T[1].max()])
 		ax.set_axis_off()
+
+def plotNodes(time,nodes,probArray,savefile):
+	from itertools import cycle
+	
+	nodeNum = probArray.shape[0]
+
+	# create plot
+	lbl = range(nodeNum)
+	plotStyles = cycle(["-","--","-.",":"])
+
+	fig = plt.figure()
+	for i in range(nodeNum):
+		lbl[i], = plt.plot(time, probArray[i], next(plotStyles))
+
+	plt.xlabel("$t$")
+	plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
+	plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
+
+	plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.2)
+
+	# legend
+	leg = plt.legend(lbl, [str(x) for x in nodes], loc='lower center', bbox_to_anchor=(0.5, -0.3),ncol=8, fancybox=True)
+	plt.setp(leg.get_texts(), fontsize='small') 
+
+	plt.title("CTQW probability distribution over time")
+
+	# save plot
+	#plt.ylim((0,0.3))
+	plt.subplots_adjust(top=0.85)
+	pl.savefig(savefile)
+	plt.close()

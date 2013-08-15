@@ -25,16 +25,23 @@ TODO:
 
 Dependencies
 ------------
-
-* pyCTQW
+*pyCTQW
 	- Python 2.7
 	- NumPy >= 1.6.0
-	- PETSc >= 3.4.2	(optional, fallback mode requires SciPy)
-	- SLEPc >= 3.4.1	(optional, fallback mode requires SciPy)
-	- petsc4py-dev 		(optional, fallback mode requires SciPy)
-	- matplotlib		(optional, for plotting)
-	- SciPy				(optional, for some I/O operations)
-	- networkx			(optional, graph visualisation)
+	- matplotlib		(recommended, for plotting)
+	- SciPy			(recommended, for some I/O operations)
+	- networkx		(recommended, graph visualisation)
+	
+* pyCTQW.MPI
+	- Python 2.7
+	- NumPy >= 1.6.0
+	- PETSc >= 3.4.2	
+	- SLEPc >= 3.4.1	
+	- petsc4py-dev 		
+	- mpi4py 		(recommended, used for some plotting)
+	- matplotlib		(recommended, for node plotting and graph visualisation)
+	- SciPy			(recommended, for some I/O operations)
+	- networkx		(recommended, graph visualisation)
 
 * fCTQW
 	- PETSc >= 3.4.2	(optional, fallback mode requires LAPACK/Blas)

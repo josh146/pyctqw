@@ -189,7 +189,7 @@ class nodeHandle(object):
 	def update(self,t,psi):
 		self.time.append(t)
 
-		prob_update = np.square(np.abs(psi.getValues(self.local_nodes)))
+		prob_update = psi.getValues(self.local_nodes)
 		self.local_prob = np.vstack([self.local_prob,prob_update])
 
 	def getLocalNodes(self,t=None):
@@ -203,11 +203,9 @@ class nodeHandle(object):
 			return self.local_prob[indt]
 
 		else:
-			return np.array(self.time), self.local_prob.T
+			return np.array(self.time), self.local_prob.T.tolist()
 
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~f~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #--------------------------- 1 particle CTQW   -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class QuantumWalkP1(object):
@@ -215,6 +213,7 @@ class QuantumWalkP1(object):
 		self.rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 		self.N = N
 		self.t = 0
+		self.timestep = False
 		
 		# define vectors
 		self.psi0 = PETSc.Vec()
@@ -241,6 +240,8 @@ class QuantumWalkP1(object):
 			sys.exit()
 		initStateS.pop()
 
+		self.marginal(self.psi0)
+
 	def marginal(self,vec):
 		# calculate marginal probabilities
 		Marginal = PETSc.Log.Stage('Marginal'); Marginal.push()
@@ -251,19 +252,23 @@ class QuantumWalkP1(object):
 		self.handle = nodeHandle(nodes,self.t,self.prob)
 		
 	def propagate(self,t,method='chebyshev',**kwargs):
-		self.t = t
+		if self.timestep:
+			self.t = t + self.t
+		else:
+			self.t = t
+
 		self.EigSolver.setEigSolver(**kwargs)
 		
 		if method=='krylov':
 			# SLEPc matrix exponential
 			expmS = PETSc.Log.Stage('SLEPc expm'); expmS.push()
-			ctqwmpi.expm(self.H.mat.fortran,self.t,self.psi0.fortran,self.psi.fortran)
+			ctqwmpi.expm(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
 			expmS.pop()
 			
 		elif method=='chebyshev':
 			# Chebyshev algorithm
 			chebyS = PETSc.Log.Stage('Chebyshev'); chebyS.push()
-			ctqwmpi.qw_cheby(self.psi0.fortran,self.psi.fortran,self.t,self.H.mat.fortran,
+			ctqwmpi.qw_cheby(self.psi0.fortran,self.psi.fortran,t,self.H.mat.fortran,
 					self.H.Emin(),self.H.Emax(),self.rank,self.N)
 			chebyS.pop()
 		
@@ -274,11 +279,31 @@ class QuantumWalkP1(object):
 		except:
 			pass
 
+		self.timestep = False
+
+	def plotNodes(self,filename,t=None):
+
+		comm = PETSc.COMM_WORLD
+		rank = comm.Get_rank()
+		node = self.handle.local_nodes
+		timeArray, probArray = self.handle.getLocalNodes(t=t)
+
+		probArray = comm.tompi4py().gather(probArray)
+		node = comm.tompi4py().gather(node)
+
+		if rank == 0:
+			timeArray = np.array(timeArray)
+			nodeArray = np.array([item for sublist in node for item in sublist])
+			probArray = np.array([item for sublist in probArray for item in sublist]).real
+
+			func.plotNodes(timeArray,nodeArray,probArray,filename)
+
 	def exportState(self,filename,filetype):
 		func.exportVec(self.psi,filename,filetype)
 
 	def psiToInit(self):
 		self.psi0 = self.psi
+		self.timestep = True
 	
 	def destroy(self):
 		self.H.destroy()
@@ -294,6 +319,7 @@ class QuantumWalkP2(object):
 		self.rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 		self.N = N
 		self.t = 0
+		self.timestep = False
 		
 		# define vectors
 		self.psi0 = PETSc.Vec()
@@ -328,31 +354,38 @@ class QuantumWalkP2(object):
 			sys.exit()
 		initStateS.pop()
 
-	def marginal(self):
+		self.marginal(self.psi0)
+
+	def marginal(self,vec):
 		# calculate marginal probabilities
 		Marginal = PETSc.Log.Stage('Marginal'); Marginal.push()
-		ctqwmpi.marginal(self.psi.fortran,self.psiX.fortran,'x',self.N)
-		ctqwmpi.marginal(self.psi.fortran,self.psiY.fortran,'y',self.N)
+		ctqwmpi.marginal(vec.fortran,self.psiX.fortran,'x',self.N)
+		ctqwmpi.marginal(vec.fortran,self.psiY.fortran,'y',self.N)
 		Marginal.pop()
 		
 	def propagate(self,t,method='expm',**kwargs):
-		self.t = t
+		if self.timestep:
+			self.t = t + self.t
+		else:
+			self.t = t
+
 		self.EigSolver.setEigSolver(**kwargs)
 		
 		if method=='krylov':
 			# SLEPc matrix exponential
 			krylov = PETSc.Log.Stage('SLEPc krylov'); krylov.push()
-			ctqwmpi.expm(self.H.mat.fortran,self.t,self.psi0.fortran,self.psi.fortran)
+			ctqwmpi.expm(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
 			krylov.pop()
 			
 		elif method=='chebyshev':
 			# Chebyshev algorithm
 			chebyS = PETSc.Log.Stage('Chebyshev'); chebyS.push()
-			ctqwmpi.qw_cheby(self.psi0.fortran,self.psi.fortran,self.t,self.H.mat.fortran,
+			ctqwmpi.qw_cheby(self.psi0.fortran,self.psi.fortran,t,self.H.mat.fortran,
 					self.H.Emin(),self.H.Emax(),self.rank,self.N)
 			chebyS.pop()
 		
-		self.marginal()
+		self.marginal(self.psi)
+		self.timestep = False
 	
 	def exportState(self,filename,filetype):
 		if filetype == 'txt':
@@ -362,6 +395,7 @@ class QuantumWalkP2(object):
 
 	def psiToInit(self):
 		self.psi0 = self.psi
+		self.timestep = True
 	
 	def destroy(self):
 		self.H.destroy()
@@ -730,6 +764,10 @@ class Line(QuantumWalkP1):
 		initStateS.push()
 		ctqwmpi.p1_init(self.psi0.fortran,initState,self.N)
 		initStateS.pop()
+
+	def watch(self,nodes,type='prob'):
+		nodes = [i+self.N/2-1 for i in nodes]
+		super(Line,self).watch(nodes,type=type)
 		
 	def plot(self,filename):
 		if os.path.isabs(filename):
@@ -748,6 +786,23 @@ class Line(QuantumWalkP1):
 		func.plot(np.arange(1-self.N/2,self.N/2+1),self.prob,filename,self.t,self.initState,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
+
+	def plotNodes(self,filename,t=None):
+
+		comm = PETSc.COMM_WORLD
+		rank = comm.Get_rank()
+		node = self.handle.local_nodes
+		timeArray, probArray = self.handle.getLocalNodes(t=t)
+
+		probArray = comm.tompi4py().gather(probArray)
+		node = comm.tompi4py().gather(node)
+
+		if rank == 0:
+			timeArray = np.array(timeArray)
+			nodeArray = np.array([item-self.N/2+1 for sublist in node for item in sublist])
+			probArray = np.array([item for sublist in probArray for item in sublist]).real
+
+			func.plotNodes(timeArray,nodeArray,probArray,filename)
 			
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #--------------------------- 2 particle CTQW on a line -------------------------

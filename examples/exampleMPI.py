@@ -15,52 +15,54 @@ amp = [2.0,1.5]
 rank =  PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#------------------------------- Arbitrary CTQW --------------------------------
+#------------------------- 1P 3-Caley Tree CTQW --------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if rank == 0:	print '1P 3-Caley Tree CTQW\n'
 
-init_state = [[0,1.0/np.sqrt(2.0)], [1,1.0j/np.sqrt(2.0)]]
+init_state = [[0,1]]#[[0,1.0/np.sqrt(2.0)], [1,1.0j/np.sqrt(2.0)]]
 
 walk = qw.ctqwGraph(10)
-walk.createH('../graphs/3-caley.txt','txt',d=[0,0],amp=[0,0])
+walk.createH('../graphs/3-caley.txt','txt',d=[0],amp=[3])
 
 walk.createInitState(init_state)
 
-walk.EigSolver.setEigSolver(tol=1.e-2,verbose=True,emin_estimate=0.)
+walk.EigSolver.setEigSolver(tol=1.e-2,verbose=True,emin_estimate=0.,emax_estimate=10.)
 
-walk.propagate(t,method='krylov')
+walk.watch([0,1,2,3,4])
 
-walk.plot('out/3-caley-p1.png')
+for t2 in np.arange(0.01,t+0.01,0.01):
+	walk.propagate(t2,method='chebyshev')
+
+walk.plot('out/3-caley-1p.png')
 walk.plotGraph(nodetextbg='blue')
-walk.plotGraph(output='out/3-caley-graph-p1.png')
-
+walk.plotGraph(output='out/3-caley-1p-graph.png')
+walk.plotNodes('out/3-caley-1p-nodes.png')
 
 walk.destroy()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#------------------------------- Arbitrary CTQW --------------------------------
+#--------------------------- 2P 3-Caley Tree CTQW ------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 if rank == 0:	print '2P 3-Caley Tree CTQW\n'
 
 init_state = [[0,1,1.0/np.sqrt(2.0)], [1,1,1.0j/np.sqrt(2.0)]]
 
 walk = qw.ctqwGraph2P(10)
-walk.createH('../graphs/3-caley.txt','txt',d=[0,0],amp=[0,0],layout='spring')
+walk.createH('../graphs/3-caley.txt','txt',d=d,amp=amp,layout='spring')
 
-#qw.func.exportMat(walk.H.mat,'3-caley-2p.txt','txt')
+qw.func.exportMat(walk.H.mat,'out/3-caley-2p-hamiltonian.txt','txt')
 walk.createInitState(init_state)
 
 walk.EigSolver.setEigSolver(tol=1.e-2,verbose=True,emin_estimate=0.)
 
 for t2 in range(1,6):
 	walk.propagate(t2,method='chebyshev')
-	walk.plotLiveGraph(0.2)
-	walk.psiToInit()
+#	walk.plotLiveGraph(0.2)
 
-walk.clearLiveGraph()
+#walk.clearLiveGraph()
 
-walk.plot('out/3-caley.png')
-walk.plotGraph(output='out/plot.png')
+walk.plot('out/3-caley-2p.png')
+walk.plotGraph(output='out/3-caley-2p-graph.png')
 
 
 walk.destroy()
@@ -79,12 +81,10 @@ walk.createInitState(init_state)
 walk.EigSolver.setEigSolver(tol=1.e-2)
 walk.EigSolver.setEigSolver(emin_estimate=0)
 
-for t2 in range(1,21):
-	walk.propagate(1,method='chebyshev')
-	walk.plot('out/'+str(t2)+'.png')
-	walk.psiToInit()
+walk.propagate(t,method='chebyshev')
+walk.plot('out/line2.png')
 
-#walk.exportState('out/test.txt','bin')
+walk.exportState('out/line2p-state.bin','bin')
 
 walk.destroy()
 
@@ -101,16 +101,14 @@ walk.createH(d,amp)
 walk.createInitState(init_state)
 
 walk.EigSolver.setEigSolver(tol=1.e-3)
-walk.propagate(t,method='chebyshev')
 
-walk.plot('out/testp1.png')
+walk.watch([0,1,-5])
+
+for i in range(int(t/0.01)):
+	walk.propagate(0.01,method='chebyshev')
+	walk.psiToInit()
+
+walk.plot('out/line1p.png')
+walk.plotNodes('out/line1p-nodes.png')
 
 walk.destroy()
-
-
-
-
-
-
-
-
