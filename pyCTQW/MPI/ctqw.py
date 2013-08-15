@@ -269,7 +269,10 @@ class QuantumWalkP1(object):
 		
 		self.marginal(self.psi)
 
-		self.handle.update(self.t,self.prob)
+		try:
+			self.handle.update(self.t,self.prob)
+		except:
+			pass
 
 	def exportState(self,filename,filetype):
 		func.exportVec(self.psi,filename,filetype)
