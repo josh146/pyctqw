@@ -1,13 +1,16 @@
 #!/usr/bin/python
-import sys, os, errno, time
+import os as _os
+import errno as _errno
+import sys as _sys
+import time as _time
 
-from petsc4py import PETSc
+from petsc4py import PETSc as _PETSc
 from libpyctqw_MPI import ctqwmpi
 import func
-import numpy as np
+import numpy as _np
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#------------------ Eigensolver object (PETSc matrix input) --------------------
+#------------------ Eigensolver object (_PETSc matrix i_nput) --------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class EigSolver(object):
 	def __init__(self,mat,**kwargs):		
@@ -23,7 +26,7 @@ class EigSolver(object):
 			          'Emax_val': None}
 			   
 		self.__mat = mat
-		self.__rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
+		self.__rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 			   
 		for key,default in self.__default.iteritems():
 			setattr(self, key, kwargs.get(key,default))
@@ -49,7 +52,7 @@ class EigSolver(object):
 			self.Emax_err = 0.
 
 		else:
-			EmaxStage = PETSc.Log.Stage('Emax'); EmaxStage.push()
+			EmaxStage = _PETSc.Log.Stage('Emax'); EmaxStage.push()
 			Emax,Emax_error,ierr = ctqwmpi.min_max_eigs(self.__mat.fortran,self.__rank,'max',
 				self.esolver,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
 			EmaxStage.pop()
@@ -65,7 +68,7 @@ class EigSolver(object):
 			self.Emin_err = 0.
 
 		else:
-			EminStage = PETSc.Log.Stage('Emin'); EminStage.push()
+			EminStage = _PETSc.Log.Stage('Emin'); EminStage.push()
 			Emin,Emin_error,ierr = ctqwmpi.min_max_eigs(self.__mat.fortran,self.__rank,'min',
 				self.esolver,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
 			EminStage.pop()
@@ -74,49 +77,49 @@ class EigSolver(object):
 				self.Emin_err = Emin_error
 			
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#------------------ Hamiltonian object (grid size  input) ----------------------
+#------------------ Hamiltonian object (grid size  i_nput) ----------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Hamiltonian(object):
 
 	def __init__(self,N):
-		self.rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
+		self.rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 		self.N = N
 
 		# define matrices
-		self.mat = PETSc.Mat()
-		self.mat.create(PETSc.COMM_WORLD)
+		self.mat = _PETSc.Mat()
+		self.mat.create(_PETSc.COMM_WORLD)
 		
 		# create eigenvalue solver
 		self.EigSolver = EigSolver(self.mat)
 	
 	def reinitialize(self):
 		self.destroy()
-		self.mat = PETSc.Mat()
-		self.mat.create(PETSc.COMM_WORLD)
+		self.mat = _PETSc.Mat()
+		self.mat.create(_PETSc.COMM_WORLD)
 		
-	def importAdj(self,filename,filetype,d=[0],amp=[0.],layout='spring'):
+	def importAdj(self,filename,filetype,d=[0],amp=[0.],layout='spring',delimiter=None):
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
 		except: pass
 		# create the Hamiltonian
-		Hamiltonian = PETSc.Log.Stage('Hamiltonian')
+		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
 		
-		self.Adj = func.loadMat(filename,filetype)
+		self.Adj = func.loadMat(filename,filetype,delimiter=delimiter)
 		self.mat = func.adjToH(self.Adj,d=d,amp=amp)
 		
 		Hamiltonian.pop()
 
 		self.nodePos, self.lineX, self.lineY = func.getGraphNodes(self.Adj,layout=layout)
 
-	def importAdjToH(self,filename,filetype,d=[0],amp=[0.],p='1',layout='spring'):
+	def importAdjToH(self,filename,filetype,d=[0],amp=[0.],p='1',layout='spring',delimiter=None):
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
 		except: pass
 		# create the Hamiltonian
-		Hamiltonian = PETSc.Log.Stage('Hamiltonian')
+		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
 		
 		ctqwmpi.importadjtoh(self.mat.fortran,filename,p,d,amp)
@@ -124,7 +127,7 @@ class Hamiltonian(object):
 		Hamiltonian.pop()
 
 		# create the adjacency matrix
-		self.Adj = func.loadMat(filename,filetype)
+		self.Adj = func.loadMat(filename,filetype,delimiter=delimiter)
 		self.nodePos, self.lineX, self.lineY = func.getGraphNodes(self.Adj,layout=layout)
 	
 	def createLine2P(self,d=[0],amp=[0.]):
@@ -135,7 +138,7 @@ class Hamiltonian(object):
 		self.defectNodes = d
 		self.defectAmp = amp
 		# create the Hamiltonian
-		Hamiltonian = PETSc.Log.Stage('Hamiltonian')
+		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
 		ctqwmpi.hamiltonian_2p_line(self.mat.fortran,self.defectNodes,self.defectAmp,self.N)
 		Hamiltonian.pop()
@@ -148,7 +151,7 @@ class Hamiltonian(object):
 		self.defectNodes = d
 		self.defectAmp = amp
 		# create the Hamiltonian
-		Hamiltonian = PETSc.Log.Stage('Hamiltonian')
+		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
 		ctqwmpi.hamiltonian_1p_line(self.mat.fortran,self.defectNodes,self.defectAmp,self.N)
 		Hamiltonian.pop()
@@ -171,8 +174,8 @@ class Hamiltonian(object):
 			pass
 
 class nodeHandle(object):
-	def __init__(self,nodes,t,psi):
-		self.rank = PETSc.COMM_WORLD.Get_rank()
+	def __init__(self,nodes,t,psi,psi2=None):
+		self.rank = _PETSc.COMM_WORLD.Get_rank()
 		self.time = [t]
 
 		self.all_nodes = nodes
@@ -186,38 +189,62 @@ class nodeHandle(object):
 
 		self.local_prob = psi.getValues(self.local_nodes)
 
-	def update(self,t,psi):
+		if psi2 is not None:
+			self.local_prob2 = psi2.getValues(self.local_nodes)
+
+	def update(self,t,psi,psi2=None):
 		self.time.append(t)
 
 		prob_update = psi.getValues(self.local_nodes)
-		self.local_prob = np.vstack([self.local_prob,prob_update])
+		self.local_prob = _np.vstack([self.local_prob,prob_update])
+
+		if psi2 is not None:
+			prob_update = psi2.getValues(self.local_nodes)
+			self.local_prob2 = _np.vstack([self.local_prob2,prob_update])
 
 	def getLocalNodes(self,t=None):
 		if t is not None:
 			try:
-				indt = self.time.index(t)
+				indt = self._time.index(t)
 			except ValueError:
 				if self.rank == 0:	print '\nERROR: time {} was not handled'.format(t)
 				return
 
-			return self.local_prob[indt]
+			try:
+				return self.local_prob[indt], self.local_prob2[indt]
+			except:
+				return self.local_prob[indt]
 
 		else:
-			return np.array(self.time), self.local_prob.T.tolist()
+			try:
+				return _np.array(self.time), self.local_prob.T.tolist(), self.local_prob2.T.tolist()
+			except:
+				return _np.array(self.time), self.local_prob.T.tolist()
+
+	def getLocalNode(self,node):
+		try:
+			indN = self.local_nodes.index(node)
+		except ValueError:
+			return _np.array(self.time), [], []
+
+		try:
+			return _np.array(self.time), self.local_prob.T.tolist()[indN], self.local_prob2.T.tolist()[indN]
+		except:
+			return _np.array(self.time), self.local_prob.T.tolist()[indN]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~f~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #--------------------------- 1 particle CTQW   -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class QuantumWalkP1(object):
 	def __init__(self,N):
-		self.rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
+		self.rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 		self.N = N
 		self.t = 0
-		self.timestep = False
+		self._timestep = False
 		
 		# define vectors
-		self.psi0 = PETSc.Vec()
-		self.psi0.create(PETSc.COMM_WORLD)
+		self.psi0 = _PETSc.Vec()
+		self.psi0.create(_PETSc.COMM_WORLD)
 		self.psi0.setSizes(self.N)
 		self.psi0.setUp()
 		self.psi = self.psi0.duplicate()
@@ -230,21 +257,21 @@ class QuantumWalkP1(object):
 	def importInitState(self,filename,filetype):
 		self.initState = 'file:'+filename
 		# create the inital stage
-		initStateS = PETSc.Log.Stage('initState')
+		initStateS = _PETSc.Log.Stage('initState')
 		initStateS.push()
 		try:
 			self.psi0 = func.loadVec(filename,filetype)
 			self.marginal(self.psi0)
 		except:
 			print '\nERROR: incorrect state (is it the correct length?'
-			sys.exit()
+			_sys.exit()
 		initStateS.pop()
 
 		self.marginal(self.psi0)
 
 	def marginal(self,vec):
 		# calculate marginal probabilities
-		Marginal = PETSc.Log.Stage('Marginal'); Marginal.push()
+		Marginal = _PETSc.Log.Stage('Marginal'); Marginal.push()
 		ctqwmpi.p1prob(vec.fortran,self.prob.fortran,self.N)
 		Marginal.pop()
 
@@ -252,7 +279,7 @@ class QuantumWalkP1(object):
 		self.handle = nodeHandle(nodes,self.t,self.prob)
 		
 	def propagate(self,t,method='chebyshev',**kwargs):
-		if self.timestep:
+		if self._timestep:
 			self.t = t + self.t
 		else:
 			self.t = t
@@ -261,13 +288,13 @@ class QuantumWalkP1(object):
 		
 		if method=='krylov':
 			# SLEPc matrix exponential
-			expmS = PETSc.Log.Stage('SLEPc expm'); expmS.push()
+			expmS = _PETSc.Log.Stage('SLEPc expm'); expmS.push()
 			ctqwmpi.expm(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
 			expmS.pop()
 			
 		elif method=='chebyshev':
 			# Chebyshev algorithm
-			chebyS = PETSc.Log.Stage('Chebyshev'); chebyS.push()
+			chebyS = _PETSc.Log.Stage('Chebyshev'); chebyS.push()
 			ctqwmpi.qw_cheby(self.psi0.fortran,self.psi.fortran,t,self.H.mat.fortran,
 					self.H.Emin(),self.H.Emax(),self.rank,self.N)
 			chebyS.pop()
@@ -279,11 +306,11 @@ class QuantumWalkP1(object):
 		except:
 			pass
 
-		self.timestep = False
+		self._timestep = False
 
 	def plotNodes(self,filename,t=None):
 
-		comm = PETSc.COMM_WORLD
+		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
 		node = self.handle.local_nodes
 		timeArray, probArray = self.handle.getLocalNodes(t=t)
@@ -292,9 +319,9 @@ class QuantumWalkP1(object):
 		node = comm.tompi4py().gather(node)
 
 		if rank == 0:
-			timeArray = np.array(timeArray)
-			nodeArray = np.array([item for sublist in node for item in sublist])
-			probArray = np.array([item for sublist in probArray for item in sublist]).real
+			timeArray = _np.array(timeArray)
+			nodeArray = _np.array([item for sublist in node for item in sublist])
+			probArray = _np.array([item for sublist in probArray for item in sublist]).real
 
 			func.plotNodes(timeArray,nodeArray,probArray,filename)
 
@@ -303,7 +330,7 @@ class QuantumWalkP1(object):
 
 	def psiToInit(self):
 		self.psi0 = self.psi
-		self.timestep = True
+		self._timestep = True
 	
 	def destroy(self):
 		self.H.destroy()
@@ -316,21 +343,21 @@ class QuantumWalkP1(object):
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class QuantumWalkP2(object):
 	def __init__(self,N):
-		self.rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
+		self.rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 		self.N = N
 		self.t = 0
 		self.timestep = False
 		
 		# define vectors
-		self.psi0 = PETSc.Vec()
-		self.psi0.create(PETSc.COMM_WORLD)
+		self.psi0 = _PETSc.Vec()
+		self.psi0.create(_PETSc.COMM_WORLD)
 		self.psi0.setSizes(self.N**2)
 		self.psi0.setUp()
 		self.psi = self.psi0.duplicate()
 		
 		# create additional vectors
-		self.psiX = PETSc.Vec()
-		self.psiX.create(PETSc.COMM_WORLD)
+		self.psiX = _PETSc.Vec()
+		self.psiX.create(_PETSc.COMM_WORLD)
 		self.psiX.setSizes(self.N)
 		self.psiX.setUp()
 		self.psiY = self.psiX.duplicate()
@@ -342,7 +369,7 @@ class QuantumWalkP2(object):
 	def importInitState(self,filename,filetype):
 		self.initState = 'file:'+filename
 		# create the inital stage
-		initStateS = PETSc.Log.Stage('initState')
+		initStateS = _PETSc.Log.Stage('initState')
 		initStateS.push()
 		try:
 			if filetype == 'txt':
@@ -351,17 +378,20 @@ class QuantumWalkP2(object):
 				self.psi0 = func.loadVec(filename,filetype)
 		except:
 			print '\nERROR: incorrect state (is it the correct length?)'
-			sys.exit()
+			_sys.exit()
 		initStateS.pop()
 
 		self.marginal(self.psi0)
 
 	def marginal(self,vec):
 		# calculate marginal probabilities
-		Marginal = PETSc.Log.Stage('Marginal'); Marginal.push()
+		Marginal = _PETSc.Log.Stage('Marginal'); Marginal.push()
 		ctqwmpi.marginal(vec.fortran,self.psiX.fortran,'x',self.N)
 		ctqwmpi.marginal(vec.fortran,self.psiY.fortran,'y',self.N)
 		Marginal.pop()
+
+	def watch(self,nodes,type='prob'):
+		self.handle = nodeHandle(nodes,self.t,self.psiX,psi2=self.psiY)
 		
 	def propagate(self,t,method='expm',**kwargs):
 		if self.timestep:
@@ -373,19 +403,66 @@ class QuantumWalkP2(object):
 		
 		if method=='krylov':
 			# SLEPc matrix exponential
-			krylov = PETSc.Log.Stage('SLEPc krylov'); krylov.push()
+			krylov = _PETSc.Log.Stage('SLEPc krylov'); krylov.push()
 			ctqwmpi.expm(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
 			krylov.pop()
 			
 		elif method=='chebyshev':
 			# Chebyshev algorithm
-			chebyS = PETSc.Log.Stage('Chebyshev'); chebyS.push()
+			chebyS = _PETSc.Log.Stage('Chebyshev'); chebyS.push()
 			ctqwmpi.qw_cheby(self.psi0.fortran,self.psi.fortran,t,self.H.mat.fortran,
 					self.H.Emin(),self.H.Emax(),self.rank,self.N)
 			chebyS.pop()
 		
 		self.marginal(self.psi)
+
+		try:
+			self.handle.update(self.t,self.psiX,psi2=self.psiY)
+		except:
+			pass
+
 		self.timestep = False
+
+	def plotNode(self,filename,node,t=None):
+
+		comm = _PETSc.COMM_WORLD
+		rank = comm.Get_rank()
+		timeArray, probXArray, probYArray = self.handle.getLocalNode(node)
+
+		probXArray = comm.tompi4py().gather(probXArray)
+		probYArray = comm.tompi4py().gather(probYArray)
+
+		if rank == 0:
+			timeArray = _np.array(timeArray)
+			probXArray = _np.array([item for sublist in probXArray for item in sublist]).real
+			probYArray = _np.array([item for sublist in probYArray for item in sublist]).real
+
+			func.plotNodes2P(timeArray,node,probXArray,probYArray,filename)
+
+	def plotNodes(self,filename,p=1,t=None):
+
+		comm = _PETSc.COMM_WORLD
+		rank = comm.Get_rank()
+		node = self.handle.local_nodes
+		timeArray, probXArray, probYArray = self.handle.getLocalNodes(t=t)
+
+		if p == 1:
+			probArray = probXArray
+		elif p==2:
+			probArray = probYArray
+		else:
+			print 'p must be either 1 or 2'
+			return
+
+		probArray = comm.tompi4py().gather(probArray)
+		node = comm.tompi4py().gather(node)
+
+		if rank == 0:
+			timeArray = _np.array(timeArray)
+			nodeArray = _np.array([item for sublist in node for item in sublist])
+			probArray = _np.array([item for sublist in probArray for item in sublist]).real
+
+			func.plotNodes(timeArray,nodeArray,probArray,filename,p=p)
 	
 	def exportState(self,filename,filetype):
 		if filetype == 'txt':
@@ -416,21 +493,21 @@ class ctqwGraph(QuantumWalkP1):
 		if (filename and filetype) is not None:
 			self.createH(filename,filetype,d=d,amp=amp)
 		
-	def createH(self,filename,filetype,d=None,amp=None,layout='spring'):
+	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None):
 		if (d and amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
 		else:
 			self.defectNodes = d
 			self.defectAmp = amp
-		self.H.importAdj(filename,filetype,d=self.defectNodes,amp=self.defectAmp,layout=layout)
+		self.H.importAdj(filename,filetype,d=self.defectNodes,amp=self.defectAmp,layout=layout,delimiter=delimiter)
 		
 	def createInitState(self,initState):
-		self.initState = np.vstack([np.array(initState).T[0]-self.N/2+1,
-			   	 	    np.array(initState).T[1]]).T.tolist()
+		self.initState = _np.vstack([_np.array(initState).T[0]-self.N/2+1,
+			   	 	    _np.array(initState).T[1]]).T.tolist()
 	
 		# create the inital stage
-		initStateS = PETSc.Log.Stage('initState')
+		initStateS = _PETSc.Log.Stage('initState')
 		initStateS.push()
 		ctqwmpi.p1_init(self.psi0.fortran,self.initState,self.N)
 		initStateS.pop()
@@ -438,37 +515,37 @@ class ctqwGraph(QuantumWalkP1):
 		self.marginal(self.psi0)
 		
 	def plot(self,filename):
-		if os.path.isabs(filename):
-			outDir = os.path.dirname(filename)
+		if _os.path.isabs(filename):
+			outDir = _os.path.dirname(filename)
 		else:
-			outDir = './'+os.path.dirname(filename)
+			outDir = './'+_os.path.dirname(filename)
 	
 		# create output directory if it doesn't exist
 		try:
-			os.mkdir(outDir)
+			_os.mkdir(outDir)
 		except OSError as exception:
-			if exception.errno != errno.EEXIST:
+			if exception.errno != _errno.EEXIST:
 				raise
 
 		initstateLabels = []
 		for i in range(len(self.initState)):
 			initstateLabels.append([sum(pair).real for pair in zip(self.initState[i], [self.N/2-1,0])])
 
-		plotStage = PETSc.Log.Stage('Plotting'); plotStage.push()		
-		func.plot(np.arange(self.N),self.prob,filename,self.t,initstateLabels,
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		func.plot(_np.arange(self.N),self.prob,filename,self.t,initstateLabels,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 
 	def plotGraph(self,size=(12,8),probX=True,output=None,**kwargs):
 
-		rank = PETSc.COMM_WORLD.Get_rank()
+		rank = _PETSc.COMM_WORLD.Get_rank()
 
 		if probX:
 			# scatter prob to process 0
 			commX = self.prob.getComm()
-			rank = PETSc.COMM_WORLD.getRank()
-			scatterX, probX0 = PETSc.Scatter.toZero(self.prob)
-			scatterX.scatter(self.prob, probX0, False, PETSc.Scatter.Mode.FORWARD)
+			rank = _PETSc.COMM_WORLD.getRank()
+			scatterX, probX0 = _PETSc.Scatter.toZero(self.prob)
+			scatterX.scatter(self.prob, probX0, False, _PETSc.Scatter.Mode.FORWARD)
 
 		if rank==0:
 			from matplotlib import pyplot as plt
@@ -479,7 +556,7 @@ class ctqwGraph(QuantumWalkP1):
 			self.ax.set_axis_off()
 
 			if probX:
-				prob = np.real(np.asarray(probX0))
+				prob = _np.real(_np.asarray(probX0))
 			else:
 				prob = None
 
@@ -502,13 +579,13 @@ class ctqwGraph(QuantumWalkP1):
 
 	def plotLiveGraph(self,dt,size=(12,8),**kwargs):
 
-		rank = PETSc.COMM_WORLD.Get_rank()
+		rank = _PETSc.COMM_WORLD.Get_rank()
 
 		# scatter prob to process 0
 		commX = self.prob.getComm()
-		rank = PETSc.COMM_WORLD.getRank()
-		scatterX, probX0 = PETSc.Scatter.toZero(self.prob)
-		scatterX.scatter(self.prob, probX0, False, PETSc.Scatter.Mode.FORWARD)
+		rank = _PETSc.COMM_WORLD.getRank()
+		scatterX, probX0 = _PETSc.Scatter.toZero(self.prob)
+		scatterX.scatter(self.prob, probX0, False, _PETSc.Scatter.Mode.FORWARD)
 
 		if rank==0:
 			from matplotlib import pyplot as plt
@@ -524,7 +601,7 @@ class ctqwGraph(QuantumWalkP1):
 			self.axLive.view_init(45, -50)
 			self.axLive.set_axis_off()
 
-			prob = np.real(np.asarray(probX0))
+			prob = _np.real(_np.asarray(probX0))
 
 			func.plotGraph(self.axLive,self.H.nodePos,self.H.lineX,self.H.lineY,
 				prob=prob,**kwargs)
@@ -532,7 +609,7 @@ class ctqwGraph(QuantumWalkP1):
 			self.axLive.set_title('$t={}$'.format(self.t))
 
 			plt.draw()#show(block=True)
-			time.sleep(dt)
+			_time.sleep(dt)
 
 		# deallocate	
 		commX.barrier()
@@ -540,7 +617,7 @@ class ctqwGraph(QuantumWalkP1):
 		probX0.destroy()
 
 	def clearLiveGraph(self):
-		rank = PETSc.COMM_WORLD.Get_rank()
+		rank = _PETSc.COMM_WORLD.Get_rank()
 
 		if rank == 0:
 			from matplotlib import pyplot as plt
@@ -559,7 +636,7 @@ class ctqwGraph2P(QuantumWalkP2):
 		if (filename and filetype) is not None:
 			self.createH(filename,filetype,d=d,amp=amp)
 		
-	def createH(self,filename,filetype,d=None,amp=None,layout='spring'):
+	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None):
 		if (d and amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
@@ -568,60 +645,60 @@ class ctqwGraph2P(QuantumWalkP2):
 			self.defectAmp = amp
 
 		self.H.importAdjToH(filename,filetype,
-			d=self.defectNodes,amp=self.defectAmp,p='2',layout=layout)
+			d=self.defectNodes,amp=self.defectAmp,p='2',layout=layout,delimiter=delimiter)
 
 		# ctqwmpi.importadjtoh(self.H.mat.fortran,filename,'2',
 		# 	d=self.defectNodes,amp=self.defectAmp,layout=layout)
 		
 	def createInitState(self,initState):
-		self.initState = np.vstack([np.array(initState).T[0]-self.N/2+1,
-			   	 	    np.array(initState).T[1]-self.N/2+1,np.array(initState).T[2]]).T.tolist()
+		self.initState = _np.vstack([_np.array(initState).T[0]-self.N/2+1,
+			   	 	    _np.array(initState).T[1]-self.N/2+1,_np.array(initState).T[2]]).T.tolist()
 	
 		# create the inital stage
-		initStateS = PETSc.Log.Stage('initState')
+		initStateS = _PETSc.Log.Stage('initState')
 		initStateS.push()
 		ctqwmpi.p2_init(self.psi0.fortran,self.initState,self.N)
 		initStateS.pop()
 		
 	def plot(self,filename):
-		if os.path.isabs(filename):
-			outDir = os.path.dirname(filename)
+		if _os.path.isabs(filename):
+			outDir = _os.path.dirname(filename)
 		else:
-			outDir = './'+os.path.dirname(filename)
+			outDir = './'+_os.path.dirname(filename)
 	
 		# create output directory if it doesn't exist
 		try:
-			os.mkdir(outDir)
+			_os.mkdir(outDir)
 		except OSError as exception:
-			if exception.errno != errno.EEXIST:
+			if exception.errno != _errno.EEXIST:
 				raise
 
 		initstateLabels = []
 		for i in range(len(self.initState)):
 			initstateLabels.append([sum(pair).real for pair in zip(self.initState[i], [self.N/2-1,self.N/2-1,0])])
 
-		plotStage = PETSc.Log.Stage('Plotting'); plotStage.push()		
-		func.plot2P(np.arange(self.N),self.psiX,self.psiY,filename,self.t,initstateLabels,
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		func.plot2P(_np.arange(self.N),self.psiX,self.psiY,filename,self.t,initstateLabels,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 
 	def plotGraph(self,size=(12,8),probX=True,probY=True,output=None,**kwargs):
 
-		rank = PETSc.COMM_WORLD.Get_rank()
+		rank = _PETSc.COMM_WORLD.Get_rank()
 
 		if probX:
 			# scatter prob to process 0
 			commX = self.psiX.getComm()
-			rank = PETSc.COMM_WORLD.getRank()
-			scatterX, probX0 = PETSc.Scatter.toZero(self.psiX)
-			scatterX.scatter(self.psiX, probX0, False, PETSc.Scatter.Mode.FORWARD)
+			rank = _PETSc.COMM_WORLD.getRank()
+			scatterX, probX0 = _PETSc.Scatter.toZero(self.psiX)
+			scatterX.scatter(self.psiX, probX0, False, _PETSc.Scatter.Mode.FORWARD)
 
 		if probY:
 			# scatter prob to process 0
 			commY = self.psiY.getComm()
-			rank = PETSc.COMM_WORLD.getRank()
-			scatterY, probY0 = PETSc.Scatter.toZero(self.psiY)
-			scatterX.scatter(self.psiY, probY0, False, PETSc.Scatter.Mode.FORWARD)
+			rank = _PETSc.COMM_WORLD.getRank()
+			scatterY, probY0 = _PETSc.Scatter.toZero(self.psiY)
+			scatterX.scatter(self.psiY, probY0, False, _PETSc.Scatter.Mode.FORWARD)
 
 		if rank==0:
 			from matplotlib import pyplot as plt
@@ -633,12 +710,12 @@ class ctqwGraph2P(QuantumWalkP2):
 			self.ax.set_axis_off()
 
 			if probX:
-				prob = np.real(np.asarray(probX0))
+				prob = _np.real(_np.asarray(probX0))
 			else:
 				prob = None
 
 			if probY:
-				prob2 = np.real(np.asarray(probY0))
+				prob2 = _np.real(_np.asarray(probY0))
 			else:
 				prob2 = None
 
@@ -667,21 +744,21 @@ class ctqwGraph2P(QuantumWalkP2):
 	def plotLiveGraph(self,dt,size=(12,8),
 				probX=True,probY=True,**kwargs):
 
-		rank = PETSc.COMM_WORLD.Get_rank()
+		rank = _PETSc.COMM_WORLD.Get_rank()
 
 		if probX:
 			# scatter prob to process 0
 			commX = self.psiX.getComm()
-			rank = PETSc.COMM_WORLD.getRank()
-			scatterX, probX0 = PETSc.Scatter.toZero(self.psiX)
-			scatterX.scatter(self.psiX, probX0, False, PETSc.Scatter.Mode.FORWARD)
+			rank = _PETSc.COMM_WORLD.getRank()
+			scatterX, probX0 = _PETSc.Scatter.toZero(self.psiX)
+			scatterX.scatter(self.psiX, probX0, False, _PETSc.Scatter.Mode.FORWARD)
 
 		if probY:
 			# scatter prob to process 0
 			commY = self.psiY.getComm()
-			rank = PETSc.COMM_WORLD.getRank()
-			scatterY, probY0 = PETSc.Scatter.toZero(self.psiY)
-			scatterX.scatter(self.psiY, probY0, False, PETSc.Scatter.Mode.FORWARD)
+			rank = _PETSc.COMM_WORLD.getRank()
+			scatterY, probY0 = _PETSc.Scatter.toZero(self.psiY)
+			scatterX.scatter(self.psiY, probY0, False, _PETSc.Scatter.Mode.FORWARD)
 
 		if rank==0:
 			from matplotlib import pyplot as plt
@@ -699,12 +776,12 @@ class ctqwGraph2P(QuantumWalkP2):
 			self.axLive.set_axis_off()
 
 			if probX:
-				prob = np.real(np.asarray(probX0))
+				prob = _np.real(_np.asarray(probX0))
 			else:
 				prob = None
 
 			if probY:
-				prob2 = np.real(np.asarray(probY0))
+				prob2 = _np.real(_np.asarray(probY0))
 			else:
 				prob2 = None
 
@@ -714,7 +791,7 @@ class ctqwGraph2P(QuantumWalkP2):
 			self.axLive.set_title('$t={}$'.format(self.t))
 
 			plt.draw()#show(block=True)
-			time.sleep(dt)
+			_time.sleep(dt)
 
 		if probX:
 			# deallocate	
@@ -729,7 +806,7 @@ class ctqwGraph2P(QuantumWalkP2):
 			probY0.destroy()
 
 	def clearLiveGraph(self):
-		rank = PETSc.COMM_WORLD.Get_rank()
+		rank = _PETSc.COMM_WORLD.Get_rank()
 
 		if rank == 0:
 			from matplotlib import pyplot as plt
@@ -760,7 +837,7 @@ class Line(QuantumWalkP1):
 	def createInitState(self,initState):
 		self.initState = initState
 		# create the inital stage
-		initStateS = PETSc.Log.Stage('initState')
+		initStateS = _PETSc.Log.Stage('initState')
 		initStateS.push()
 		ctqwmpi.p1_init(self.psi0.fortran,initState,self.N)
 		initStateS.pop()
@@ -770,26 +847,26 @@ class Line(QuantumWalkP1):
 		super(Line,self).watch(nodes,type=type)
 		
 	def plot(self,filename):
-		if os.path.isabs(filename):
-			outDir = os.path.dirname(filename)
+		if _os.path.isabs(filename):
+			outDir = _os.path.dirname(filename)
 		else:
-			outDir = './'+os.path.dirname(filename)
+			outDir = './'+_os.path.dirname(filename)
 	
 		# create output directory if it doesn't exist
 		try:
-			os.mkdir(outDir)
+			_os.mkdir(outDir)
 		except OSError as exception:
-			if exception.errno != errno.EEXIST:
+			if exception.errno != _errno.EEXIST:
 				raise
 
-		plotStage = PETSc.Log.Stage('Plotting'); plotStage.push()		
-		func.plot(np.arange(1-self.N/2,self.N/2+1),self.prob,filename,self.t,self.initState,
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		func.plot(_np.arange(1-self.N/2,self.N/2+1),self.prob,filename,self.t,self.initState,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 
 	def plotNodes(self,filename,t=None):
 
-		comm = PETSc.COMM_WORLD
+		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
 		node = self.handle.local_nodes
 		timeArray, probArray = self.handle.getLocalNodes(t=t)
@@ -798,9 +875,9 @@ class Line(QuantumWalkP1):
 		node = comm.tompi4py().gather(node)
 
 		if rank == 0:
-			timeArray = np.array(timeArray)
-			nodeArray = np.array([item-self.N/2+1 for sublist in node for item in sublist])
-			probArray = np.array([item for sublist in probArray for item in sublist]).real
+			timeArray = _np.array(timeArray)
+			nodeArray = _np.array([item-self.N/2+1 for sublist in node for item in sublist])
+			probArray = _np.array([item for sublist in probArray for item in sublist]).real
 
 			func.plotNodes(timeArray,nodeArray,probArray,filename)
 			
@@ -828,26 +905,59 @@ class Line2P(QuantumWalkP2):
 	def createInitState(self,initState):
 		self.initState = initState
 		# create the inital stage
-		initStateS = PETSc.Log.Stage('initState')
+		initStateS = _PETSc.Log.Stage('initState')
 		initStateS.push()
 		ctqwmpi.p2_init(self.psi0.fortran,initState,self.N)
 		initStateS.pop()
+
+	def watch(self,nodes,type='prob'):
+		nodes = [i+self.N/2-1 for i in nodes]
+		super(Line2P,self).watch(nodes,type=type)
 		
 	def plot(self,filename):
-		if os.path.isabs(filename):
-			outDir = os.path.dirname(filename)
+		if _os.path.isabs(filename):
+			outDir = _os.path.dirname(filename)
 		else:
-			outDir = './'+os.path.dirname(filename)
+			outDir = './'+_os.path.dirname(filename)
 	
 		# create output directory if it doesn't exist
 		try:
-			os.mkdir(outDir)
+			_os.mkdir(outDir)
 		except OSError as exception:
-			if exception.errno != errno.EEXIST:
+			if exception.errno != _errno.EEXIST:
 				raise
 
-		plotStage = PETSc.Log.Stage('Plotting'); plotStage.push()		
-		func.plot2P(np.arange(1-self.N/2,self.N/2+1),self.psiX,self.psiY,filename,self.t,self.initState,
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		func.plot2P(_np.arange(1-self.N/2,self.N/2+1),self.psiX,self.psiY,filename,self.t,self.initState,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
+
+	def plotNode(self,filename,node,t=None):
+		node = node+self.N/2-1
+		super(Line2P,self).plotNode(filename,node)
+
+	def plotNodes(self,filename,p=1,t=None):
+
+		comm = _PETSc.COMM_WORLD
+		rank = comm.Get_rank()
+		node = self.handle.local_nodes
+		timeArray, probXArray, probYArray = self.handle.getLocalNodes(t=t)
+
+		if p == 1:
+			probArray = probXArray
+		elif p==2:
+			probArray = probYArray
+		else:
+			print 'p must be either 1 or 2'
+			return
+
+		probArray = comm.tompi4py().gather(probArray)
+		node = comm.tompi4py().gather(node)
+
+		if rank == 0:
+			timeArray = _np.array(timeArray)
+			nodeArray = _np.array([item-self.N/2+1 for sublist in node for item in sublist])
+			probArray = _np.array([item for sublist in probArray for item in sublist]).real
+
+			func.plotNodes(timeArray,nodeArray,probArray,filename,p=p)
 

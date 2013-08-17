@@ -1,19 +1,21 @@
 #!/usr/bin/python
-import os, errno, sys
-from petsc4py import PETSc
-from matplotlib import pyplot as plt
-import numpy as np
-import pylab as pl
-import fileinput
+import os as _os
+import errno as _errno
+import sys as _sys
+
+from petsc4py import PETSc as _PETSc
+from matplotlib import pyplot as _plt
+import numpy as _np
+import pylab as _pl
+import fileinput as _fl
 
 def vecToArray(obj):
 	# scatter vector 'obj' to all processes
 	comm = obj.getComm()
-	rank = comm.getRank()
-	scatter, obj0 = PETSc.Scatter.toAll(obj)
-	scatter.scatter(obj, obj0, False, PETSc.Scatter.Mode.FORWARD)
+	scatter, obj0 = _PETSc.Scatter.toAll(obj)
+	scatter.scatter(obj, obj0, False, _PETSc.Scatter.Mode.FORWARD)
 
-	return np.asarray(obj0)
+	return _np.asarray(obj0)
 
 	# deallocate
 	comm.barrier()
@@ -24,10 +26,10 @@ def vecToArray0(obj):
 	# scatter vector 'obj' to process 0
 	comm = obj.getComm()
 	rank = comm.getRank()
-	scatter, obj0 = PETSc.Scatter.toZero(obj)
-	scatter.scatter(obj, obj0, False, PETSc.Scatter.Mode.FORWARD)
+	scatter, obj0 = _PETSc.Scatter.toZero(obj)
+	scatter.scatter(obj, obj0, False, _PETSc.Scatter.Mode.FORWARD)
 
-	if rank == 0:	return np.asarray(obj0)
+	if rank == 0:	return _np.asarray(obj0)
 
 	# deallocate
 	comm.barrier()
@@ -35,12 +37,12 @@ def vecToArray0(obj):
 	obj0.destroy()
 	
 def arrayToVec(vecArray):
-	vec = PETSc.Vec().create(comm=PETSc.COMM_WORLD)
+	vec = _PETSc.Vec().create(comm=_PETSc.COMM_WORLD)
 	vec.setSizes(len(vecArray))
 	vec.setUp()
 	(Istart,Iend) = vec.getOwnershipRange()
 	return vec.createWithArray(vecArray[Istart:Iend],
-			comm=PETSc.COMM_WORLD)
+			comm=_PETSc.COMM_WORLD)
 	vec.destroy()
 	
 def arrayToMat(matArray):
@@ -52,13 +54,13 @@ def arrayToMat(matArray):
 						
 	matSparse = sparse.csr_matrix(matArray)
 				
-	mat = PETSc.Mat().createAIJ(size=matSparse.shape,comm=PETSc.COMM_WORLD)
+	mat = _PETSc.Mat().createAIJ(size=matSparse.shape,comm=_PETSc.COMM_WORLD)
 	(Istart,Iend) = mat.getOwnershipRange()
 	
 	ai = matSparse.indptr[Istart:Iend+1] - matSparse.indptr[Istart]
 	aj = matSparse.indices[matSparse.indptr[Istart]:matSparse.indptr[Iend]]
 	av = matSparse.data[matSparse.indptr[Istart]:matSparse.indptr[Iend]]
-	
+
 	mat.setValuesCSR(ai,aj,av)
 	mat.assemble()
 	
@@ -74,7 +76,7 @@ def matToSparse(mat):
 	columns = mat.getSize()[0]
 	sparseSubMat = sparse.csr_matrix(data[::-1],shape=(Iend-Istart,columns))
 
-	comm = PETSc.COMM_WORLD
+	comm = _PETSc.COMM_WORLD
 
 	sparseSubMat = comm.tompi4py().allgather(sparseSubMat)
 
@@ -84,11 +86,11 @@ def adjToH(adj,d=[0],amp=[0.]):
 	(Istart,Iend) = adj.getOwnershipRange()
 	diagSum = []
 	for i in range(Istart,Iend):
-		diagSum.append(np.sum(adj.getRow(i)[-1]))
+		diagSum.append(_np.sum(adj.getRow(i)[-1]))
 		for j,val in enumerate(d):
 			if i==val:	diagSum[i-Istart] += amp[j]
 	
-	mat = PETSc.Mat().create(comm=PETSc.COMM_WORLD)
+	mat = _PETSc.Mat().create(comm=_PETSc.COMM_WORLD)
 	mat.setSizes(adj.getSize())
 	mat.setUp()
 	
@@ -105,28 +107,28 @@ def adjToH(adj,d=[0],amp=[0.]):
 #---------------------- Vec I/O functions ---------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def exportVec(vec,filename,filetype):
-	if os.path.isabs(filename):
-		outDir = os.path.dirname(filename)
+	if _os.path.isabs(filename):
+		outDir = _os.path.dirname(filename)
 	else:
-		outDir = './'+os.path.dirname(filename)
+		outDir = './'+_os.path.dirname(filename)
 
 	# create output directory if it doesn't exist
 	try:
-		os.mkdir(outDir)
+		_os.mkdir(outDir)
 	except OSError as exception:
-		if exception.errno != errno.EEXIST:
+		if exception.errno != _errno.EEXIST:
 			raise
 	
 	if filetype == 'txt':
 		# scatter prob to process 0
 		comm = vec.getComm()
 		rank = comm.getRank()
-		scatter, vec0 = PETSc.Scatter.toZero(vec)
-		scatter.scatter(vec, vec0, False, PETSc.Scatter.Mode.FORWARD)
+		scatter, vec0 = _PETSc.Scatter.toZero(vec)
+		scatter.scatter(vec, vec0, False, _PETSc.Scatter.Mode.FORWARD)
 
 		# use process 0 to write to text file
 		if rank == 0:
-			array0 = np.asarray(vec0)
+			array0 = _np.asarray(vec0)
 			with open(filename,'w') as f:
 				for i in range(len(array0)):
 					f.write('{0: .12e}\n'.format(array0[i]))
@@ -137,7 +139,7 @@ def exportVec(vec,filename,filetype):
 		vec0.destroy()
 		
 	elif filetype == 'bin':
-		binSave = PETSc.Viewer().createBinary(filename, 'w')
+		binSave = _PETSc.Viewer().createBinary(filename, 'w')
 		binSave(vec)
 		binSave.destroy()
 	
@@ -146,121 +148,137 @@ def exportVec(vec,filename,filetype):
 def loadVec(filename,filetype):
 	if filetype == 'txt':
 		try:
-			vecArray = np.loadtxt(filename,dtype=PETSc.ScalarType)
+			vecArray = _np.loadtxt(filename,dtype=_PETSc.ScalarType)
 			return arrayToVec(vecArray)
 		except:
 			print "\nERROR: input state space file " + filename\
 				+ " does not exist or is in an incorrect format"
-			sys.exit()
+			_sys.exit()
 		
 	elif filetype == 'bin':
-		binLoad = PETSc.Viewer().createBinary(filename, 'r')
+		binLoad = _PETSc.Viewer().createBinary(filename, 'r')
 		try:
-			return PETSc.Vec().load(binLoad)
+			return _PETSc.Vec().load(binLoad)
 		except:
 			print "\nERROR: input state space file " + filename\
 				+ " does not exist or is in an incorrect format"
-			sys.exit()			
+			_sys.exit()			
 		binLoad.destroy()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #---------------------- Mat I/O functions ---------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def exportMat(mat,filename,filetype):
-	rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
+def exportMat(mat,filename,filetype,mattype=None):
+	rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 
-	if os.path.isabs(filename):
-		outDir = os.path.dirname(filename)
+	if _os.path.isabs(filename):
+		outDir = _os.path.dirname(filename)
 	else:
-		outDir = './'+os.path.dirname(filename)
+		outDir = './'+_os.path.dirname(filename)
 
 	# create output directory if it doesn't exist
 	try:
-		os.mkdir(outDir)
+		_os.mkdir(outDir)
 	except OSError as exception:
-		if exception.errno != errno.EEXIST:
+		if exception.errno != _errno.EEXIST:
 			raise
 	
 	if filetype == 'txt':
-		txtSave = PETSc.Viewer().createASCII(filename, 'w',
-			format=PETSc.Viewer.Format.ASCII_DENSE, comm=PETSc.COMM_WORLD)
+		txtSave = _PETSc.Viewer().createASCII(filename, 'w',
+			format=_PETSc.Viewer.Format.ASCII_DENSE, comm=_PETSc.COMM_WORLD)
 		txtSave(mat)
 		txtSave.destroy()
-		
+
 		if rank == 0:
-			for line in fileinput.FileInput(filename,inplace=1):
+			for line in _fl.FileInput(filename,inplace=1):
 				if line[2] != 't':
-					line = line.replace(" i","j")
-					line = line.replace(" -","-")
-					line = line.replace("+-","-")
-					print line,
+					if mattype == 'adj':
+						line = line.replace(" i","j")
+						line = line.replace(" -","-")
+						line = line.replace("+-","-")
+						line = line.replace("0000e+01+0.00000e+00j","")
+						line = line.replace(".00000e+00+0.00000e+00j","")
+						line = line.replace(".","")
+						line = line.replace(" -","\t-")
+						line = line.replace("  ","\t")
+						line = line.replace(" ","")
+						line = line.replace("\t"," ")
+						print line,
+					else:
+						line = line.replace(" i","j")
+						line = line.replace(" -","-")
+						line = line.replace("+-","-")
+						print line,
 		
 	elif filetype == 'bin':
-		binSave = PETSc.Viewer().createBinary(filename, 'w', comm=PETSc.COMM_WORLD)
+		binSave = _PETSc.Viewer().createBinary(filename, 'w', comm=_PETSc.COMM_WORLD)
 		binSave(mat)
 		binSave.destroy()
 		
 	mat.comm.barrier()
 
-def loadMat(filename,filetype):
+def loadMat(filename,filetype,delimiter=None):
 	if filetype == 'txt':
 		try:
 			try:
-				matArray = np.loadtxt(filename,dtype=PETSc.ScalarType)
+				if delimiter is None:
+					matArray = _np.genfromtxt(filename,dtype=_PETSc.ScalarType)
+				else:
+					matArray = _np.genfromtxt(filename,dtype=_PETSc.ScalarType,delimiter=delimiter)
 			except:
 				filefix = []
-				for line in fileinput.FileInput(filename,inplace=0):
+				for line in _fl.FileInput(filename,inplace=0):
 					if line[2] != 't':
 						line = line.replace(" i","j")
 						line = line.replace(" -","-")
 						line = line.replace("+-","-")
 						filefix.append(line)
 						
-				matArray = np.loadtxt(filefix,dtype=PETSc.ScalarType)
+				matArray = _np.genfromtxt(filefix,dtype=_PETSc.ScalarType)
 				
 			return arrayToMat(matArray)
 		except:
 			print "\nERROR: input state space file " + filename\
 				+ " does not exist or is in an incorrect format"
-			sys.exit()		
+			_sys.exit()		
 		
 	elif filetype == 'bin':
-		binLoad = PETSc.Viewer().createBinary(filename, 'r')
+		binLoad = _PETSc.Viewer().createBinary(filename, 'r')
 		try:
-			return PETSc.Mat().load(binLoad)
+			return _PETSc.Mat().load(binLoad)
 		except:
 			print "\nERROR: input state space file " + filename\
 				+ " does not exist or is in an incorrect format"
-			sys.exit()			
+			_sys.exit()			
 		binLoad.destroy()
 
 def exportVecToMat(vec,filename,filetype):
-	rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
+	rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 	
-	if os.path.isabs(filename):
-		outDir = os.path.dirname(filename)
+	if _os.path.isabs(filename):
+		outDir = _os.path.dirname(filename)
 	else:
-		outDir = './'+os.path.dirname(filename)
+		outDir = './'+_os.path.dirname(filename)
 
 	# create output directory if it doesn't exist
 	try:
-		os.mkdir(outDir)
+		_os.mkdir(outDir)
 	except OSError as exception:
-		if exception.errno != errno.EEXIST:
+		if exception.errno != _errno.EEXIST:
 			raise
 	
 	vecArray = vecToArray(vec)
-	matArray = vecArray.reshape([np.sqrt(vecArray.size),np.sqrt(vecArray.size)])
+	matArray = vecArray.reshape([_np.sqrt(vecArray.size),_np.sqrt(vecArray.size)])
 	
 	if filetype == 'txt':
-		#if rank == 0:	np.savetxt(filename,matArray)
-		txtSave = PETSc.Viewer().createASCII(filename, 'w',
-			format=PETSc.Viewer.Format.ASCII_DENSE, comm=PETSc.COMM_WORLD)
+		#if rank == 0:	_np.savetxt(filename,matArray)
+		txtSave = _PETSc.Viewer().createASCII(filename, 'w',
+			format=_PETSc.Viewer.Format.ASCII_DENSE, comm=_PETSc.COMM_WORLD)
 		txtSave(arrayToMat(matArray))
 		txtSave.destroy()
 	
 		if rank == 0:
-			for line in fileinput.FileInput(filename,inplace=1):
+			for line in _fl.FileInput(filename,inplace=1):
 				if line[2] != 't':
 					line = line.replace(" i","j")
 					line = line.replace(" -","-")
@@ -268,7 +286,7 @@ def exportVecToMat(vec,filename,filetype):
 					print line,
 		
 	elif filetype == 'bin':
-		binSave = PETSc.Viewer().createBinary(filename, 'w', comm=PETSc.COMM_WORLD)
+		binSave = _PETSc.Viewer().createBinary(filename, 'w', comm=_PETSc.COMM_WORLD)
 		binSave(arrayToMat(matArray))
 		binSave.destroy()
 	vec.comm.barrier()
@@ -277,28 +295,28 @@ def loadMatToVec(filename,filetype):
 	if filetype == 'txt':
 		try:
 			try:
-				matArray = np.loadtxt(filename,dtype=PETSc.ScalarType)
+				matArray = _np.loadtxt(filename,dtype=_PETSc.ScalarType)
 			except:
 				filefix = []
-				for line in fileinput.FileInput(filename,inplace=0):
+				for line in _fl.FileInput(filename,inplace=0):
 					if line[2] != 't':
 						line = line.replace(" i","j")
 						line = line.replace(" -","-")
 						line = line.replace("+-","-")
 						filefix.append(line)
 						
-				matArray = np.loadtxt(filefix,dtype=PETSc.ScalarType)
+				matArray = _np.loadtxt(filefix,dtype=_PETSc.ScalarType)
 						
 			vecArray = matArray.reshape(matArray.shape[0]**2)
 			return arrayToVec(vecArray)
 		except:
 			print "\nERROR: input state space file " + filename\
 				+ " does not exist or is in an incorrect format"
-			sys.exit()		
+			_sys.exit()		
 		
 	elif filetype == 'bin':
 		print '\nERROR: only works for txt storage!'
-		sys.exit()
+		_sys.exit()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #----------------------- Plotting functions -------------------------
@@ -308,14 +326,14 @@ def plot(x,prob,savefile,t,init_state,d,amp,N,rank):
 
 	def prob_plot_p1(probVec,savefile,t,initstate,d,a,N):
 		# convert vectors to arrays
-		prob = np.real(np.asarray(probVec))
+		prob = _np.real(_np.asarray(probVec))
 	
 		# create plot
-		fig = plt.figure()
-		plt.plot(x, prob)
-		plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
-		plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
-		plt.xlabel("$j$")
+		fig = _plt.figure()
+		_plt.plot(x, prob)
+		_plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
+		_plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
+		_plt.xlabel("$j$")
 	
 		# Plot titles
 		if initstate[0]=='f':
@@ -333,28 +351,28 @@ def plot(x,prob,savefile,t,init_state,d,amp,N,rank):
 				else:
 					disp = disp + "+ {" + str(i) + "} "	
 		
-		plt.suptitle("CTQW probability distribution at time $t={}$".format(t))
+		_plt.suptitle("CTQW probability distribution at time $t={}$".format(t))
 	
 		if (len(list(set(a))) == 1) and (list(set(a))[0] == 0.0):
-			plt.title(disp.format(*IS_disp) + "$",
+			_plt.title(disp.format(*IS_disp) + "$",
 				horizontalalignment='right',multialignment='left', fontsize=11)
 		else:
 			def_disp = "\nDefects: $"
 			for i in range(len(d)):
 				def_disp += "{1: .3f}|{0}\\rangle +".format(i+1,d[i],a[i])
 		
-			plt.title(disp.format(*IS_disp) + "$" + def_disp[:-2] + "$",
+			_plt.title(disp.format(*IS_disp) + "$" + def_disp[:-2] + "$",
 				horizontalalignment='right',multialignment='left', fontsize=11)
 
 		# save plot
-		plt.subplots_adjust(top=0.85)
-		pl.savefig(savefile)
-		plt.close()
+		_plt.subplots_adjust(top=0.85)
+		_pl.savefig(savefile)
+		_plt.close()
 		
 	# scatter prob to process 0
 	commX = prob.getComm()
-	scatterX, prob0 = PETSc.Scatter.toZero(prob)
-	scatterX.scatter(prob, prob0, False, PETSc.Scatter.Mode.FORWARD)
+	scatterX, prob0 = _PETSc.Scatter.toZero(prob)
+	scatterX.scatter(prob, prob0, False, _PETSc.Scatter.Mode.FORWARD)
 	
 	# use process 0 to create the plot
 	if rank==0:
@@ -370,23 +388,23 @@ def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 	def prob_plot_p2(psiX,psiY,savefile,t,initstate,d,a,N):
 	
 		# convert vectors to arrays
-		probX = np.real(np.asarray(psiX))
-		probY = np.real(np.asarray(psiY))
+		probX = _np.real(_np.asarray(psiX))
+		probY = _np.real(_np.asarray(psiY))
 
 		# create plot
 		lbl = [0,1];
 	
-		fig = plt.figure()
-		lbl[0], = plt.plot(x, probX, 'b-')
-		lbl[1], = plt.plot(x, probY, 'r--')
+		fig = _plt.figure()
+		lbl[0], = _plt.plot(x, probX, 'b-')
+		lbl[1], = _plt.plot(x, probY, 'r--')
 	
-		plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
-		plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
-		plt.xlabel("$j$")
+		_plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
+		_plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
+		_plt.xlabel("$j$")
 	
 		# legend
-		leg = plt.legend(lbl, ['P1','P2'], loc='center right', bbox_to_anchor=(1.015, 0.93))
-		plt.setp(leg.get_texts(), fontsize='small') 
+		leg = _plt.legend(lbl, ['P1','P2'], loc='center right', bbox_to_anchor=(1.015, 0.93))
+		_plt.setp(leg.get_texts(), fontsize='small') 
 	
 		# Plot titles
 		if initstate[0]=='f':
@@ -404,34 +422,34 @@ def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 				else:
 					disp = disp + "+ {" + str(i) + "} "	
 	
-		plt.suptitle("CTQW probability distribution at time $t={}$".format(t))
+		_plt.suptitle("CTQW probability distribution at time $t={}$".format(t))
 	
 		if (len(list(set(a))) == 1) and (list(set(a))[0] == 0.0):
-			plt.title(disp.format(*IS_disp) + "$",
+			_plt.title(disp.format(*IS_disp) + "$",
 				horizontalalignment='right',multialignment='left', fontsize=11)
 		else:
 			def_disp = "\nDefects: $"
 			for i in range(len(d)):
 				def_disp += "{1: .3f}|{0}\\rangle +".format(i+1,d[i],a[i])	
 		
-			plt.title(disp.format(*IS_disp) + "$" +  def_disp[:-2] + "$",
+			_plt.title(disp.format(*IS_disp) + "$" +  def_disp[:-2] + "$",
 				horizontalalignment='right',multialignment='left', fontsize=11)
 
 		# save plot
-		#plt.ylim((0,0.3))
-		plt.subplots_adjust(top=0.85)
-		pl.savefig(savefile)
-		plt.close()
+		#_plt.ylim((0,0.3))
+		_plt.subplots_adjust(top=0.85)
+		_pl.savefig(savefile)
+		_plt.close()
 	
 	# scatter psiX to process 0
 	commX = psiX.getComm()
-	scatterX, psiX0 = PETSc.Scatter.toZero(psiX)
-	scatterX.scatter(psiX, psiX0, False, PETSc.Scatter.Mode.FORWARD)
+	scatterX, psiX0 = _PETSc.Scatter.toZero(psiX)
+	scatterX.scatter(psiX, psiX0, False, _PETSc.Scatter.Mode.FORWARD)
 	
 	# scatter psiY to process 0
 	commY = psiY.getComm()
-	scatterY, psiY0 = PETSc.Scatter.toZero(psiY)
-	scatterY.scatter(psiY, psiY0, False, PETSc.Scatter.Mode.FORWARD)
+	scatterY, psiY0 = _PETSc.Scatter.toZero(psiY)
+	scatterY.scatter(psiY, psiY0, False, _PETSc.Scatter.Mode.FORWARD)
 	
 	# use process 0 to create the plot
 	if rank==0:
@@ -453,32 +471,32 @@ def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 def getGraphNodes(adj,layout='spring'):
 
 	try:
-		import networkx as nx
+		import networkx as _nx
 	except:
 		print '\nNetworkX Python module required for graph plotting!'
 		return
 
-	graph = nx.from_scipy_sparse_matrix(matToSparse(adj).real)
+	graph = _nx.from_scipy_sparse_matrix(matToSparse(adj).real)
 	
 	if layout == 'circle':
-		pos = nx.circular_layout(graph)
+		pos = _nx.circular_layout(graph)
 	elif layout == 'spectral':
-		pos = nx.spectral_layout(graph)
+		pos = _nx.spectral_layout(graph)
 	elif layout == 'random':
-		pos = nx.random_layout(graph)
+		pos = _nx.random_layout(graph)
 	elif layout == 'shell':
-		pos = nx.shell_layout(graph)
+		pos = _nx.shell_layout(graph)
 	else:
-		pos = nx.spring_layout(graph,dim=2)
+		pos = _nx.spring_layout(graph,dim=2)
 	
 	testpos = []
 	for i in pos.itervalues():
 		testpos.append(i.tolist())
-	testpos = np.array(testpos)
+	testpos = _np.array(testpos)
 
 	lineX = []
 	lineY = []
-	for i in nx.edges(graph):
+	for i in _nx.edges(graph):
 		lineX.append([testpos[i[0]][0], testpos[i[1]][0]])
 		lineY.append([testpos[i[0]][1], testpos[i[1]][1]])
 		
@@ -492,7 +510,7 @@ def plotGraph(ax,pos,lineX,lineY,prob=None,prob2=None,nodesize=None,barscale=1,o
 	nodetext=True,nodetextcolor='black',nodetextbg=None,nodetextbg2=None,ntoffset=[0,0,-0.15]):
 
 	# use process 0 to create the plot
-	rank = PETSc.COMM_WORLD.Get_rank()
+	rank = _PETSc.COMM_WORLD.Get_rank()
 	if rank==0:
 
 		from matplotlib.colors import ColorConverter as cl
@@ -504,14 +522,14 @@ def plotGraph(ax,pos,lineX,lineY,prob=None,prob2=None,nodesize=None,barscale=1,o
 			
 		#ax.scatter3D(pos.T[0], pos.T[1], color = 'orange', marker = "o", s=200)
 		#ax.bar3d([x-0.04 for x in pos.T[0]],[x-0.04 for x in pos.T[1]],
-		#         np.zeros_like(pos.T[0]),0.08,0.08,0, color='orange',alpha=0.3,edgecolor='gray')
+		#         _np.zeros_like(pos.T[0]),0.08,0.08,0, color='orange',alpha=0.3,edgecolor='gray')
 		
 		if nodesize is None:
 			nodesize=[]
 			for i in range(len(lineX)):
-			   nodesize.append(np.sqrt(np.sum(np.square([-np.subtract(*lineX[i]), -np.subtract(*lineY[i])]))))
+			   nodesize.append(_np.sqrt(_np.sum(_np.square([-_np.subtract(*lineX[i]), -_np.subtract(*lineY[i])]))))
 			
-			nodesize=min(np.min(nodesize)*0.6/2,0.05)
+			nodesize=min(_np.min(nodesize)*0.6/2,0.05)
 		
 		for i in range(len(pos)):
 			p = Circle((pos.T[0][i], pos.T[1][i]), nodesize, color=nodecolor, alpha=nodealpha)
@@ -554,7 +572,7 @@ def plotGraph(ax,pos,lineX,lineY,prob=None,prob2=None,nodesize=None,barscale=1,o
 		ax.set_ylim3d([pos.T[1].min(),pos.T[1].max()])
 		ax.set_axis_off()
 
-def plotNodes(time,nodes,probArray,savefile):
+def plotNodes(time,nodes,probArray,savefile,p=0):
 	from itertools import cycle
 	
 	nodeNum = probArray.shape[0]
@@ -563,24 +581,54 @@ def plotNodes(time,nodes,probArray,savefile):
 	lbl = range(nodeNum)
 	plotStyles = cycle(["-","--","-.",":"])
 
-	fig = plt.figure()
+	fig = _plt.figure()
 	for i in range(nodeNum):
-		lbl[i], = plt.plot(time, probArray[i], next(plotStyles))
+		lbl[i], = _plt.plot(time, probArray[i], next(plotStyles))
 
-	plt.xlabel("$t$")
-	plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
-	plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
+	_plt.xlabel("$t$")
+	_plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
+	_plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
 
-	plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.2)
+	_plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.2)
 
 	# legend
-	leg = plt.legend(lbl, [str(x) for x in nodes], loc='lower center', bbox_to_anchor=(0.5, -0.3),ncol=8, fancybox=True)
-	plt.setp(leg.get_texts(), fontsize='small') 
+	leg = _plt.legend(lbl, [str(x) for x in nodes], loc='lower center', bbox_to_anchor=(0.5, -0.3),ncol=8, fancybox=True)
+	_plt.setp(leg.get_texts(), fontsize='small') 
 
-	plt.title("CTQW probability distribution over time")
+	if p == 0:
+		_plt.title("CTQW probability distribution over time")
+	else:
+		_plt.title("Particle {} CTQW probability distribution over time".format(p))
 
 	# save plot
-	#plt.ylim((0,0.3))
-	plt.subplots_adjust(top=0.85)
-	pl.savefig(savefile)
-	plt.close()
+	#_plt.ylim((0,0.3))
+	_pl.savefig(savefile)
+	_plt.close()
+
+def plotNodes2P(time,node,probXArray,probYArray,savefile):
+	from itertools import cycle
+
+	# create plot
+	lbl = range(2)
+	plotStyles = cycle(["-","--","-.",":"])
+
+	fig = _plt.figure()
+	lbl[0], = _plt.plot(time, probXArray, next(plotStyles))
+	lbl[1], = _plt.plot(time, probYArray, next(plotStyles))
+
+	_plt.xlabel("$t$")
+	_plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
+	_plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
+
+	_plt.subplots_adjust(left=0.1, right=0.85, top=0.9, bottom=0.1)
+
+	# legend
+	leg = _plt.legend(lbl, ['P1','P2'], loc='lower center', bbox_to_anchor=(1.1, 0.5), fancybox=True)
+	_plt.setp(leg.get_texts(), fontsize='small') 
+
+	_plt.title("CTQW probability of node {} over time".format(node))
+
+	# save plot
+	#_plt.ylim((0,0.3))
+	_pl.savefig(savefile)
+	_plt.close()

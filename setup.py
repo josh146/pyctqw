@@ -137,7 +137,8 @@ def configuration(parent_package='', top_path=''):
 		mpi = False
 	
 	config.add_data_files(  ('pyCTQW/examples', 'examples/*.py'),
-				('pyCTQW/graphs', 'graphs/*') )
+				('pyCTQW/graphs', 'graphs/*.txt'),
+				('pyCTQW/graphs/strong-regular-25-12-5-6', 'graphs/strong-regular-25-12-5-6/*.txt') )
 	
 	return config.todict(), mpi
 
