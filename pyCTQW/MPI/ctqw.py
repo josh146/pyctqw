@@ -113,7 +113,7 @@ class Hamiltonian(object):
 
 		self.nodePos, self.lineX, self.lineY = func.getGraphNodes(self.Adj,layout=layout)
 
-	def importAdjToH(self,filename,filetype,d=[0.],amp=[0.],p='1',layout='spring',delimiter=None):
+	def importAdjToH(self,filename,filetype,d=[0.],amp=[0.],p='1',layout='spring',delimiter=None,interaction=0.):
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
@@ -122,7 +122,7 @@ class Hamiltonian(object):
 		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
 		
-		ctqwmpi.importadjtoh(self.mat.fortran,filename,p,d,amp)
+		ctqwmpi.importadjtoh(self.mat.fortran,filename,p,d,amp,interaction)
 		
 		Hamiltonian.pop()
 
@@ -130,7 +130,7 @@ class Hamiltonian(object):
 		self.Adj = func.loadMat(filename,filetype,delimiter=delimiter)
 		self.nodePos, self.lineX, self.lineY = func.getGraphNodes(self.Adj,layout=layout)
 	
-	def createLine2P(self,d=[0],amp=[0.]):
+	def createLine2P(self,d=[0],amp=[0.],interaction=0.):
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
@@ -140,7 +140,20 @@ class Hamiltonian(object):
 		# create the Hamiltonian
 		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
-		ctqwmpi.hamiltonian_2p_line(self.mat.fortran,self.defectNodes,self.defectAmp,self.N)
+		ctqwmpi.hamiltonian_2p_line(self.mat.fortran,self.defectNodes,self.defectAmp,interaction,self.N)
+		Hamiltonian.pop()
+
+	def createLine3P(self,d=[0],amp=[0.],interaction=0.):
+		try:
+			if self.mat.isAssembled():
+				self.reinitialize()
+		except: pass
+		self.defectNodes = d
+		self.defectAmp = amp
+		# create the Hamiltonian
+		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
+		Hamiltonian.push()
+		ctqwmpi.hamiltonian_3p_line(self.mat.fortran,self.defectNodes,self.defectAmp,interaction,self.N)
 		Hamiltonian.pop()
 	
 	def createLine(self,d=[0],amp=[0.]):
@@ -703,7 +716,7 @@ class Graph(QuantumWalkP1):
 
 		initstateLabels = []
 		for i in range(len(self.initState)):
-			initstateLabels.append([sum(pair).real for pair in zip(self.initState[i], [self.N/2-1,0])])
+			initstateLabels.append([sum(pair) for pair in zip(self.initState[i], [self.N/2-1,0])])
 
 		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
 		func.plot(_np.arange(self.N),self.prob,filename,self.t,initstateLabels,
@@ -803,23 +816,26 @@ class Graph(QuantumWalkP1):
 #------------------------------- 2P Arbitrary CTQW -----------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Graph2P(QuantumWalkP2):
-	def __init__(self,N,filename=None,filetype=None,d=None,amp=None):
+	def __init__(self,N,filename=None,filetype=None,d=None,amp=None,interaction=0.):
 		QuantumWalkP2.__init__(self,N)
 		self.liveplot = False
 		
 		if (filename and filetype) is not None:
-			self.createH(filename,filetype,d=d,amp=amp)
+			self.createH(filename,filetype,d=d,amp=amp,interaction=interaction)
 		
-	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None):
-		if (d and amp) is None:
+	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None,interaction=0.):
+		if (d or amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
 		else:
 			self.defectNodes = d
 			self.defectAmp = amp
 
+		self.interaction = interaction
+
 		self.H.importAdjToH(filename,filetype,
-			d=self.defectNodes,amp=self.defectAmp,p='2',layout=layout,delimiter=delimiter)
+			d=self.defectNodes,amp=self.defectAmp,p='2',interaction=self.interaction,
+			layout=layout,delimiter=delimiter)
 
 		# ctqwmpi.importadjtoh(self.H.mat.fortran,filename,'2',
 		# 	d=self.defectNodes,amp=self.defectAmp,layout=layout)
@@ -849,7 +865,7 @@ class Graph2P(QuantumWalkP2):
 
 		initstateLabels = []
 		for i in range(len(self.initState)):
-			initstateLabels.append([sum(pair).real for pair in zip(self.initState[i], [self.N/2-1,self.N/2-1,0])])
+			initstateLabels.append([sum(pair) for pair in zip(self.initState[i], [self.N/2-1,self.N/2-1,0])])
 
 		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
 		func.plot2P(_np.arange(self.N),self.psiX,self.psiY,filename,self.t,initstateLabels,
@@ -992,13 +1008,13 @@ class Graph2P(QuantumWalkP2):
 #------------------------------- 3P Arbitrary CTQW -----------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Graph3P(QuantumWalkP3):
-	def __init__(self,N,filename=None,filetype=None,d=None,amp=None):
+	def __init__(self,N,filename=None,filetype=None,d=None,amp=None,interaction=0.):
 		QuantumWalkP3.__init__(self,N)
 		
 		if (filename and filetype) is not None:
-			self.createH(filename,filetype,d=d,amp=amp)
+			self.createH(filename,filetype,d=d,amp=amp,interaction=interaction)
 		
-	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None):
+	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None,interaction=0.):
 		if (d and amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
@@ -1006,8 +1022,11 @@ class Graph3P(QuantumWalkP3):
 			self.defectNodes = d
 			self.defectAmp = amp
 
+		self.interaction = interaction
+
 		self.H.importAdjToH(filename,filetype,
-			d=self.defectNodes,amp=self.defectAmp,p='3',layout=layout,delimiter=delimiter)
+			d=self.defectNodes,amp=self.defectAmp,p='3',interaction=self.interaction,
+			layout=layout,delimiter=delimiter)
 
 		# ctqwmpi.importadjtoh(self.H.mat.fortran,filename,'2',
 		# 	d=self.defectNodes,amp=self.defectAmp,layout=layout)
@@ -1037,12 +1056,8 @@ class Graph3P(QuantumWalkP3):
 			if exception.errno != _errno.EEXIST:
 				raise
 
-		initstateLabels = []
-		for i in range(len(self.initState)):
-			initstateLabels.append([sum(pair).real for pair in zip(self.initState[i], [self.N/2-1,self.N/2-1,self.N/2-1,0])])
-
 		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
-		func.plot3P(_np.arange(self.N),self.psiX,self.psiY,self.psiZ,filename,self.t,initstateLabels,
+		func.plot3P(_np.arange(self.N),self.psiX,self.psiY,self.psiZ,filename,self.t,self.initState,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 		
@@ -1055,7 +1070,7 @@ class Line(QuantumWalkP1):
 		if (d is not None) and (amp is not None):
 			self.defectNodes = d
 			self.defectAmp = amp
-			self.H.createLine(d,amp)
+			self.H.createLine(d=d,amp=amp)
 		
 	def createH(self,d=None,amp=None):
 		if (d and amp) is None:
@@ -1064,7 +1079,7 @@ class Line(QuantumWalkP1):
 		else:
 			self.defectNodes = d
 			self.defectAmp = amp
-		self.H.createLine(self.defectNodes,self.defectAmp)
+		self.H.createLine(d=self.defectNodes,amp=self.defectAmp)
 		
 	def createInitState(self,initState):
 		self.initState = initState
@@ -1117,22 +1132,24 @@ class Line(QuantumWalkP1):
 #--------------------------- 2 particle CTQW on a line -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Line2P(QuantumWalkP2):
-	def __init__(self,N,d=None,amp=None):
+	def __init__(self,N,d=None,amp=None,interaction=0.):
 		QuantumWalkP2.__init__(self,N)
 
 		if (d is not None) and (amp is not None):
 			self.defectNodes = d
 			self.defectAmp = amp
-			self.H.createLine2P(d,amp)
+			self.H.createLine2P(d=d,amp=amp,interaction=interaction)
 		
-	def createH(self,d=None,amp=None):
+	def createH(self,d=None,amp=None,interaction=0.):
 		if (d and amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
 		else:
 			self.defectNodes = d
 			self.defectAmp = amp
-		self.H.createLine2P(self.defectNodes,self.defectAmp)
+			
+		self.interaction = interaction
+		self.H.createLine2P(d=self.defectNodes,amp=self.defectAmp,interaction=self.interaction)
 		
 	def createInitState(self,initState):
 		self.initState = initState
@@ -1181,6 +1198,99 @@ class Line2P(QuantumWalkP2):
 			probArray = probYArray
 		else:
 			print 'p must be either 1 or 2'
+			return
+
+		probArray = comm.tompi4py().gather(probArray)
+		node = comm.tompi4py().gather(node)
+
+		if rank == 0:
+			timeArray = _np.array(timeArray)
+			nodeArray = _np.array([item-self.N/2+1 for sublist in node for item in sublist])
+			probArray = _np.array([item for sublist in probArray for item in sublist]).real
+
+			func.plotNodes(timeArray,nodeArray,probArray,filename,p=p)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#--------------------------- 3 particle CTQW on a line -------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class Line3P(QuantumWalkP3):
+	def __init__(self,N,d=None,amp=None,interaction=0.):
+		QuantumWalkP3.__init__(self,N)
+
+		if (d is not None) and (amp is not None):
+			self.defectNodes = d
+			self.defectAmp = amp
+			self.H.createLine3P(d=d,amp=amp,interaction=interaction)
+		
+	def createH(self,d=None,amp=None,interaction=0.):
+		if (d and amp) is None:
+			self.defectNodes = [0]
+			self.defectAmp = [0.]
+		else:
+			self.defectNodes = d
+			self.defectAmp = amp
+
+		self.interaction = interaction
+
+		self.H.createLine3P(d=self.defectNodes,amp=self.defectAmp,interaction=self.interaction)
+		
+	def createInitState(self,initState):
+		self.initState = _np.vstack(  [ _np.array(initState).T[0]+self.N/2-1,
+			   	 	    				_np.array(initState).T[1]+self.N/2-1,
+			   	 	    				_np.array(initState).T[2]+self.N/2-1,
+			   	 	    				_np.array(initState).T[3] ]).T.tolist()
+
+		# create the inital stage
+		initStateS = _PETSc.Log.Stage('initState')
+		initStateS.push()
+		ctqwmpi.p3_init(self.psi0.fortran,self.initState,self.N)
+		initStateS.pop()
+
+	def watch(self,nodes,type='prob'):
+		nodes = [i+self.N/2-1 for i in nodes]
+		super(Line3P,self).watch(nodes,type=type)
+		
+	def plot(self,filename):
+		if _os.path.isabs(filename):
+			outDir = _os.path.dirname(filename)
+		else:
+			outDir = './'+_os.path.dirname(filename)
+	
+		# create output directory if it doesn't exist
+		try:
+			_os.mkdir(outDir)
+		except OSError as exception:
+			if exception.errno != _errno.EEXIST:
+				raise
+
+		initstateLabels = []
+		for i in range(len(self.initState)):
+			initstateLabels.append([sum(pair) for pair in zip(self.initState[i], [1-self.N/2,1-self.N/2,1-self.N/2,0])])
+
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		func.plot3P(_np.arange(1-self.N/2,self.N/2+1),self.psiX,self.psiY,self.psiZ,filename,self.t,initstateLabels,
+					self.defectNodes,self.defectAmp,self.N,self.rank)
+		plotStage.pop()
+
+	def plotNode(self,filename,node,t=None):
+		node = node+self.N/2-1
+		super(Line3P,self).plotNode(filename,node)
+
+	def plotNodes(self,filename,p=1,t=None):
+
+		comm = _PETSc.COMM_WORLD
+		rank = comm.Get_rank()
+		node = self.handle.local_nodes
+		timeArray, probXArray, probYArray, probZArray = self.handle.getLocalNodes(t=t,p=3)
+
+		if p == 1:
+			probArray = probXArray
+		elif p==2:
+			probArray = probYArray
+		elif p==3:
+			probArray = probZArray
+		else:
+			print 'p must be either 1, 2 or 3'
 			return
 
 		probArray = comm.tompi4py().gather(probArray)

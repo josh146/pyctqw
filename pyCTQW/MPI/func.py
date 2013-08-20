@@ -344,7 +344,7 @@ def plot(x,prob,savefile,t,init_state,d,amp,N,rank):
 			disp = "\nInitial state: $|\psi(0)\\rangle="
 
 			for i in range(len(initstate)):
-				IS_disp = IS_disp + ("({1: .3f})|{0}\\rangle".format(*(initstate[i])),)
+				IS_disp = IS_disp + ("({1: .3g})|{0.real: .0f}\\rangle".format(*(initstate[i])),)
 	
 				if i == 0:
 					disp = disp + "{" + str(i) + "} "
@@ -355,14 +355,14 @@ def plot(x,prob,savefile,t,init_state,d,amp,N,rank):
 	
 		if (len(list(set(a))) == 1) and (list(set(a))[0] == 0.0):
 			_plt.title(disp.format(*IS_disp) + "$",
-				horizontalalignment='right',multialignment='left', fontsize=11)
+				multialignment='left', fontsize=11)
 		else:
 			def_disp = "\nDefects: $"
 			for i in range(len(d)):
-				def_disp += "{1: .3f}|{0}\\rangle +".format(i+1,d[i],a[i])
+				def_disp += "{1: .3}|{0}\\rangle +".format(d[i],a[i])
 		
 			_plt.title(disp.format(*IS_disp) + "$" + def_disp[:-2] + "$",
-				horizontalalignment='right',multialignment='left', fontsize=11)
+				multialignment='left', fontsize=11)
 
 		# save plot
 		_plt.subplots_adjust(top=0.85)
@@ -415,7 +415,7 @@ def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 			disp = "\nInitial state: $|\psi(0)\\rangle="
 
 			for i in range(len(initstate)):
-				IS_disp = IS_disp + ("({2: .3f})|{0},{1}\\rangle".format(*(initstate[i])),)
+				IS_disp = IS_disp + ("({2: .3g})|{0.real: .0f},{1.real: .0f}\\rangle".format(*(initstate[i])),)
 	
 				if i == 0:
 					disp = disp + "{" + str(i) + "} "
@@ -426,14 +426,14 @@ def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 	
 		if (len(list(set(a))) == 1) and (list(set(a))[0] == 0.0):
 			_plt.title(disp.format(*IS_disp) + "$",
-				horizontalalignment='right',multialignment='left', fontsize=11)
+				multialignment='left', fontsize=11)
 		else:
 			def_disp = "\nDefects: $"
 			for i in range(len(d)):
-				def_disp += "{1: .3f}|{0}\\rangle +".format(i+1,d[i],a[i])	
+				def_disp += "{1: .3}|{0}\\rangle +".format(d[i],a[i])	
 		
 			_plt.title(disp.format(*IS_disp) + "$" +  def_disp[:-2] + "$",
-				horizontalalignment='right',multialignment='left', fontsize=11)
+				multialignment='left', fontsize=11)
 
 		# save plot
 		#_plt.ylim((0,0.3))
@@ -498,7 +498,7 @@ def plot3P(x,psiX,psiY,psiZ,savefile,t,init_state,d,amp,N,rank):
 			disp = "\nInitial state: $|\psi(0)\\rangle="
 
 			for i in range(len(initstate)):
-				IS_disp = IS_disp + ("({3: .3f})|{0},{1},{2}\\rangle".format(*(initstate[i])),)
+				IS_disp = IS_disp + ("({3: .3g})|{0.real: .0f},{1.real: .0f},{2.real: .0f}\\rangle".format(*(initstate[i])),)
 	
 				if i == 0:
 					disp = disp + "{" + str(i) + "} "
@@ -509,14 +509,14 @@ def plot3P(x,psiX,psiY,psiZ,savefile,t,init_state,d,amp,N,rank):
 	
 		if (len(list(set(a))) == 1) and (list(set(a))[0] == 0.0):
 			_plt.title(disp.format(*IS_disp) + "$",
-				horizontalalignment='right',multialignment='left', fontsize=11)
+						fontsize=11,multialignment='left')
 		else:
 			def_disp = "\nDefects: $"
 			for i in range(len(d)):
-				def_disp += "{1: .3f}|{0}\\rangle +".format(i+1,d[i],a[i])	
+				def_disp += "{1: .3}|{0}\\rangle +".format(d[i],a[i])	
 		
 			_plt.title(disp.format(*IS_disp) + "$" +  def_disp[:-2] + "$",
-				horizontalalignment='right',multialignment='left', fontsize=11)
+							fontsize=11,multialignment='left')
 
 		# save plot
 		#_plt.ylim((0,0.3))

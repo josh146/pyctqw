@@ -38,14 +38,25 @@ python module libpyctqw_MPI ! in
                 integer, intent(in)     :: c2
                 complex(8), intent(out) :: kronprod(r1*r2,c1*c2)
             end subroutine kron
-            subroutine importadjtoh(mat,filename,p,d,amp,nd) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine importadjtoh(mat,filename,p,d,amp,interaction,nd) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
                 integer(8)              :: mat
                 character*50, intent(in):: filename
                 character, intent(in)   :: p
                 integer, intent(in)     :: d(nd)
                 complex(8), intent(in)  :: amp(nd)
+                complex(8), intent(in)  :: interaction
                 integer, intent(in)     :: nd
             end subroutine importadjtoh
+            subroutine adjtoh(mat,adjArray,p,d,amp,interaction,nd,N) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer(8)              :: mat
+                character, intent(in)   :: p
+                integer, intent(in)     :: adjArray(N,N)
+                integer, intent(in)     :: d(nd)
+                complex(8), intent(in)  :: amp(nd)
+                complex(8), intent(in)  :: interaction
+                integer, intent(in)     :: nd
+                integer, intent(in)     :: N
+            end subroutine adjtoh
             function coord(x,y,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer intent(in)     :: x
                 integer intent(in)     :: y
@@ -101,13 +112,22 @@ python module libpyctqw_MPI ! in
                 complex(8), intent(in) :: amp(nd)
                 integer, intent(in)    :: n
             end subroutine hamiltonian_1p_line
-            subroutine hamiltonian_2p_line(h2,d,amp,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+            subroutine hamiltonian_2p_line(h2,d,amp,interaction,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8)             :: h2
                 integer, intent(in)    :: nd
                 integer, intent(in)    :: d(nd)
                 complex(8), intent(in) :: amp(nd)
+                complex(8), intent(in) :: interaction
                 integer, intent(in)    :: n
             end subroutine hamiltonian_2p_line
+            subroutine hamiltonian_3p_line(h3,d,amp,interaction,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+                integer(8)             :: h3
+                integer, intent(in)    :: nd
+                integer, intent(in)    :: d(nd)
+                complex(8), intent(in) :: amp(nd)
+                complex(8), intent(in) :: interaction
+                integer, intent(in)    :: n
+            end subroutine hamiltonian_3p_line
             subroutine expm(a,t,v,y) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8), intent(in) :: a
                 complex(8), intent(in) :: t

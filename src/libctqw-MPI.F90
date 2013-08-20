@@ -239,21 +239,22 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~Import and convert Adjacency matrix to Hamiltonian ~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    subroutine importAdjToH(mat,filename,p,d,amp,nd)            
+
+    subroutine importAdjToH(mat,filename,p,d,amp,interaction,nd)            
         character, intent(in)          :: p            
         character(len=50), intent(in)  :: filename
         PetscInt, intent(in)           :: nd, d(nd)
-        PetscScalar, intent(in)        :: amp(nd)
+        PetscScalar, intent(in)        :: amp(nd), interaction
         
         Mat, intent(out)                :: mat
         
         ! local variables
-        PetscMPIInt          :: rank
-        PetscErrorCode       :: ierr
-        PetscInt             :: stat, N, i, Istart, Iend, j, k
-        PetscInt, allocatable :: adjArray(:,:)
-        PetscScalar, allocatable :: HArray(:,:),ident(:,:),ident2(:,:), temp(:,:),temp3(:,:), H2Array(:,:)
-        character(len=100)   :: buffer
+        PetscMPIInt              :: rank
+        PetscErrorCode           :: ierr
+        PetscInt                 :: stat, N, i
+        PetscInt, allocatable    :: adjArray(:,:)
+        PetscScalar, allocatable :: HArray(:,:)
+        character(len=100)       :: buffer
         
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
         
@@ -277,6 +278,32 @@ module ctqwMPI
         end do
 
         close(15)
+
+        call adjToH(mat,adjArray,p,d,amp,interaction,nd,N)
+        deallocate(adjArray,HArray)
+
+    end subroutine importAdjToH
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~ Convert Adjacency array to Hamiltonian ~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    subroutine adjToH(mat,adjArray,p,d,amp,interaction,nd,N)            
+        character, intent(in)          :: p
+        PetscInt, intent(in)           :: nd, d(nd), N, adjArray(N,N)
+        PetscScalar, intent(in)        :: amp(nd), interaction
+        
+        Mat, intent(out)                :: mat
+        
+        ! local variables
+        PetscMPIInt              :: rank
+        PetscErrorCode           :: ierr
+        PetscInt                 :: stat, i, Istart, Iend, j, k
+        PetscScalar              :: alpha, HArray(N,N)
+        PetscInt, allocatable    :: intTestArray(:)
+        PetscScalar, allocatable :: ident(:,:),ident2(:,:), temp(:,:),temp3(:,:), H2Array(:,:)
+        
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
         
         HArray = 0.
         do i=1, N            
@@ -304,7 +331,7 @@ module ctqwMPI
             call kron(ident,N,N,HArray,N,N,temp)
 
             H2Array = H2Array + temp
-            deallocate(ident,temp,HArray,adjArray)
+            deallocate(ident,temp)
             
             
             call PetscBarrier(mat,ierr)
@@ -316,8 +343,15 @@ module ctqwMPI
         
             do i=Istart, Iend-1            
                 do j=1,N**2
+
+                    if (i==j-1 .and. mod(j,n+1)==1) then
+                        alpha = interaction
+                    else
+                        alpha = 0.
+                    endif
+
                     if (H2Array(i+1,j) .ne. 0) then
-                        call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
+                        call MatSetValue(mat,i,j-1,H2Array(i+1,j)+alpha,INSERT_VALUES,ierr)
                     endif
                 enddo
             enddo
@@ -328,7 +362,8 @@ module ctqwMPI
             deallocate(H2Array)
 
         elseif (p == '3') then
-            allocate(H2Array(N**3,N**3), ident(N,N), ident2(N**2,N**2), temp(N**3,N**3),temp3(N**3,N**3))
+            allocate(H2Array(N**3,N**3), ident(N,N), ident2(N**2,N**2), &
+                       & intTestArray(N),temp(N**3,N**3),temp3(N**3,N**3))
         
             call identity(ident,N)
             call identity(ident2,N**2)
@@ -340,7 +375,7 @@ module ctqwMPI
             call kron(ident2,N**2,N**2,ident,N,N,H2Array)
 
             H2Array = temp + H2Array + temp3
-            deallocate(ident,ident2,temp,temp3,HArray,adjArray)
+            deallocate(ident,ident2,temp,temp3)
             
             call PetscBarrier(mat,ierr)
         
@@ -349,10 +384,35 @@ module ctqwMPI
             call MatSetUp(mat,ierr)
             call MatGetOwnershipRange(mat,Istart,Iend,ierr)
 
+            intTestArray = [(i, i=1, n**2, n)]
+
             do i=Istart, Iend-1
-                do j=0,N**3-1
-                    if (H2Array(i+1,j+1) .ne. 0) then
-                        call MatSetValue(mat,i,j,H2Array(i+1,j+1),INSERT_VALUES,ierr)
+                do j=1,N**3
+                    
+                    if (i==j-1) then
+
+                        if ( mod(j,n**2+n+1) == 1 ) then
+                    	    alpha = 2*interaction
+
+                        elseif ((mod(j,n**2+n) .le. n) .and. (mod(j,n**2+1) .ge. 1)) then
+                        	alpha = interaction
+
+                        elseif ( mod(j,n+1) == int(ceiling(real(j)/real(n**2))) ) then
+                        	alpha = interaction
+
+                        elseif ( any(intTestArray .eq. mod(j,n**2+1)) ) then
+                        	alpha = interaction
+
+                    	else
+                    		alpha = 0.
+                    	endif
+
+                    else
+                        alpha = 0.
+                    endif
+
+                    if (H2Array(i+1,j) .ne. 0) then
+                        call MatSetValue(mat,i,j-1,H2Array(i+1,j)+alpha,INSERT_VALUES,ierr)
                     endif
                 enddo
             enddo
@@ -363,7 +423,7 @@ module ctqwMPI
             CHKERRQ(ierr)
             call MatAssemblyEnd(mat,ierr)
         
-            deallocate(H2Array)
+            deallocate(H2Array,intTestArray)
         
         else
             call PetscBarrier(mat,ierr)
@@ -383,11 +443,9 @@ module ctqwMPI
         
             call MatAssemblyBegin(mat,ierr)
             call MatAssemblyEnd(mat,ierr)
-        
-            deallocate(adjArray,HArray)
         endif
 
-    end subroutine importAdjToH 
+    end subroutine adjToH 
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~ Convert from 2D to 1D ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -703,9 +761,9 @@ module ctqwMPI
 !~~~~~~~~~ create a sparse 2P hamiltonian matrix of size n^2 x n^2 ~~~~~~~
 !~~~~~~~~~~~~~~~~~~ using PETSc's sparse matrix routines ~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    subroutine hamiltonian_2p_line(H2,d,amp,nd,n)
+    subroutine hamiltonian_2p_line(H2,d,amp,interaction,nd,n)
         PetscInt, intent(in)    :: n, nd, d(nd)
-        PetscScalar, intent(in) :: amp(nd)
+        PetscScalar, intent(in) :: amp(nd), interaction
         
         Mat, intent(out)        :: H2
         
@@ -715,7 +773,7 @@ module ctqwMPI
         PetscErrorCode :: ierr
         PetscBool      :: flag
         PetscInt       :: NN, i, j, its, Istart, Iend, col(3)
-        PetscScalar    :: value(3)
+        PetscScalar    :: value(3), alpha
         Mat            :: temp
         PetscScalar    :: diagArray(n)
         
@@ -742,34 +800,53 @@ module ctqwMPI
         
         if (Istart == 0) then
             col(1:2) = [0,1]
-            value(1:2) = [diagArray(1),-1.d0+0*PETSC_i]            
+            value(1:2) = [diagArray(1)+interaction,-1.d0+0*PETSC_i]            
             call MatSetValues(H2,1,0,2,col,value,INSERT_VALUES,ierr)
             Istart = Istart + 1
         end if
         
         if (Iend == NN) then
             col(1:2) = [NN-2,NN-1]
-            value(1:2) = [-1.d0+0*PETSC_i,diagArray(n)]            
+            value(1:2) = [-1.d0+0*PETSC_i,diagArray(n)+interaction]            
             call MatSetValues(H2,1,NN-1,2,col,value,INSERT_VALUES,ierr)
             Iend = Iend - 1
         endif
         
         do i=Istart, Iend-1
             if (mod(i,n)+1==1) then
+
+        	    if (mod(i,n+1)==0) then
+                    alpha = interaction
+                else
+                    alpha = 0.
+                endif
             
                 col(1:2) = [i,i+1]
-                value(1:2) = [diagArray(mod(i,n)+1),-1.d0+0*PETSC_i]            
+                value(1:2) = [diagArray(mod(i,n)+1)+alpha,-1.d0+0*PETSC_i]            
                 call MatSetValues(H2,1,i,2,col,value,INSERT_VALUES,ierr)
             
             elseif (mod(i,n)+1==n) then
+
+        	    if (mod(i,n+1)==0) then
+                    alpha = interaction
+                else
+                    alpha = 0.
+                endif
             
                 col(1:2) = [i-1,i]
-                value(1:2) = [-1.d0+0*PETSC_i,diagArray(mod(i,n)+1)]            
+                value(1:2) = [-1.d0+0*PETSC_i,diagArray(mod(i,n)+1)+alpha]            
                 call MatSetValues(H2,1,i,2,col,value,INSERT_VALUES,ierr)
             
             else
+
+        	    if (mod(i,n+1)==0) then
+                    alpha = interaction
+                else
+                    alpha = 0.
+                endif
+
                 col = [i-1,i,i+1]
-                value = [-1.d0+0*PETSC_i,diagArray(mod(i,n)+1),-1.d0+0*PETSC_i]            
+                value = [-1.d0+0*PETSC_i,diagArray(mod(i,n)+1)+alpha,-1.d0+0*PETSC_i]            
                 call MatSetValues(H2,1,i,3,col,value,INSERT_VALUES,ierr)
             endif
         enddo
@@ -804,6 +881,35 @@ module ctqwMPI
         call MatAssemblyEnd(H2,MAT_FINAL_ASSEMBLY,ierr)
     
     end subroutine hamiltonian_2p_line
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+!~~~~~~~~~ create a sparse 3P hamiltonian matrix of size n^3 x n^3 ~~~~~~~
+!~~~~~~~~~~~~~~~~~~ using PETSc's sparse matrix routines ~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    subroutine hamiltonian_3p_line(H3,d,amp,interaction,nd,n)
+        PetscInt, intent(in)    :: n, nd, d(nd)
+        PetscScalar, intent(in) :: amp(nd), interaction
+        
+        Mat, intent(out)        :: H3
+        
+        ! local variables
+        PetscViewer    :: output
+        PetscErrorCode :: ierr
+        PetscInt       :: i, adjArray(n,n)
+        
+        ! create adjacency matrix
+        adjArray = 0.
+        adjArray(1,2) = 1.
+        adjArray(n,n-1) = 1.
+        do i = 2, n-1
+            adjArray(i,i-1) = 1.
+            adjArray(i,i+1) = 1.
+        enddo
+                
+        call adjToH(H3,adjArray,'3',d,amp,interaction,nd,N) 
+    
+    end subroutine hamiltonian_3p_line
     
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 !~~~~~~~~~~~~~~~~~~~~~ calculate y=e^(-iHt).v using SLEPc ~~~~~~~~~~~~~~~~
