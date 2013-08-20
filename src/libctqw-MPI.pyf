@@ -6,22 +6,22 @@ python module libpyctqw_MPI ! in
         module ctqwmpi ! in :libpyctqw_MPI:libctqw-MPI.F90
             use ifport
             subroutine exportvec(vec,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
-                integer(8)              :: vec
+                integer(8)               :: vec
                 character*50, intent(in) :: filename
                 character*3, intent(in)  :: filetype
             end subroutine exportvec
             subroutine importvec(vec,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
-                integer(8)              :: vec
+                integer(8)               :: vec
                 character*50, intent(in) :: filename
                 character*3, intent(in)  :: filetype
             end subroutine importvec
             subroutine exportmat(mat,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
-                integer(8)              :: mat
+                integer(8)               :: mat
                 character*50, intent(in) :: filename
                 character*3, intent(in)  :: filetype
             end subroutine exportmat
             subroutine importmat(mat,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
-                integer(8)              :: mat
+                integer(8)               :: mat
                 character*50, intent(in) :: filename
                 character*3, intent(in)  :: filetype
             end subroutine importmat
@@ -43,7 +43,7 @@ python module libpyctqw_MPI ! in
                 character*50, intent(in):: filename
                 character, intent(in)   :: p
                 integer, intent(in)     :: d(nd)
-                complex(8), intent(in)  :: amp
+                complex(8), intent(in)  :: amp(nd)
                 integer, intent(in)     :: nd
             end subroutine importadjtoh
             function coord(x,y,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
@@ -52,6 +52,13 @@ python module libpyctqw_MPI ! in
                 integer intent(in)     :: n
                 integer                :: coord
             end function coord
+            function coord3p(x,y,z,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+                integer intent(in)     :: x
+                integer intent(in)     :: y
+                integer intent(in)     :: z
+                integer intent(in)     :: n
+                integer                :: coord3p
+            end function coord3p
             subroutine p1prob(psi,prob,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
                 integer(8), intent(in) :: psi
                 integer(8)             :: prob
@@ -63,6 +70,12 @@ python module libpyctqw_MPI ! in
                 character, intent(in)  :: p
                 integer, intent(in)    :: n
             end subroutine marginal
+            subroutine marginal3(psi,psim,p,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+                integer(8), intent(in) :: psi
+                integer(8)             :: psim
+                character, intent(in)  :: p
+                integer, intent(in)    :: n
+            end subroutine marginal3
             subroutine p1_init(psi0,init_state,num,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
                 integer(8)             :: psi0
                 complex(8), intent(in) :: init_state(num,2)
@@ -75,6 +88,12 @@ python module libpyctqw_MPI ! in
                 integer, intent(in)    :: num
                 integer, intent(in)    :: n
             end subroutine p2_init
+            subroutine p3_init(psi0,init_state,num,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+                integer(8)             :: psi0
+                complex(8), intent(in) :: init_state(num,4)
+                integer, intent(in)    :: num
+                integer, intent(in)    :: n
+            end subroutine p3_init
             subroutine hamiltonian_1p_line(a,d,amp,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8)             :: a
                 integer, intent(in)    :: nd
@@ -111,7 +130,7 @@ python module libpyctqw_MPI ! in
             end subroutine min_max_eigs
             subroutine qw_cheby(psi0,psi,dt,h,emin,emax,rank_bn,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8), intent(in) :: psi0
-                integer(8)	       :: psi
+                integer(8)         :: psi
                 complex(8), intent(in) :: dt
                 integer(8), intent(in) :: h
                 complex(8), intent(in) :: emin

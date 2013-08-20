@@ -464,6 +464,98 @@ def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 	scatterY.destroy()
 	psiY0.destroy()
 
+def plot3P(x,psiX,psiY,psiZ,savefile,t,init_state,d,amp,N,rank):
+	
+	def prob_plot_p3(psiX,psiY,psiZ,savefile,t,initstate,d,a,N):
+	
+		# convert vectors to arrays
+		probX = _np.real(_np.asarray(psiX))
+		probY = _np.real(_np.asarray(psiY))
+		probZ = _np.real(_np.asarray(psiZ))
+
+		# create plot
+		lbl = [0,1,2];
+	
+		fig = _plt.figure()
+		lbl[0], = _plt.plot(x, probX, 'b-')
+		lbl[1], = _plt.plot(x, probY, 'r--')
+		lbl[2], = _plt.plot(x, probZ, 'g-.')
+	
+		_plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
+		_plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
+		_plt.xlabel("$j$")
+	
+		# legend
+		leg = _plt.legend(lbl, ['P1','P2','P3'], loc='center right', bbox_to_anchor=(1.015, 0.93))
+		_plt.setp(leg.get_texts(), fontsize='small') 
+	
+		# Plot titles
+		if initstate[0]=='f':
+			disp = "\nInitial state: {0}"
+			IS_disp = [initstate]
+		else:
+			IS_disp = ()
+			disp = "\nInitial state: $|\psi(0)\\rangle="
+
+			for i in range(len(initstate)):
+				IS_disp = IS_disp + ("({3: .3f})|{0},{1},{2}\\rangle".format(*(initstate[i])),)
+	
+				if i == 0:
+					disp = disp + "{" + str(i) + "} "
+				else:
+					disp = disp + "+ {" + str(i) + "} "	
+	
+		_plt.suptitle("CTQW probability distribution at time $t={}$".format(t))
+	
+		if (len(list(set(a))) == 1) and (list(set(a))[0] == 0.0):
+			_plt.title(disp.format(*IS_disp) + "$",
+				horizontalalignment='right',multialignment='left', fontsize=11)
+		else:
+			def_disp = "\nDefects: $"
+			for i in range(len(d)):
+				def_disp += "{1: .3f}|{0}\\rangle +".format(i+1,d[i],a[i])	
+		
+			_plt.title(disp.format(*IS_disp) + "$" +  def_disp[:-2] + "$",
+				horizontalalignment='right',multialignment='left', fontsize=11)
+
+		# save plot
+		#_plt.ylim((0,0.3))
+		_plt.subplots_adjust(top=0.85)
+		_pl.savefig(savefile)
+		_plt.close()
+	
+	# scatter psiX to process 0
+	commX = psiX.getComm()
+	scatterX, psiX0 = _PETSc.Scatter.toZero(psiX)
+	scatterX.scatter(psiX, psiX0, False, _PETSc.Scatter.Mode.FORWARD)
+	
+	# scatter psiY to process 0
+	commY = psiY.getComm()
+	scatterY, psiY0 = _PETSc.Scatter.toZero(psiY)
+	scatterY.scatter(psiY, psiY0, False, _PETSc.Scatter.Mode.FORWARD)
+
+	# scatter psiZ to process 0
+	commZ = psiY.getComm()
+	scatterZ, psiZ0 = _PETSc.Scatter.toZero(psiZ)
+	scatterY.scatter(psiZ, psiZ0, False, _PETSc.Scatter.Mode.FORWARD)
+	
+	# use process 0 to create the plot
+	if rank==0:
+		prob_plot_p3(psiX0,psiY0,psiZ0,savefile,t,init_state,d,amp,N)
+	
+	# deallocate	
+	commX.barrier()
+	scatterX.destroy()
+	psiX0.destroy()
+	
+	commY.barrier()
+	scatterY.destroy()
+	psiY0.destroy()
+
+	commZ.barrier()
+	scatterZ.destroy()
+	psiZ0.destroy()
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #----------------------- Graph plot functions -----------------------
@@ -624,6 +716,35 @@ def plotNodes2P(time,node,probXArray,probYArray,savefile):
 
 	# legend
 	leg = _plt.legend(lbl, ['P1','P2'], loc='lower center', bbox_to_anchor=(1.1, 0.5), fancybox=True)
+	_plt.setp(leg.get_texts(), fontsize='small') 
+
+	_plt.title("CTQW probability of node {} over time".format(node))
+
+	# save plot
+	#_plt.ylim((0,0.3))
+	_pl.savefig(savefile)
+	_plt.close()
+
+def plotNodes3P(time,node,probXArray,probYArray,probZArray,savefile):
+	from itertools import cycle
+
+	# create plot
+	lbl = range(3)
+	plotStyles = cycle(["-","--","-.",":"])
+
+	fig = _plt.figure()
+	lbl[0], = _plt.plot(time, probXArray, next(plotStyles))
+	lbl[1], = _plt.plot(time, probYArray, next(plotStyles))
+	lbl[2], = _plt.plot(time, probZArray, next(plotStyles))
+
+	_plt.xlabel("$t$")
+	_plt.ylabel("$|\langle j|\psi\\rangle|^2$",rotation=90)
+	_plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
+
+	_plt.subplots_adjust(left=0.1, right=0.85, top=0.9, bottom=0.1)
+
+	# legend
+	leg = _plt.legend(lbl, ['P1','P2','P3'], loc='lower center', bbox_to_anchor=(1.1, 0.5), fancybox=True)
 	_plt.setp(leg.get_texts(), fontsize='small') 
 
 	_plt.title("CTQW probability of node {} over time".format(node))

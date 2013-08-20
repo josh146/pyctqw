@@ -20,6 +20,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Vector I/O ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     subroutine exportVec(vec,filename,filetype)
         Vec, intent(in)                :: vec
         character(len=50), intent(in)  :: filename
@@ -102,6 +103,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Matrix I/O ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     subroutine exportMat(mat,filename,filetype)
         Mat, intent(in)                :: mat
         character(len=50), intent(in)  :: filename
@@ -276,6 +278,7 @@ module ctqwMPI
 
         close(15)
         
+        HArray = 0.
         do i=1, N            
             do j=1,N
                if (i==j) then
@@ -326,7 +329,7 @@ module ctqwMPI
 
         elseif (p == '3') then
             allocate(H2Array(N**3,N**3), ident(N,N), ident2(N**2,N**2), temp(N**3,N**3),temp3(N**3,N**3))
-!        
+        
             call identity(ident,N)
             call identity(ident2,N**2)
 
@@ -339,23 +342,25 @@ module ctqwMPI
             H2Array = temp + H2Array + temp3
             deallocate(ident,ident2,temp,temp3,HArray,adjArray)
             
-            
             call PetscBarrier(mat,ierr)
         
             call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,N**3,N**3,ierr)
             call MatSetFromOptions(mat,ierr)
             call MatSetUp(mat,ierr)
             call MatGetOwnershipRange(mat,Istart,Iend,ierr)
-        
-!            do i=Istart, Iend-1            
-!                do j=1,N**3
-!                    if (H2Array(i+1,j) .ne. 0) then
-!                        call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
-!                    endif
-!                enddo
-!            enddo
+
+            do i=Istart, Iend-1
+                do j=0,N**3-1
+                    if (H2Array(i+1,j+1) .ne. 0) then
+                        call MatSetValue(mat,i,j,H2Array(i+1,j+1),INSERT_VALUES,ierr)
+                    endif
+                enddo
+            enddo
+
+            call PetscBarrier(mat,ierr)
         
             call MatAssemblyBegin(mat,ierr)
+            CHKERRQ(ierr)
             call MatAssemblyEnd(mat,ierr)
         
             deallocate(H2Array)
@@ -384,14 +389,29 @@ module ctqwMPI
 
     end subroutine importAdjToH 
 
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~ Convert from 2D to 1D ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~ statespace for 2 particles ~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     function coord(x,y,n)
         integer, intent(in)    :: n, x, y
         integer                :: coord
     
         coord = n*(x + n/2 - 1) + y + n/2 - 1
     end function coord
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~ Convert from 3D to 1D ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~ statespace for 3 particles ~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    function coord3P(x,y,z,n)
+        integer, intent(in)    :: n, x, y, z
+        integer                :: coord3P
+    
+        coord3P = (n**2)*x + n*y + z
+    end function coord3P
     
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~ 1P  probabilities ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -418,6 +438,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~ marginal probabilities~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     subroutine marginal(psi,psiM,p,n)
         character, intent(in)     :: p
         PetscInt, intent(in)      :: n
@@ -473,6 +494,66 @@ module ctqwMPI
         call VecAssemblyEnd(psiM,ierr)
         deallocate(ind,temp)
     end subroutine marginal
+
+    subroutine marginal3(psi,psiM,p,n)
+        character, intent(in)     :: p
+        PetscInt, intent(in)      :: n
+        Vec, intent(in)           :: psi
+        
+        Vec, intent(out)          :: psiM
+        
+        ! local variables
+        PetscErrorCode           :: ierr
+        PetscMPIInt              :: rank
+        PetscInt                 :: i, j, NN, Istart, Iend
+        PetscInt, allocatable    :: ind(:)
+        PetscScalar, allocatable :: temp(:)
+        PetscScalar, pointer     :: workArray(:)
+        Vec                      :: work
+        VecScatter               :: ctx
+        
+        NN = n**3
+        
+        ! create work vector
+        call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,NN,work,ierr)
+        call VecSetFromOptions(work,ierr)
+        
+        ! Vector scatter to all processes
+        call VecScatterCreateToAll(psi,ctx,work,ierr)
+        call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterDestroy(ctx,ierr)
+        
+        call VecGetArrayF90(work,workArray,ierr)
+        
+        call VecGetOwnershipRange(psiM,Istart,Iend,ierr)
+        allocate(ind(Iend-Istart),temp(Iend-Istart))
+        ind = [(i,i=Istart,Iend-1)]
+        
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+        
+        if (p=='x') then
+            do i=Istart,Iend-1
+                temp(i+1-Istart) = sum(abs(workArray(1+i*(n**2):(n**2)*(1+i)))**2.d0)
+            end do
+        elseif (p=='y') then
+            do i=Istart,Iend-1
+                temp(i+1-Istart) = sum(abs([(workArray(1+i*n+j*(n**2):n+i*n+j*(n**2)), j=0, n-1)])**2.d0)
+            end do
+        elseif (p=='z') then
+            do i=Istart,Iend-1
+                temp(i+1-Istart) = sum(abs(workArray(1+i::n))**2.d0)
+            end do
+        endif
+        
+        call VecRestoreArrayF90(work,workArray,ierr)
+        call VecDestroy(work,ierr)
+        
+        call VecSetValues(psiM,size(ind),ind,temp,INSERT_VALUES,ierr)
+        call VecAssemblyBegin(psiM,ierr)
+        call VecAssemblyEnd(psiM,ierr)
+        deallocate(ind,temp)
+    end subroutine marginal3
    
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 !~~~~~~~~~~~~~~~~~~~~~ create 1P line state space ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -521,6 +602,30 @@ module ctqwMPI
         call VecAssemblyBegin(psi0,ierr)
         call VecAssemblyEnd(psi0,ierr)    
     end subroutine p2_init
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+!~~~~~~~~~~~~~~~~~~~~~ create 3P line state space ~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+    subroutine p3_init(psi0,init_state,num,N)
+        PetscInt, intent(in)     :: num, N
+        PetscScalar, intent(in)  :: init_state(num,4)
+        
+        Vec, intent(out)         :: psi0
+        
+        ! local variables
+        PetscErrorCode :: ierr
+        PetscInt    :: i, ind(num)
+        PetscScalar :: val(num)
+        
+        do i=1, num
+            ind(i) = coord3P(int(init_state(i,1)),int(init_state(i,2)),int(init_state(i,3)),N)
+            val(i) = init_state(i,4)
+        end do
+        
+        call VecSetValues(psi0,num,ind,val,INSERT_VALUES,ierr)
+        call VecAssemblyBegin(psi0,ierr)
+        call VecAssemblyEnd(psi0,ierr)    
+    end subroutine p3_init
     
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 !~~~~~~~~~~~~~~ create a sparse hamiltonian matrix of size n ~~~~~~~~~~~~~
@@ -734,7 +839,8 @@ module ctqwMPI
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 !~~~~~~~~~~~~ calculate the min or max eiganvalue using SLEPc ~~~~~~~~~~~~
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+
     subroutine min_max_eigs(A,rank,Eval,Eval_error,which, &
                 & eig_solver,worktype,worktypeInt,tolIn,max_it,verbose,error)
     
@@ -928,7 +1034,7 @@ module ctqwMPI
     
 !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Chebyshev method w/ Scaling ~~~~~~~~~~~~~~~~
-!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !    subroutine qw_cheby_sq(psi0,psi,dt,H,rank,N)
 !        PetscMPIInt, intent(in) :: rank
 !        PetscInt, intent(in)    :: N
