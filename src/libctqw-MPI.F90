@@ -1029,10 +1029,10 @@ module ctqwMPI
                 call STSetType(st,STSINVERT,ierr)
                 call STSetShift(st,(0.d0,0.d0),ierr)
                 
-!                call MatGetVecs(A,vec,PETSC_NULL_OBJECT,ierr)
-!                call VecSet(vec,1.0,ierr)
-!                call EPSSetDeflationSpace(eps,1,vec,ierr)
-!                call VecDestroy(vec,ierr)
+                !call MatGetVecs(A,vec,PETSC_NULL_OBJECT,ierr)
+                !call VecSet(vec,1.0,ierr)
+                !call EPSSetDeflationSpace(eps,1,vec,ierr)
+                !call VecDestroy(vec,ierr)
         end select
         
         ! get command line arguments
@@ -1137,6 +1137,138 @@ module ctqwMPI
         call VecDestroyVecsF90(4,work,ierr)
     
     end subroutine qw_cheby
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 2P Entanglement ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+
+    subroutine partial_trace_2p_array(psi,rhoX,n)
+        Vec, intent(in)          :: psi
+        PetscInt, intent(in)     :: n
+
+        PetscScalar, intent(out) :: rhoX(0:n-1,0:n-1)
+
+        ! local variables
+        PetscErrorCode           :: ierr
+        PetscMPIInt              :: rank
+        PetscInt                 :: v, k, i
+        PetscScalar, pointer     :: workArray(:)
+        Vec                      :: work
+        VecScatter               :: ctx
+
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+
+        ! create work vector
+        call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n*n,work,ierr)
+        call VecSetFromOptions(work,ierr)
+        
+        ! Vector scatter to all processes
+        call VecScatterCreateToAll(psi,ctx,work,ierr)
+        call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterDestroy(ctx,ierr)
+        
+        call VecGetArrayF90(work,workArray,ierr)
+
+        ! calculate the partial trace of particle 1
+        rhoX = 0.
+        do v=0, n-1
+            do k=v, n-1
+                do i=0, n*n-1-k+v
+                    if (mod(i,n) == v) then
+                        rhoX(v,k) = rhoX(v,k) + workArray(i)*conjg(workArray(i+k-v))
+
+                        if (k.ne.v) rhoX(k,v) = rhoX(k,v) + conjg(workArray(i))*workArray(i+k-v)
+                    endif
+                enddo
+            enddo
+        enddo
+        
+        call VecRestoreArrayF90(work,workArray,ierr)
+        call VecDestroy(work,ierr)
+
+    end subroutine partial_trace_2p_array
+
+    subroutine partial_trace_2p_mat(psi,rhoX,n)
+        Vec, intent(in)          :: psi
+        PetscInt, intent(in)     :: n
+
+        Mat, intent(out)         :: rhoX
+
+        ! local variables
+        PetscErrorCode           :: ierr
+        PetscMPIInt              :: rank
+        PetscInt                 :: v, k, i, Istart, Iend
+        PetscScalar              :: temp(0:n-1)
+        PetscScalar, pointer     :: workArray(:)
+        Vec                      :: work
+        VecScatter               :: ctx
+
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+
+        ! create work vector
+        call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n*n,work,ierr)
+        call VecSetFromOptions(work,ierr)
+        
+        ! Vector scatter to all processes
+        call VecScatterCreateToAll(psi,ctx,work,ierr)
+        call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterDestroy(ctx,ierr)
+        
+        call VecGetArrayF90(work,workArray,ierr)
+
+        call MatSetSizes(rhoX,PETSC_DECIDE,PETSC_DECIDE,n,n,ierr)
+        call MatSetOption(rhoX,MAT_HERMITIAN,PETSC_TRUE,ierr)
+        call MatSetFromOptions(rhoX,ierr)
+        call MatSetUp(rhoX,ierr)
+        call MatGetOwnershipRange(rhoX,Istart,Iend,ierr)
+
+        ! calculate the partial trace of particle 1
+        do v=Istart, Iend-1
+            temp = 0.
+
+            do k=v, n-1
+                do i=0, n*n-1-k+v
+                    if (mod(i,n) == v) then
+                        temp(k) = temp(k) + workArray(i)*conjg(workArray(i+k-v))
+                    endif
+                enddo
+            enddo
+
+            call MatSetValues(rhoX,1,v,n-v,[(k,k=v,n-1)],temp(v:n-1),INSERT_VALUES,ierr)
+            call MatSetValues(rhoX,n-v-1,[(k,k=v+1,n-1)],1,v,conjg(temp(v+1:n-1)),INSERT_VALUES,ierr)
+        enddo
+
+        call MatAssemblyBegin(rhoX,ierr)
+        call MatAssemblyEnd(rhoX,ierr)
+        
+        call VecRestoreArrayF90(work,workArray,ierr)
+        call VecDestroy(work,ierr)
+
+    end subroutine partial_trace_2p_mat
+
+    subroutine entanglement_2p_slepc(psi,n)
+        Vec, intent(in)          :: psi
+        PetscInt, intent(in)     :: n
+
+        ! local variables
+        PetscErrorCode           :: ierr
+        PetscMPIInt              :: rank
+        Mat                      :: rhoX
+
+        call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+
+        ! get partial trace
+        call MatCreate(PETSC_COMM_WORLD,rhoX,ierr)
+        call partial_trace_2p_mat(psi,rhoX,n)
+
+        ! get eigenvalues of the matrix
+
+        call SlepcFinalize(ierr)
+
+    end subroutine entanglement_2p_slepc
     
 !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Chebyshev method w/ Scaling ~~~~~~~~~~~~~~~~
