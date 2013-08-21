@@ -1218,6 +1218,7 @@ module ctqwMPI
         
         call VecGetArrayF90(work,workArray,ierr)
 
+        ! set up partial trace matrix
         call MatSetSizes(rhoX,PETSC_DECIDE,PETSC_DECIDE,n,n,ierr)
         call MatSetOption(rhoX,MAT_HERMITIAN,PETSC_TRUE,ierr)
         call MatSetFromOptions(rhoX,ierr)
@@ -1248,11 +1249,15 @@ module ctqwMPI
 
     end subroutine partial_trace_2p_mat
 
-    subroutine entanglement_2p_slepc(psi,n)
+    subroutine entanglement_2p(psi,vNE,n)
         Vec, intent(in)          :: psi
         PetscInt, intent(in)     :: n
 
+        PetscReal, intent(out)   :: vNE
+
         ! local variables
+        PetscScalar              :: lambda(n)
+        PetscInt                 :: i
         PetscErrorCode           :: ierr
         PetscMPIInt              :: rank
         Mat                      :: rhoX
@@ -1266,9 +1271,18 @@ module ctqwMPI
 
         ! get eigenvalues of the matrix
 
+        ! calculate the von Neumann Entropy
+        vNE = 0.
+        do i=1, n
+            if (lambda(i) .ne. 0.) then
+                vNE = vNE - lambda(i)*log(lambda(i))/log(2.)
+            endif
+        enddo
+
+        call MatDestroy(rhoX,ierr)
         call SlepcFinalize(ierr)
 
-    end subroutine entanglement_2p_slepc
+    end subroutine entanglement_2p
     
 !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Chebyshev method w/ Scaling ~~~~~~~~~~~~~~~~
