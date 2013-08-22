@@ -263,6 +263,50 @@ class nodeHandle(object):
 		elif p == 3:
 			return _np.array(self.time), self.local_prob.T.tolist()[indN], self.local_prob2.T.tolist()[indN], self.local_prob3.T.tolist()[indN]
 
+class entanglementHandle(object):
+	def __init__(self,t,psi,N,**kwargs):
+		self.__default = {'esolver' : 'krylovschur',
+			          'workType': 'null',
+			          'workSize': '35',
+			          'tol'     : 0.,
+			          'maxIt'   : 0,
+			          'verbose' : False,
+			          'p'		: 2}
+
+		self._rank = _PETSc.COMM_WORLD.Get_rank()
+		self.time = [t]
+		self.N = N
+
+		for key,default in self.__default.iteritems():
+			setattr(self, key, kwargs.get(key,default))
+
+		if self.p==2:
+			entInit, ierr = ctqwmpi.entanglement_2p(psi.fortran,self.N,
+				self.esolver,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
+
+		self.entanglement = [entInit]
+
+	def update(self,t,psi):
+		self.time.append(t)
+
+		if self.p==2:
+			entUpdate, ierr = ctqwmpi.entanglement_2p(psi.fortran,self.N,
+					self.esolver,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
+
+		self.entanglement.append(entUpdate)
+
+	def getEntanglement(self,t=None):
+		if t is not None:
+			try:
+				indt = self._time.index(t)
+			except ValueError:
+				if self._rank == 0:	print '\nERROR: time {} was not handled'.format(t)
+				return
+
+			return self.entanglement[indt]
+
+		else:
+			return _np.array(self.time), _np.array(self.entanglement)
 
 
 
@@ -381,6 +425,8 @@ class QuantumWalkP2(object):
 		self.N = N
 		self.t = 0
 		self.timestep = False
+		self._watchProb = False
+		self._watchEnt = False
 		
 		# define vectors
 		self.psi0 = _PETSc.Vec()
@@ -424,8 +470,13 @@ class QuantumWalkP2(object):
 		ctqwmpi.marginal(vec.fortran,self.psiY.fortran,'y',self.N)
 		Marginal.pop()
 
-	def watch(self,nodes,type='prob'):
-		self.handle = nodeHandle(nodes,self.t,self.psiX,psi2=self.psiY)
+	def watch(self,nodes,watchtype='prob',**kwargs):
+		if watchtype == 'prob':
+			self._watchProb = True
+			self.handle = nodeHandle(nodes,self.t,self.psiX,psi2=self.psiY)
+		elif watchtype == 'entanglement':
+			self._watchEnt = True
+			self.entanglementHandle = entanglementHandle(self.t,self.psi0,self.N,**kwargs)
 		
 	def propagate(self,t,method='expm',**kwargs):
 		if self.timestep:
@@ -450,12 +501,22 @@ class QuantumWalkP2(object):
 		
 		self.marginal(self.psi)
 
-		try:
+		if self._watchProb:
 			self.handle.update(self.t,self.psiX,psi2=self.psiY)
-		except:
-			pass
+
+		if self._watchEnt:
+			self.entanglementHandle.update(self.t,self.psi)
 
 		self.timestep = False
+
+	def plotEntanglement(self,filename):
+
+		comm = _PETSc.COMM_WORLD
+		rank = comm.Get_rank()
+
+		if rank == 0:
+			timeArray, entArray = self.entanglementHandle.getEntanglement()
+			func.plotEntanglement(timeArray,entArray,filename,self.initState,self.defectNodes,self.defectAmp)
 
 	def plotNode(self,filename,node,t=None):
 
@@ -1159,9 +1220,10 @@ class Line2P(QuantumWalkP2):
 		ctqwmpi.p2_init(self.psi0.fortran,initState,self.N)
 		initStateS.pop()
 
-	def watch(self,nodes,type='prob'):
-		nodes = [i+self.N/2-1 for i in nodes]
-		super(Line2P,self).watch(nodes,type=type)
+	def watch(self,nodes,watchtype='prob',**kwargs):
+		if watchtype == 'prob':
+			nodes = [i+self.N/2-1 for i in nodes]
+		super(Line2P,self).watch(nodes,watchtype=watchtype,**kwargs)
 		
 	def plot(self,filename):
 		if _os.path.isabs(filename):

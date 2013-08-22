@@ -1209,7 +1209,7 @@ module ctqwMPI
         ! create work vector
         call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n*n,work,ierr)
         call VecSetFromOptions(work,ierr)
-        
+
         ! Vector scatter to all processes
         call VecScatterCreateToAll(psi,ctx,work,ierr)
         call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
@@ -1249,36 +1249,129 @@ module ctqwMPI
 
     end subroutine partial_trace_2p_mat
 
-    subroutine entanglement_2p(psi,vNE,n)
-        Vec, intent(in)          :: psi
-        PetscInt, intent(in)     :: n
+    subroutine entanglement_2p(psi,n,vNE,eig_solver,worktype,worktypeInt,tolIn,max_it,verbose,error)
+        Vec, intent(in)              :: psi
+        character(len=*),intent(in)  :: eig_solver
+        PetscInt, intent(in)         :: worktypeInt, max_it, n
+        PetscReal, intent(in)        :: tolIn
+        character(len=3), intent(in) :: worktype
+        PetscBool, intent(in)        :: verbose
 
-        PetscReal, intent(out)   :: vNE
+        PetscReal, intent(out)       :: vNE
+        PetscInt, intent(out)        :: error
 
         ! local variables
-        PetscScalar              :: lambda(n)
-        PetscInt                 :: i
+        PetscScalar              :: lambda(n), kr, ki
+        PetscInt                 :: i, its, nev, maxit, nconv
+        PetscReal                :: tol
         PetscErrorCode           :: ierr
         PetscMPIInt              :: rank
         Mat                      :: rhoX
+        EPS                      :: eps
+        EPSType                  :: tname
+        character(len=12)        :: arg
 
-        call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
 
         ! get partial trace
         call MatCreate(PETSC_COMM_WORLD,rhoX,ierr)
         call partial_trace_2p_mat(psi,rhoX,n)
 
-        ! get eigenvalues of the matrix
+        call exportMat(rhoX,'out/rhoX.txt','txt')
+
+        ! initialise slepc
+        call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
+        call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
+        call EPSSetOperators(eps,rhoX,PETSC_NULL_OBJECT,ierr)
+
+        ! set the problem type as EPS_HEP: Hermitian matrix
+        call EPSSetProblemType(eps,EPS_HEP,ierr)
+
+        ! set tolerance and max number of iterations
+        if (tolIn .ne. 0) then
+            if (max_it .ne. 0) then
+                call EPSSetTolerances(eps,tolIn,max_it,ierr)
+            else
+                call EPSSetTolerances(eps,tolIn,PETSC_DECIDE,ierr)
+            endif
+        else
+            if (max_it .ne. 0) call EPSSetTolerances(eps,PETSC_DECIDE,max_it,ierr)
+        endif
+        
+        ! set the workspace options
+        select case(worktype)
+            case('mpd');   call EPSSetDimensions(eps,1,PETSC_DECIDE,worktypeInt,ierr)
+            case('ncv');   call EPSSetDimensions(eps,1,worktypeInt,PETSC_DECIDE,ierr)
+            case default;  continue ! SLEPC default workspace
+        end select
+
+        ! set eigensolver to use
+        arg = trim(adjustl(eig_solver))
+        select case(arg)
+            case('krylovschur'); call EPSSetType(eps,EPSKRYLOVSCHUR,ierr)
+            case('lapack');      call EPSSetType(eps,EPSLAPACK,ierr)
+            case default;        continue ! SLEPC default is Krylov-Schur
+        end select   
+
+        ! select all eigenvalues
+        call EPSSetWhichEigenpairs(eps,EPS_ALL,ierr)
+        ! get command line arguments
+        call EPSSetFromOptions(eps,ierr)
+        ! solve the system
+        call EPSSolve(eps,ierr)
+
+        ! verbose info
+        if (verbose) then
+            call EPSGetIterationNumber(eps,its,ierr)
+            if (rank == 0) write(*,*)'Number of iterations of the method: ',its
+        
+            call EPSGetType(eps,tname,ierr)
+            if (rank == 0) write(*,*)'Soln method: ',tname
+        
+            call EPSGetDimensions(eps,nev,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,ierr)
+            if (rank == 0) write(*,*)'Number of requested eigenvalues: ',nev
+        
+            call EPSGetTolerances(eps,tol,maxit,ierr)
+            if (rank == 0) then
+                write(*,*)'Stopping condition tolerance: ',tol
+                write(*,*)'Max number of iterations: ',maxit
+            end if
+            
+            call EPSGetConverged(eps,nconv,ierr)
+            if (rank == 0) then
+                write(*,*)'Number of converged eigenpairs: ',nconv
+                write(*,*)''
+            endif
+        endif
+
+        lambda = 0.
+
+        ! determine if convergence occurs
+        call EPSGetConverged(eps,nconv,ierr)
+        if (nconv==n) then
+            do i=1,n
+                call EPSGetEigenpair(eps,i-1,kr,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+                lambda(i) = PetscRealPart(kr)
+            enddo
+            error = 0
+        else
+            error = 1
+            if (rank==0) write(*,*)'Not all eigenvalues converged. Reduce tolerance, increase &
+                        & number of interations, or increase work vector size'
+        endif
 
         ! calculate the von Neumann Entropy
         vNE = 0.
-        do i=1, n
-            if (lambda(i) .ne. 0.) then
-                vNE = vNE - lambda(i)*log(lambda(i))/log(2.)
-            endif
-        enddo
+        if (error == 0) then
+            do i=1, n
+                if (lambda(i) .ne. 0.) then
+                    vNE = vNE - lambda(i)*log(lambda(i))/log(2.)
+                endif
+            enddo
+        endif
 
+        ! clean up
+        call EPSDestroy(eps,ierr)
         call MatDestroy(rhoX,ierr)
         call SlepcFinalize(ierr)
 

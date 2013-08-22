@@ -664,6 +664,49 @@ def plotGraph(ax,pos,lineX,lineY,prob=None,prob2=None,nodesize=None,barscale=1,o
 		ax.set_ylim3d([pos.T[1].min(),pos.T[1].max()])
 		ax.set_axis_off()
 
+def plotEntanglement(t,entArray,savefile,initstate,d,a):
+
+	# create plot
+	fig = _plt.figure()
+	_plt.plot(t, entArray)
+	_plt.ylabel("Entanglement",rotation=90)
+	_plt.grid(b=None, which='major', axis='both', linestyle='-', alpha=0.3)
+	_plt.xlabel("$t$")
+
+	# Plot titles
+	if initstate[0]=='f':
+		disp = "\nInitial state: {0}"
+		IS_disp = [initstate]
+	else:
+		IS_disp = ()
+		disp = "\nInitial state: $|\psi(0)\\rangle="
+
+		for i in range(len(initstate)):
+			IS_disp = IS_disp + ("({2: .3g})|{0.real: .0f},{1.real: .0f}\\rangle".format(*(initstate[i])),)
+
+			if i == 0:
+				disp = disp + "{" + str(i) + "} "
+			else:
+				disp = disp + "+ {" + str(i) + "} "	
+
+	_plt.suptitle("CTQW two particle entanglement")
+
+	if (len(list(set(a))) == 1) and (list(set(a))[0] == 0.0):
+		_plt.title(disp.format(*IS_disp) + "$",
+			multialignment='left', fontsize=11)
+	else:
+		def_disp = "\nDefects: $"
+		for i in range(len(d)):
+			def_disp += "{1: .3}|{0}\\rangle +".format(d[i],a[i])	
+	
+		_plt.title(disp.format(*IS_disp) + "$" +  def_disp[:-2] + "$",
+			multialignment='left', fontsize=11)
+
+	# save plot
+	_plt.subplots_adjust(top=0.85)
+	_pl.savefig(savefile)
+	_plt.close()
+
 def plotNodes(time,nodes,probArray,savefile,p=0):
 	from itertools import cycle
 	
