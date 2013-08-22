@@ -1142,7 +1142,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 2P Entanglement ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 
-    subroutine partial_trace_2p_array(psi,rhoX,n)
+    subroutine partial_trace_array(psi,rhoX,n)
         Vec, intent(in)          :: psi
         PetscInt, intent(in)     :: n
 
@@ -1151,7 +1151,7 @@ module ctqwMPI
         ! local variables
         PetscErrorCode           :: ierr
         PetscMPIInt              :: rank
-        PetscInt                 :: v, k, i
+        PetscInt                 :: v, k, i, rhoLength
         PetscScalar, pointer     :: workArray(:)
         Vec                      :: work
         VecScatter               :: ctx
@@ -1170,11 +1170,14 @@ module ctqwMPI
         
         call VecGetArrayF90(work,workArray,ierr)
 
-        ! calculate the partial trace of particle 1
+        ! get number of particles in system
+        rhoLength = size(workArray)
+
+        ! calculate the partial trace of *last* particle
         rhoX = 0.
         do v=0, n-1
             do k=v, n-1
-                do i=0, n*n-1-k+v
+                do i=0, rhoLength-1-k+v
                     if (mod(i,n) == v) then
                         rhoX(v,k) = rhoX(v,k) + workArray(i)*conjg(workArray(i+k-v))
 
@@ -1187,9 +1190,9 @@ module ctqwMPI
         call VecRestoreArrayF90(work,workArray,ierr)
         call VecDestroy(work,ierr)
 
-    end subroutine partial_trace_2p_array
+    end subroutine partial_trace_array
 
-    subroutine partial_trace_2p_mat(psi,rhoX,n)
+    subroutine partial_trace_mat(psi,rhoX,n)
         Vec, intent(in)          :: psi
         PetscInt, intent(in)     :: n
 
@@ -1198,7 +1201,7 @@ module ctqwMPI
         ! local variables
         PetscErrorCode           :: ierr
         PetscMPIInt              :: rank
-        PetscInt                 :: v, k, i, Istart, Iend
+        PetscInt                 :: v, k, i, Istart, Iend, rhoLength
         PetscScalar              :: temp(0:n-1)
         PetscScalar, pointer     :: workArray(:)
         Vec                      :: work
@@ -1225,12 +1228,15 @@ module ctqwMPI
         call MatSetUp(rhoX,ierr)
         call MatGetOwnershipRange(rhoX,Istart,Iend,ierr)
 
-        ! calculate the partial trace of particle 1
+        ! determine how many particles in the system
+        rhoLength = size(workArray)
+
+        ! calculate the partial trace of the *last* particle
         do v=Istart, Iend-1
             temp = 0.
 
             do k=v, n-1
-                do i=0, n*n-1-k+v
+                do i=0, rhoLength-1-k+v
                     if (mod(i,n) == v) then
                         temp(k) = temp(k) + workArray(i)*conjg(workArray(i+k-v))
                     endif
@@ -1241,15 +1247,17 @@ module ctqwMPI
             call MatSetValues(rhoX,n-v-1,[(k,k=v+1,n-1)],1,v,conjg(temp(v+1:n-1)),INSERT_VALUES,ierr)
         enddo
 
+        call PetscBarrier(PETSC_COMM_WORLD,ierr)
+
         call MatAssemblyBegin(rhoX,ierr)
         call MatAssemblyEnd(rhoX,ierr)
         
         call VecRestoreArrayF90(work,workArray,ierr)
         call VecDestroy(work,ierr)
 
-    end subroutine partial_trace_2p_mat
+    end subroutine partial_trace_mat
 
-    subroutine entanglement_2p(psi,n,vNE,eig_solver,worktype,worktypeInt,tolIn,max_it,verbose,error)
+    subroutine entanglement(psi,n,vNE,eig_solver,worktype,worktypeInt,tolIn,max_it,verbose,error)
         Vec, intent(in)              :: psi
         character(len=*),intent(in)  :: eig_solver
         PetscInt, intent(in)         :: worktypeInt, max_it, n
@@ -1275,9 +1283,7 @@ module ctqwMPI
 
         ! get partial trace
         call MatCreate(PETSC_COMM_WORLD,rhoX,ierr)
-        call partial_trace_2p_mat(psi,rhoX,n)
-
-        call exportMat(rhoX,'out/rhoX.txt','txt')
+        call partial_trace_mat(psi,rhoX,n)
 
         ! initialise slepc
         call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
@@ -1375,7 +1381,7 @@ module ctqwMPI
         call MatDestroy(rhoX,ierr)
         call SlepcFinalize(ierr)
 
-    end subroutine entanglement_2p
+    end subroutine entanglement
     
 !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !!~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Chebyshev method w/ Scaling ~~~~~~~~~~~~~~~~

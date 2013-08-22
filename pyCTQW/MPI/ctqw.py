@@ -281,7 +281,7 @@ class entanglementHandle(object):
 			setattr(self, key, kwargs.get(key,default))
 
 		if self.p==2:
-			entInit, ierr = ctqwmpi.entanglement_2p(psi.fortran,self.N,
+			entInit, ierr = ctqwmpi.entanglement(psi.fortran,self.N,
 				self.esolver,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
 
 		self.entanglement = [entInit]
@@ -290,7 +290,7 @@ class entanglementHandle(object):
 		self.time.append(t)
 
 		if self.p==2:
-			entUpdate, ierr = ctqwmpi.entanglement_2p(psi.fortran,self.N,
+			entUpdate, ierr = ctqwmpi.entanglement(psi.fortran,self.N,
 					self.esolver,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
 
 		self.entanglement.append(entUpdate)
@@ -565,6 +565,20 @@ class QuantumWalkP2(object):
 		elif filetype == 'bin':
 			func.exportVec(self.psi,filename,filetype)
 
+	def exportPartialTrace(self,filename,filetype,p=1):
+		if p == 1:
+			if filetype == 'bin':
+				rho = _PETSc.Mat().create(_PETSc.COMM_WORLD)
+				ctqwmpi.partial_trace_mat(self.psi.fortran,rho.fortran,self.N)
+				func.exportMat(rho, filename, filetype)
+				rho.destroy()
+			else:
+				rho = ctqwmpi.partial_trace_array(self.psi.fortran,self.N)
+				if self.rank == 0:	_np.savetxt(filename, rho.real)
+		if p == 2:
+			#to do
+			pass
+
 	def psiToInit(self):
 		self.psi0 = self.psi
 		self.timestep = True
@@ -585,6 +599,8 @@ class QuantumWalkP3(object):
 		self.N = N
 		self.t = 0
 		self.timestep = False
+		self._watchProb = False
+		self._watchEnt = False
 		
 		# define vectors
 		self.psi0 = _PETSc.Vec()
@@ -632,8 +648,13 @@ class QuantumWalkP3(object):
 		ctqwmpi.marginal3(vec.fortran,self.psiZ.fortran,'z',self.N)
 		Marginal.pop()
 
-	def watch(self,nodes,type='prob'):
-		self.handle = nodeHandle(nodes,self.t,self.psiX,psi2=self.psiY,psi3=self.psiZ)
+	def watch(self,nodes,watchtype='prob',**kwargs):
+		if watchtype == 'prob':
+			self._watchProb = True
+			self.handle = nodeHandle(nodes,self.t,self.psiX,psi2=self.psiY,psi3=self.psiZ)
+		elif watchtype == 'entanglement':
+			self._watchEnt = True
+			self.entanglementHandle = entanglementHandle(self.t,self.psi0,self.N,**kwargs)
 		
 	def propagate(self,t,method='expm',**kwargs):
 		if self.timestep:
@@ -658,12 +679,22 @@ class QuantumWalkP3(object):
 		
 		self.marginal(self.psi)
 
-		try:
+		if self._watchProb:
 			self.handle.update(self.t,self.psiX,psi2=self.psiY,psi3=self.psiZ)
-		except:
-			pass
+
+		if self._watchEnt:
+			self.entanglementHandle.update(self.t,self.psi)
 
 		self.timestep = False
+
+	def plotEntanglement(self,filename):
+
+		comm = _PETSc.COMM_WORLD
+		rank = comm.Get_rank()
+
+		if rank == 0:
+			timeArray, entArray = self.entanglementHandle.getEntanglement()
+			func.plotEntanglement(timeArray,entArray,filename,self.initState,self.defectNodes,self.defectAmp)
 
 	def plotNode(self,filename,node,t=None):
 

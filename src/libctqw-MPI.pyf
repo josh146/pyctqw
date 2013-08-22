@@ -158,17 +158,17 @@ python module libpyctqw_MPI ! in
                 integer(8), intent(in) :: rank_bn
                 integer, intent(in)    :: n
             end subroutine qw_cheby
-            subroutine partial_trace_2p_array(psi,rhoX,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+            subroutine partial_trace_array(psi,rhoX,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8), intent(in) :: psi
                 complex(8), intent(out):: rhoX(n,n)
                 integer, intent(in)    :: n
             end subroutine partial_trace_2p_array
-            subroutine partial_trace_2p_mat(psi,rhoX,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+            subroutine partial_trace_mat(psi,rhoX,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8), intent(in) :: psi
                 integer(8)             :: rhoX
                 integer, intent(in)    :: n
             end subroutine partial_trace_2p_mat
-            subroutine entanglement_2p(psi,n,vNE,eig_solver,worktype,worktypeInt,tolIn,max_it,verbose,error) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+            subroutine entanglement(psi,n,vNE,eig_solver,worktype,worktypeInt,tolIn,max_it,verbose,error) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8), intent(in)   :: psi
                 integer, intent(in)      :: n
                 real(8), intent(out)     :: vNE
@@ -179,7 +179,7 @@ python module libpyctqw_MPI ! in
                 integer, intent(in)      :: max_it
                 logical, intent(in)      :: verbose
                 integer, intent(out)     :: error
-            end subroutine entanglement_2p
+            end subroutine entanglement
         end module ctqwmpi
     end interface 
 end python module libpyctqw_MPI
