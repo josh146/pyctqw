@@ -697,7 +697,6 @@ module ctqwMPI
         
         ! local variables
         PetscErrorCode :: ierr
-        PetscBool      :: flag
         PetscInt       :: i, j, its, Istart, Iend, col(3)
         PetscScalar    :: value(3)
         
@@ -768,13 +767,9 @@ module ctqwMPI
         Mat, intent(out)        :: H2
         
         ! local variables
-        PetscViewer    :: output
-        VecScatter     :: ctx
         PetscErrorCode :: ierr
-        PetscBool      :: flag
         PetscInt       :: NN, i, j, its, Istart, Iend, col(3)
         PetscScalar    :: value(3), alpha
-        Mat            :: temp
         PetscScalar    :: diagArray(n)
         
         NN = n**2
@@ -894,7 +889,6 @@ module ctqwMPI
         Mat, intent(out)        :: H3
         
         ! local variables
-        PetscViewer    :: output
         PetscErrorCode :: ierr
         PetscInt       :: i, adjArray(n,n)
         
@@ -921,13 +915,24 @@ module ctqwMPI
         
         Vec, intent(out)        :: y
         
-        PetscErrorCode :: ierr
-        PetscScalar    :: alpha
-        MFN            :: mfn
-        
+        ! local variables
+        character(len=40)       :: vecType
+        PetscErrorCode          :: ierr
+        PetscScalar             :: alpha
+        MFN                     :: mfn
+
+        ! check if vector is sequential or MPI
+        call VecGetType(v,vecType,ierr)
+        vecType = trim(adjustl(vecType))
+
         call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
-        
-        call MFNCreate(PETSC_COMM_WORLD, mfn, ierr)
+
+        if (vecType == "seq") then
+            call MFNCreate(PETSC_COMM_SELF, mfn, ierr)
+        else
+            call MFNCreate(PETSC_COMM_WORLD, mfn, ierr)
+        endif
+
         call MFNSetOperator(mfn,A,ierr)
         call MFNSetFunction(mfn,SLEPC_FUNCTION_EXP,ierr)
         call MFNSetFromOptions(mfn,ierr)
@@ -963,6 +968,7 @@ module ctqwMPI
         PetscInt, intent(out)        :: error
         
         ! local variables
+        character(len=40) :: matType
         PetscErrorCode    :: ierr
         PetscInt          :: i, j, its, nev, maxit, nconv
         PetscScalar       :: kr, ki
@@ -973,8 +979,17 @@ module ctqwMPI
         character(len=12) :: arg
         Vec               :: vec
         
+        ! check if vector is sequential or MPI
+        call MatGetType(A,matType,ierr)
+        matType = trim(adjustl(matType))
+
+        ! initialise SLEPc and create the EPS
         call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
-        call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
+        if (matType == "seqaij") then
+            call EPSCreate(PETSC_COMM_SELF,eps,ierr)
+        else
+            call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
+        endif
         call EPSSetOperators(eps,A,PETSC_NULL_OBJECT,ierr)
         
         ! set the problem type as EPS_HEP: Hermitian matrix
@@ -1095,7 +1110,7 @@ module ctqwMPI
         Vec, intent(out)        :: psi
         
         ! local variables
-    PetscErrorCode :: ierr
+        PetscErrorCode :: ierr
         PetscInt      :: m, terms, i, j
         PetscReal     :: alpha
         PetscScalar   :: bessj0, bessj1, bessjn
@@ -1149,6 +1164,7 @@ module ctqwMPI
         PetscScalar, intent(out) :: rhoX(0:n-1,0:n-1)
 
         ! local variables
+        character(len=40)        :: vecType
         PetscErrorCode           :: ierr
         PetscMPIInt              :: rank
         PetscInt                 :: v, k, i, rhoLength
@@ -1158,20 +1174,27 @@ module ctqwMPI
 
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
 
-        ! create work vector
-        call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n*n,work,ierr)
-        call VecSetFromOptions(work,ierr)
-        
-        ! Vector scatter to all processes
-        call VecScatterCreateToAll(psi,ctx,work,ierr)
-        call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterDestroy(ctx,ierr)
-        
-        call VecGetArrayF90(work,workArray,ierr)
+        ! check if vector is sequential or MPI
+        call VecGetType(psi,vecType,ierr)
+        vecType = trim(adjustl(vecType))
+	    
+	    call VecGetSize(psi,rhoLength,ierr)
 
-        ! get number of particles in system
-        rhoLength = size(workArray)
+        if (vecType == "seq") then
+            call VecGetArrayF90(psi,workArray,ierr)
+        else
+	        ! create work vector
+	        call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,rhoLength,work,ierr)
+	        call VecSetFromOptions(work,ierr)
+	        
+	        ! Vector scatter to all processes
+	        call VecScatterCreateToAll(psi,ctx,work,ierr)
+	        call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+	        call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+	        call VecScatterDestroy(ctx,ierr)
+	        
+	        call VecGetArrayF90(work,workArray,ierr)
+	    endif
 
         ! calculate the partial trace of *last* particle
         rhoX = 0.
@@ -1187,8 +1210,12 @@ module ctqwMPI
             enddo
         enddo
         
-        call VecRestoreArrayF90(work,workArray,ierr)
-        call VecDestroy(work,ierr)
+        if (vecType == "seq") then
+        	call VecRestoreArrayF90(psi,workArray,ierr)
+        else
+	        call VecRestoreArrayF90(work,workArray,ierr)
+	        call VecDestroy(work,ierr)
+        endif
 
     end subroutine partial_trace_array
 
@@ -1199,6 +1226,7 @@ module ctqwMPI
         Mat, intent(out)         :: rhoX
 
         ! local variables
+        character(len=40)        :: vecType
         PetscErrorCode           :: ierr
         PetscMPIInt              :: rank
         PetscInt                 :: v, k, i, Istart, Iend, rhoLength
@@ -1209,17 +1237,28 @@ module ctqwMPI
 
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
 
-        ! create work vector
-        call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,n*n,work,ierr)
-        call VecSetFromOptions(work,ierr)
+        ! check if vector is sequential or MPI
+        call VecGetType(psi,vecType,ierr)
+        vecType = trim(adjustl(vecType))
 
-        ! Vector scatter to all processes
-        call VecScatterCreateToAll(psi,ctx,work,ierr)
-        call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterDestroy(ctx,ierr)
-        
-        call VecGetArrayF90(work,workArray,ierr)
+	    call VecGetSize(psi,rhoLength,ierr)
+
+        if (vecType == "seq") then
+            call VecGetArrayF90(psi,workArray,ierr)
+        else
+	        ! create work vector
+	        call VecGetSize(psi,rhoLength,ierr)
+	        call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,rhoLength,work,ierr)
+	        call VecSetFromOptions(work,ierr)
+	        
+	        ! Vector scatter to all processes
+	        call VecScatterCreateToAll(psi,ctx,work,ierr)
+	        call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+	        call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+	        call VecScatterDestroy(ctx,ierr)
+	        
+	        call VecGetArrayF90(work,workArray,ierr)
+	    endif
 
         ! set up partial trace matrix
         call MatSetSizes(rhoX,PETSC_DECIDE,PETSC_DECIDE,n,n,ierr)
@@ -1227,9 +1266,6 @@ module ctqwMPI
         call MatSetFromOptions(rhoX,ierr)
         call MatSetUp(rhoX,ierr)
         call MatGetOwnershipRange(rhoX,Istart,Iend,ierr)
-
-        ! determine how many particles in the system
-        rhoLength = size(workArray)
 
         ! calculate the partial trace of the *last* particle
         do v=Istart, Iend-1
@@ -1247,13 +1283,21 @@ module ctqwMPI
             call MatSetValues(rhoX,n-v-1,[(k,k=v+1,n-1)],1,v,conjg(temp(v+1:n-1)),INSERT_VALUES,ierr)
         enddo
 
-        call PetscBarrier(PETSC_COMM_WORLD,ierr)
+        if (vecType == "seq") then
+            call PetscBarrier(PETSC_COMM_SELF,ierr)
+        else
+            call PetscBarrier(PETSC_COMM_WORLD,ierr)
+        endif
 
         call MatAssemblyBegin(rhoX,ierr)
         call MatAssemblyEnd(rhoX,ierr)
         
-        call VecRestoreArrayF90(work,workArray,ierr)
-        call VecDestroy(work,ierr)
+        if (vecType == "seq") then
+        	call VecRestoreArrayF90(psi,workArray,ierr)
+        else
+	        call VecRestoreArrayF90(work,workArray,ierr)
+	        call VecDestroy(work,ierr)
+        endif
 
     end subroutine partial_trace_mat
 
@@ -1269,6 +1313,7 @@ module ctqwMPI
         PetscInt, intent(out)        :: error
 
         ! local variables
+        character(len=40)        :: vecType
         PetscScalar              :: lambda(n), kr, ki
         PetscInt                 :: i, its, nev, maxit, nconv
         PetscReal                :: tol
@@ -1281,16 +1326,26 @@ module ctqwMPI
 
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
 
-        ! get partial trace
-        call MatCreate(PETSC_COMM_WORLD,rhoX,ierr)
-        call partial_trace_mat(psi,rhoX,n)
+        ! check if vector is sequential or MPI
+        call VecGetType(psi,vecType,ierr)
+        vecType = trim(adjustl(vecType))
 
         ! initialise slepc
         call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
-        call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
-        call EPSSetOperators(eps,rhoX,PETSC_NULL_OBJECT,ierr)
+
+        if (vecType == "seq") then
+            call MatCreate(PETSC_COMM_SELF,rhoX,ierr)
+            call EPSCreate(PETSC_COMM_SELF,eps,ierr)
+        else
+            call MatCreate(PETSC_COMM_WORLD,rhoX,ierr)
+            call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
+        endif
+
+        ! get partial trace
+        call partial_trace_mat(psi,rhoX,n)
 
         ! set the problem type as EPS_HEP: Hermitian matrix
+        call EPSSetOperators(eps,rhoX,PETSC_NULL_OBJECT,ierr)
         call EPSSetProblemType(eps,EPS_HEP,ierr)
 
         ! set tolerance and max number of iterations
@@ -1382,87 +1437,85 @@ module ctqwMPI
         call SlepcFinalize(ierr)
 
     end subroutine entanglement
-    
-!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Chebyshev method w/ Scaling ~~~~~~~~~~~~~~~~
-!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-!    subroutine qw_cheby_sq(psi0,psi,dt,H,rank,N)
-!        PetscMPIInt, intent(in) :: rank
-!        PetscInt, intent(in)    :: N
-!        PetscScalar, intent(in) :: dt
-!        Vec, intent(in)         :: psi0
-!        Mat, intent(in)         :: H
-!        
-!        Vec, intent(out)        :: psi
-!        
-!        ! local variables
-!        PetscErrorCode :: ierr
-!        PetscInt      :: m, terms, i, j, s
-!        PetscReal     :: alpha, norm
-!        PetscScalar   :: bessj0, bessj1, bessjn
-!        Mat           :: Hnorm, work(4)
-!        PetscBool     :: scaled
-!        
-!        alpha = PetscRealPart(dt)
-!        
-!        call MatNorm(H,NORM_FROBENIUS,norm,ierr)
-!        if (norm<0.5) then
-!            scaled = .true.
-!            call MatDuplicate(H,MAT_COPY_VALUES,Hnorm,ierr)
-!            
-!            s = 0
-!            do while(norm<0.5)
-!                s = s + 1
-!                call MatScale(Hnorm,s,ierr)
-!                call MatNorm(Hnorm,NORM_FROBENIUS,norm,ierr)
-!            enddo
-!        else
-!            scaled = .false.        
-!        end if
-!        
-!        if (scaled) then
-!        call MatDuplicate(Hnorm,MAT_DO_NOT_COPY_VALUES,work(1),ierr)
-!        call MatDuplicate(Hnorm,MAT_COPY_VALUES,work(2),ierr)
-!        call MatDuplicate(Hnorm,MAT_DO_NOT_COPY_VALUES,work(3),ierr)
-!        call MatDuplicate(Hnorm,MAT_DO_NOT_COPY_VALUES,work(4),ierr)
-!    else
-!        call MatDuplicate(H,MAT_DO_NOT_COPY_VALUES,work(1),ierr)
-!        call MatDuplicate(H,MAT_COPY_VALUES,work(2),ierr)
-!        call MatDuplicate(H,MAT_DO_NOT_COPY_VALUES,work(3),ierr)
-!        call MatDuplicate(H,MAT_DO_NOT_COPY_VALUES,work(4),ierr)
-!    endif
-!        
-!        call VecCopy(psi0,work(1),ierr)
-!        call MatScale(work(2),-1.0,ierr)        
-!        call VecAXPBY(work(2), (Emax+Emin)/(Emax-Emin),-2.0/(Emax-Emin), work(1),ierr)
-!        
-!        bessj0 = dbesjn(0,alpha)
-!        bessj1 = dbesjn(1,alpha)
-!        call VecCopy(psi0,work(4),ierr)
-!        call VecAXPBY(work(4), 2.0*PETSC_i*bessj1,bessj0, work(2),ierr)
-!        
-!        terms = 0
-!        do while (abs(2.d0*dbesjn(terms,alpha)) > 1.d-18)
-!            terms = terms + 1
-!        end do
-!        
-!        do m = 2, terms
-!            call MatMult(H,work(2),work(3),ierr)
-!            call VecAXPBY(work(3), 2.0*(Emax+Emin)/(Emax-Emin),-4.0/(Emax-Emin), work(2),ierr)
-!            call VecAXPY(work(3),-1.0+0.*PETSC_i,work(1),ierr)
-!            
-!            bessjn = dbesjn(m,alpha)
-!            call VecAXPY(work(4),2.0*(PETSC_i**m)*bessjn,work(3),ierr)
 
-!            call VecCopy(work(2),work(1),ierr)
-!            call VecCopy(work(3),work(2),ierr)
-!        end do
-!        
-!        call VecScale(work(4),exp(-PETSC_i*(Emax+Emin)*dt/2.0),ierr)
-!        call VecCopy(work(4),psi,ierr)
-!        
-!        call VecDestroyVecsF90(4,work,ierr)
-!    
-!    end subroutine qw_cheby_sq
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Graph Isomorphism ~~~~~~~~~~~~~~~~~~~~~~~~~~
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    function number_of_edges(adjArray, n)
+    	PetscInt, intent(in)    :: n, adjArray(n,n)
+        PetscInt                :: number_of_edges
+
+        ! local variables
+        PetscInt                :: i, j
+
+        number_of_edges = 0
+
+        do i=1,n-1
+        	do j=i+1,n
+                if (adjArray(i,j) == 1) number_of_edges = number_of_edges + 1
+            enddo
+        enddo
+
+    end function number_of_edges
+
+    function getEdges(edgeNum,adjArray,n)
+    	PetscInt, intent(in)    :: n, edgeNum, adjArray(n,n)
+        PetscScalar             :: getEdges(2,3)
+
+        ! local variables
+        PetscInt                :: i, j, number_of_edges
+
+        number_of_edges = 0
+
+        do i=1,n-1
+        	do j=i+1,n
+                if (adjArray(i,j) == 1) number_of_edges = number_of_edges + 1
+
+                if (number_of_edges == edgeNum) then
+                    getEdges(1,:) = [real(i-1,8),real(i-1,8),1.d0/sqrt(2.0)]
+                    getEdges(2,:) = [real(j-1,8),real(j-1,8),1.d0/sqrt(2.0)]
+                	return
+                endif
+            enddo
+        enddo
+
+    end function getEdges
+
+    subroutine get_bosonic_states(init_states,adjArray,n)
+    	PetscInt, intent(in)    :: n, adjArray(n,n)
+        PetscScalar, intent(out):: init_states(n,2,3)
+
+        ! local variables
+        PetscMPIInt    :: rank, size
+        PetscInt       :: edgeNum, localStateNum, i ,j
+        PetscErrorCode :: ierr
+        
+        edgeNum = number_of_edges(adjArray,n)
+
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+        call MPI_Comm_size(PETSC_COMM_WORLD,size,ierr)
+
+        if (edgeNum > size) then
+            localStateNum = edgeNum/size
+            if (rank == 0) localStateNum = localStateNum + mod(edgeNum,size)
+        else
+            if (rank < edgeNum) then
+            	localStateNum = 1
+            else
+            	localStateNum = 0
+            endif
+        endif
+
+        init_states = 0.
+        do i=1, localStateNum
+        	if (rank == 0) then
+        		init_states(i,:,:) = getEdges(localStateNum*rank+i,adjArray,n)
+            else
+        		init_states(i,:,:) = getEdges((localStateNum+mod(edgeNum,size))*rank+i,adjArray,n)
+        	endif
+        enddo       
+
+    end subroutine get_bosonic_states
 
 end module ctqwMPI

@@ -14,6 +14,17 @@ amp = [2.0,1.5]
 
 rank =  PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 
+from libpyctqw_MPI import ctqwmpi
+
+adj=np.genfromtxt('../graphs/3-caley.txt')
+initstates = ctqwmpi.get_bosonic_states(adj)
+
+for i in range(len(initstates)):
+	if initstates[i,0,2] != 0.:
+		print rank, initstates[i]
+sys.exit()
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #------------------------------- Strong Regular --------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

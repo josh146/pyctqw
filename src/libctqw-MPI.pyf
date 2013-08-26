@@ -180,6 +180,22 @@ python module libpyctqw_MPI ! in
                 logical, intent(in)      :: verbose
                 integer, intent(out)     :: error
             end subroutine entanglement
+            function number_of_edges(adjArray, n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+                integer, intent(in)     :: adjArray(n,n)
+                integer, intent(in)     :: n
+                integer                 :: number_of_edges
+            end function number_of_edges
+            function getEdges(edgeNum, adjArray, n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+                integer, intent(in)     :: adjArray(n,n)
+                integer, intent(in)     :: n
+                integer, intent(in)     :: edgeNum
+                integer                :: getEdges(2,3)
+            end function getEdges
+            subroutine get_bosonic_states(init_states,adjArray,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+                integer, intent(in)     :: adjArray(n,n)
+                integer, intent(in)     :: n
+                complex(8), intent(out) :: init_states(n,2,3)
+            end subroutine get_bosonic_states
         end module ctqwmpi
     end interface 
 end python module libpyctqw_MPI
