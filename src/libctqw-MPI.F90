@@ -1498,23 +1498,27 @@ module ctqwMPI
 
         if (edgeNum > size) then
             localStateNum = edgeNum/size
-            if (rank == 0) localStateNum = localStateNum + mod(edgeNum,size)
+
+            if (rank == 0) then
+                localStateNum = localStateNum + mod(edgeNum,size)
+                do i=1, localStateNum
+                    init_states(i,:,:) = getEdges(i,adjArray,n)
+                end do
+            else
+                do i=1, localStateNum
+                    init_states(i,:,:) = getEdges(localStateNum*rank+mod(edgeNum,size)+i,adjArray,n)
+                end do
+            endif
+
         else
             if (rank < edgeNum) then
             	localStateNum = 1
+                init_states(1,:,:) = getEdges(rank+1,adjArray,n)
             else
             	localStateNum = 0
             endif
         endif
 
-        init_states = 0.
-        do i=1, localStateNum
-        	if (rank == 0) then
-        		init_states(i,:,:) = getEdges(localStateNum*rank+i,adjArray,n)
-            else
-        		init_states(i,:,:) = getEdges((localStateNum+mod(edgeNum,size))*rank+i,adjArray,n)
-        	endif
-        enddo       
 
     end subroutine get_bosonic_states
 
