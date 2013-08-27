@@ -1459,9 +1459,9 @@ module ctqwMPI
 
     end function number_of_edges
 
-    function getEdges(edgeNum,adjArray,n)
+    function getEdgeState(edgeNum,adjArray,n)
     	PetscInt, intent(in)    :: n, edgeNum, adjArray(n,n)
-        PetscScalar             :: getEdges(2,3)
+        PetscScalar             :: getEdgeState(2,3)
 
         ! local variables
         PetscInt                :: i, j, number_of_edges
@@ -1473,18 +1473,18 @@ module ctqwMPI
                 if (adjArray(i,j) == 1) number_of_edges = number_of_edges + 1
 
                 if (number_of_edges == edgeNum) then
-                    getEdges(1,:) = [real(i-1,8),real(i-1,8),1.d0/sqrt(2.0)]
-                    getEdges(2,:) = [real(j-1,8),real(j-1,8),1.d0/sqrt(2.0)]
+                    getEdgeState(1,:) = [real(i-1,8),real(i-1,8),1.d0/sqrt(2.0)]
+                    getEdgeState(2,:) = [real(j-1,8),real(j-1,8),1.d0/sqrt(2.0)]
                 	return
                 endif
             enddo
         enddo
 
-    end function getEdges
+    end function getEdgeState
 
-    subroutine get_bosonic_states(init_states,adjArray,n)
+    subroutine getAllEdgeStates(init_states,adjArray,n)
     	PetscInt, intent(in)    :: n, adjArray(n,n)
-        PetscScalar, intent(out):: init_states(n,2,3)
+        PetscScalar, intent(out):: init_states(n*(n-1)/2,2,3)
 
         ! local variables
         PetscMPIInt    :: rank, size
@@ -1499,27 +1499,25 @@ module ctqwMPI
         if (edgeNum > size) then
             localStateNum = edgeNum/size
 
-            if (rank == 0) then
-                localStateNum = localStateNum + mod(edgeNum,size)
+            if (rank < mod(edgeNum,size)) then
+                localStateNum = localStateNum + 1
                 do i=1, localStateNum
-                    init_states(i,:,:) = getEdges(i,adjArray,n)
+                    init_states(i,:,:) = getEdgeState(localStateNum*rank+i,adjArray,n)
                 end do
             else
                 do i=1, localStateNum
-                    init_states(i,:,:) = getEdges(localStateNum*rank+mod(edgeNum,size)+i,adjArray,n)
+                    init_states(i,:,:) = getEdgeState(localStateNum*rank+mod(edgeNum,size)+i,adjArray,n)
                 end do
             endif
 
         else
             if (rank < edgeNum) then
             	localStateNum = 1
-                init_states(1,:,:) = getEdges(rank+1,adjArray,n)
+                init_states(1,:,:) = getEdgeState(rank+1,adjArray,n)
             else
             	localStateNum = 0
             endif
         endif
-
-
-    end subroutine get_bosonic_states
+    end subroutine getAllEdgeStates
 
 end module ctqwMPI
