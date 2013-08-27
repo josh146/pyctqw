@@ -31,10 +31,10 @@ cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'nu
 GICert2 = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
 
 if rank == 0:
-	if np.subtract(GICert,GICert2).max() < 1.e-14:
+	if np.abs(np.subtract(GICert,GICert2)).max() < 1.e-14:
 		print "Isomorphic"
 	else:
-		print "Not Isomorphic"
+		print "Non-isomorphic"
 
 #~~~~~~~ Strongly Regular
 adj=np.genfromtxt('../graphs/strong-regular-25-12-5-6/1.txt')
@@ -46,10 +46,10 @@ cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'nu
 GICert2 = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
 
 if rank == 0:
-	if np.subtract(GICert,GICert2).max() < 1.e-14:
+	if np.abs(np.subtract(GICert,GICert2)).max() < 1.e-14:
 		print "Isomorphic"
 	else:
-		print "Not Isomorphic"
+		print "Non-isomorphic"
 
 sys.exit()
 
