@@ -106,9 +106,11 @@ def MPIpackage(config):
 		os.environ["CC"] = "mpicc"
 		os.environ["F90"] = "mpif90"
 		os.environ["LDSHARED"] = "mpif90"
+
+	config.add_installed_library('refsor', ['src/sort.f90'], '.')
 		
 	config.add_extension('libpyctqw_MPI',
-				 sources = ['src/libctqw-MPI.F90','src/libctqw-MPI.pyf'],
+				 sources = ['src/sort.f90','src/libctqw-MPI.F90','src/libctqw-MPI.pyf'],
 				 f2py_options=['--quiet'],
 				 extra_f90_compile_args=['-Wno-unused-variable'],
 				 #define_macros=[('F2PY_REPORT_ON_ARRAY_COPY',1)],

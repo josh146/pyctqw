@@ -1,5 +1,7 @@
 module ctqwMPI
 
+    use m_refsor
+
 #ifdef __INTEL_COMPILER
     use IFPORT
 #endif
@@ -13,7 +15,7 @@ module ctqwMPI
 #include <finclude/slepcsys.h>
 #include <finclude/slepceps.h>
 #include <finclude/slepcmfn.h>
-    
+
     contains
 
 
@@ -392,20 +394,20 @@ module ctqwMPI
                     if (i==j-1) then
 
                         if ( mod(j,n**2+n+1) == 1 ) then
-                    	    alpha = 2*interaction
+                            alpha = 2*interaction
 
                         elseif ((mod(j,n**2+n) .le. n) .and. (mod(j,n**2+1) .ge. 1)) then
-                        	alpha = interaction
+                            alpha = interaction
 
                         elseif ( mod(j,n+1) == int(ceiling(real(j)/real(n**2))) ) then
-                        	alpha = interaction
+                            alpha = interaction
 
                         elseif ( any(intTestArray .eq. mod(j,n**2+1)) ) then
-                        	alpha = interaction
+                            alpha = interaction
 
-                    	else
-                    		alpha = 0.
-                    	endif
+                        else
+                            alpha = 0.
+                        endif
 
                     else
                         alpha = 0.
@@ -810,7 +812,7 @@ module ctqwMPI
         do i=Istart, Iend-1
             if (mod(i,n)+1==1) then
 
-        	    if (mod(i,n+1)==0) then
+                if (mod(i,n+1)==0) then
                     alpha = interaction
                 else
                     alpha = 0.
@@ -822,7 +824,7 @@ module ctqwMPI
             
             elseif (mod(i,n)+1==n) then
 
-        	    if (mod(i,n+1)==0) then
+                if (mod(i,n+1)==0) then
                     alpha = interaction
                 else
                     alpha = 0.
@@ -834,7 +836,7 @@ module ctqwMPI
             
             else
 
-        	    if (mod(i,n+1)==0) then
+                if (mod(i,n+1)==0) then
                     alpha = interaction
                 else
                     alpha = 0.
@@ -928,7 +930,7 @@ module ctqwMPI
         call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
 
         if (vecType == "seq") then
-            call MFNCreate(PETSC_COMM_SELF, mfn, ierr)
+            call MFNCreate(MPI_COMM_SELF, mfn, ierr)
         else
             call MFNCreate(PETSC_COMM_WORLD, mfn, ierr)
         endif
@@ -986,7 +988,7 @@ module ctqwMPI
         ! initialise SLEPc and create the EPS
         call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
         if (matType == "seqaij") then
-            call EPSCreate(PETSC_COMM_SELF,eps,ierr)
+            call EPSCreate(MPI_COMM_SELF,eps,ierr)
         else
             call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
         endif
@@ -1177,24 +1179,24 @@ module ctqwMPI
         ! check if vector is sequential or MPI
         call VecGetType(psi,vecType,ierr)
         vecType = trim(adjustl(vecType))
-	    
-	    call VecGetSize(psi,rhoLength,ierr)
+        
+        call VecGetSize(psi,rhoLength,ierr)
 
         if (vecType == "seq") then
             call VecGetArrayF90(psi,workArray,ierr)
         else
-	        ! create work vector
-	        call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,rhoLength,work,ierr)
-	        call VecSetFromOptions(work,ierr)
-	        
-	        ! Vector scatter to all processes
-	        call VecScatterCreateToAll(psi,ctx,work,ierr)
-	        call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
-	        call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
-	        call VecScatterDestroy(ctx,ierr)
-	        
-	        call VecGetArrayF90(work,workArray,ierr)
-	    endif
+            ! create work vector
+            call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,rhoLength,work,ierr)
+            call VecSetFromOptions(work,ierr)
+            
+            ! Vector scatter to all processes
+            call VecScatterCreateToAll(psi,ctx,work,ierr)
+            call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterDestroy(ctx,ierr)
+            
+            call VecGetArrayF90(work,workArray,ierr)
+        endif
 
         ! calculate the partial trace of *last* particle
         rhoX = 0.
@@ -1211,10 +1213,10 @@ module ctqwMPI
         enddo
         
         if (vecType == "seq") then
-        	call VecRestoreArrayF90(psi,workArray,ierr)
+            call VecRestoreArrayF90(psi,workArray,ierr)
         else
-	        call VecRestoreArrayF90(work,workArray,ierr)
-	        call VecDestroy(work,ierr)
+            call VecRestoreArrayF90(work,workArray,ierr)
+            call VecDestroy(work,ierr)
         endif
 
     end subroutine partial_trace_array
@@ -1241,24 +1243,24 @@ module ctqwMPI
         call VecGetType(psi,vecType,ierr)
         vecType = trim(adjustl(vecType))
 
-	    call VecGetSize(psi,rhoLength,ierr)
+        call VecGetSize(psi,rhoLength,ierr)
 
         if (vecType == "seq") then
             call VecGetArrayF90(psi,workArray,ierr)
         else
-	        ! create work vector
-	        call VecGetSize(psi,rhoLength,ierr)
-	        call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,rhoLength,work,ierr)
-	        call VecSetFromOptions(work,ierr)
-	        
-	        ! Vector scatter to all processes
-	        call VecScatterCreateToAll(psi,ctx,work,ierr)
-	        call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
-	        call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
-	        call VecScatterDestroy(ctx,ierr)
-	        
-	        call VecGetArrayF90(work,workArray,ierr)
-	    endif
+            ! create work vector
+            call VecGetSize(psi,rhoLength,ierr)
+            call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,rhoLength,work,ierr)
+            call VecSetFromOptions(work,ierr)
+            
+            ! Vector scatter to all processes
+            call VecScatterCreateToAll(psi,ctx,work,ierr)
+            call VecScatterBegin(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(ctx,psi,work,INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterDestroy(ctx,ierr)
+            
+            call VecGetArrayF90(work,workArray,ierr)
+        endif
 
         ! set up partial trace matrix
         call MatSetSizes(rhoX,PETSC_DECIDE,PETSC_DECIDE,n,n,ierr)
@@ -1284,7 +1286,7 @@ module ctqwMPI
         enddo
 
         if (vecType == "seq") then
-            call PetscBarrier(PETSC_COMM_SELF,ierr)
+            call PetscBarrier(MPI_COMM_SELF,ierr)
         else
             call PetscBarrier(PETSC_COMM_WORLD,ierr)
         endif
@@ -1293,10 +1295,10 @@ module ctqwMPI
         call MatAssemblyEnd(rhoX,ierr)
         
         if (vecType == "seq") then
-        	call VecRestoreArrayF90(psi,workArray,ierr)
+            call VecRestoreArrayF90(psi,workArray,ierr)
         else
-	        call VecRestoreArrayF90(work,workArray,ierr)
-	        call VecDestroy(work,ierr)
+            call VecRestoreArrayF90(work,workArray,ierr)
+            call VecDestroy(work,ierr)
         endif
 
     end subroutine partial_trace_mat
@@ -1334,8 +1336,8 @@ module ctqwMPI
         call SlepcInitialize(PETSC_NULL_CHARACTER,ierr)
 
         if (vecType == "seq") then
-            call MatCreate(PETSC_COMM_SELF,rhoX,ierr)
-            call EPSCreate(PETSC_COMM_SELF,eps,ierr)
+            call MatCreate(MPI_COMM_SELF,rhoX,ierr)
+            call EPSCreate(MPI_COMM_SELF,eps,ierr)
         else
             call MatCreate(PETSC_COMM_WORLD,rhoX,ierr)
             call EPSCreate(PETSC_COMM_WORLD,eps,ierr)
@@ -1443,7 +1445,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     function number_of_edges(adjArray, n)
-    	PetscInt, intent(in)    :: n, adjArray(n,n)
+        PetscInt, intent(in)    :: n, adjArray(n,n)
         PetscInt                :: number_of_edges
 
         ! local variables
@@ -1452,7 +1454,7 @@ module ctqwMPI
         number_of_edges = 0
 
         do i=1,n-1
-        	do j=i+1,n
+            do j=i+1,n
                 if (adjArray(i,j) == 1) number_of_edges = number_of_edges + 1
             enddo
         enddo
@@ -1460,7 +1462,7 @@ module ctqwMPI
     end function number_of_edges
 
     function getEdgeState(edgeNum,adjArray,n)
-    	PetscInt, intent(in)    :: n, edgeNum, adjArray(n,n)
+        PetscInt, intent(in)    :: n, edgeNum, adjArray(n,n)
         PetscScalar             :: getEdgeState(2,3)
 
         ! local variables
@@ -1469,25 +1471,26 @@ module ctqwMPI
         number_of_edges = 0
 
         do i=1,n-1
-        	do j=i+1,n
+            do j=i+1,n
                 if (adjArray(i,j) == 1) number_of_edges = number_of_edges + 1
 
                 if (number_of_edges == edgeNum) then
                     getEdgeState(1,:) = [real(i-1,8),real(i-1,8),1.d0/sqrt(2.0)]
                     getEdgeState(2,:) = [real(j-1,8),real(j-1,8),1.d0/sqrt(2.0)]
-                	return
+                    return
                 endif
             enddo
         enddo
     end function getEdgeState
 
-    subroutine getAllEdgeStates(init_states,adjArray,n)
-    	PetscInt, intent(in)    :: n, adjArray(n,n)
+    subroutine getAllEdgeStates(init_states,localStateNum,adjArray,n)
+        PetscInt, intent(in)    :: n, adjArray(n,n)
+        PetscInt, intent(out)   :: localStateNum
         PetscScalar, intent(out):: init_states(n*(n-1)/2,2,3)
 
         ! local variables
         PetscMPIInt    :: rank, size
-        PetscInt       :: edgeNum, localStateNum, i ,j
+        PetscInt       :: edgeNum, i ,j
         PetscErrorCode :: ierr
         
         edgeNum = number_of_edges(adjArray,n)
@@ -1511,10 +1514,10 @@ module ctqwMPI
 
         else
             if (rank < edgeNum) then
-            	localStateNum = 1
+                localStateNum = 1
                 init_states(1,:,:) = getEdgeState(rank+1,adjArray,n)
             else
-            	localStateNum = 0
+                localStateNum = 0
             endif
         endif
     end subroutine getAllEdgeStates
@@ -1526,7 +1529,7 @@ module ctqwMPI
         ! local variables
         PetscMPIInt    :: rank, size
         PetscInt       :: edgeNum, localStateNum, i ,j
-        PetscScalar    :: vertex(2)
+        PetscReal      :: edgeStates(2,3), vertex(2)
         PetscErrorCode :: ierr
         
         edgeNum = number_of_edges(adjArray,n)
@@ -1540,13 +1543,15 @@ module ctqwMPI
             if (rank < mod(edgeNum,size)) then
                 localStateNum = localStateNum + 1
                 do i=1, localStateNum
-                    vertex = getEdgeState(localStateNum*rank+i,adjArray,n)(:,1)
+                    edgeStates = getEdgeState(localStateNum*rank+i,adjArray,n)
+                    vertex = edgeStates(:,1)
                     init_states(i,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.0)]
                     init_states(i,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.0)]
                 end do
             else
                 do i=1, localStateNum
-                    vertex = getEdgeState(localStateNum*rank+mod(edgeNum,size)+i,adjArray,n)(:,1)
+                    edgeStates = getEdgeState(localStateNum*rank+mod(edgeNum,size)+i,adjArray,n)
+                    vertex = edgeStates(:,1)
                     init_states(i,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.0)]
                     init_states(i,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.0)]
                 end do
@@ -1555,7 +1560,8 @@ module ctqwMPI
         else
             if (rank < edgeNum) then
                 localStateNum = 1
-                vertex = getEdgeState(rank+1,adjArray,n)(:,1)
+                edgeStates = getEdgeState(rank+1,adjArray,n)
+                vertex = edgeStates(:,1)
                 init_states(1,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.0)]
                 init_states(1,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.0)]
             else
@@ -1563,5 +1569,177 @@ module ctqwMPI
             endif
         endif
     end subroutine getAllEdgeStates3P
+
+    subroutine GraphISCert2P(cert,certLength,adjArray,tol,expm_method, & 
+                eig_solver,Emax_estimate,worktype,worktypeInt,tolIn,max_it,verbose,N)
+    
+        PetscInt, intent(in)         :: N, adjArray(N,N), worktypeInt, max_it
+        PetscReal, intent(in)        :: tolIn, Emax_estimate, tol
+        character(len=*),intent(in)  :: expm_method, eig_solver
+        character(len=3), intent(in) :: worktype
+        PetscBool, intent(in)        :: verbose
+
+!       PetscReal, intent(out)       :: cert(N*N*N*(N-1)/2)
+        PetscReal, intent(out)       :: cert(2,N*N*N*(N-1)/2)
+        PetscInt, intent(out)        :: certLength
+
+        ! local variables
+        PetscMPIInt              :: rank, size
+        PetscErrorCode           :: ierr
+        Mat                      :: H
+        Vec                      :: psi0, psi, temp, cert0
+        VecScatter               :: ctx
+        PetscInt                 :: i, j, localStateNum, certSize, Istart, Iend, counter, certPos
+        PetscScalar              :: init_states(N*(N-1)/2,2,3), Emin, Emax, t
+        PetscReal                :: Emax_error, currentProb
+        PetscReal, allocatable   :: certArrayReal(:)
+        PetscScalar, allocatable :: localCert(:)
+        PetscScalar, pointer     :: certArray(:)
+        character(len=12)        :: expArg, eigArg, wtArg
+
+        ! MPI variables
+        PetscInt, allocatable    :: displacements(:), counts(:)
+
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+        call MPI_Comm_size(PETSC_COMM_WORLD,size,ierr)
+
+        ! set time
+        t = 2*N
+
+        ! create local Hamiltonian
+        call MatCreate(MPI_COMM_SELF,H,ierr)
+        call MatSetType(H, MATSEQAIJ,ierr)
+        call adjToH(H,adjArray,'2',[0],[0.*PETSC_i],1.0+0.*PETSC_i,1,N)
+
+        ! get local initial states
+        call getAllEdgeStates(init_states,localStateNum,adjArray,N)
+        allocate(localCert(N*N*localStateNum))
+
+        call VecCreateSeq(MPI_COMM_SELF,N*N,psi0,ierr)
+        call VecCreateSeq(MPI_COMM_SELF,N*N,psi,ierr)
+
+        call VecCreate(MPI_COMM_SELF,cert0,ierr)
+        call VecSetType(cert0,VECSEQ,ierr)
+
+        if (size>1) then
+
+        endif
+
+        ! if using the Chebyshev method, calculate the eigenvalues
+        expArg = trim(adjustl(expm_method))
+        if (expArg == 'chebyshev') then
+            if (Emax_estimate == 0.) then
+                eigArg = trim(adjustl(eig_solver))
+                wtArg = trim(adjustl(worktype))
+                call min_max_eigs(H,rank,Emax,Emax_error,'max',eigArg,wtArg,worktypeInt,tolIn,max_it,verbose,ierr)
+            else
+                Emax = Emax_estimate
+            endif
+
+            Emin = 0.d0
+        endif
+
+        ! loop over all local initial states
+        do i=1, localStateNum
+
+            if (verbose) write(*,*)'rank = ',rank,' Calculating init state = ',init_states(i,1,1)
+
+            ! create the initial state vector
+            init_states(i,:,1:2) = init_states(i,:,1:2)-N/2+1
+            call p2_init(psi0,init_states(i,:,:),2,N)
+
+            ! propagate the CTQW
+            if (expArg == 'chebyshev') then
+                call qw_cheby(psi0,psi,t,H,Emin,Emax,rank,N)
+            else
+                call expm(H,t,psi0,psi)
+            endif
+
+            ! find the sqrt(|psi|) of the vector
+            call VecSqrtAbs(psi,ierr)
+
+            ! store the probabilities in a local certificate array
+            call VecGetValues(psi,N*N,[(j,j=0,N*N-1)],localCert((i-1)*N*N+1:i*N*N),ierr)
+
+            ! reset initial state vector
+            call VecSet(psi0,0.*PETSc_i,ierr)
+
+        enddo
+
+        if (size>1) then
+            ! create the count and displacement arrays on node 0
+            if (rank == 0) allocate(counts(0:size-1), displacements(0:size-1))
+
+            ! gather the data counts to node 0
+            call MPI_Gather(N*N*localStateNum, 1, MPI_INTEGER, &
+                            counts, 1, MPI_INTEGER, &
+                            0, PETSC_COMM_WORLD, ierr)
+
+            ! create a global vector
+            call VecCreateMPI(PETSC_COMM_WORLD,N*N*localStateNum,PETSC_DECIDE,temp,ierr)
+            call VecGetOwnershipRange(temp,Istart,Iend,ierr)
+
+            ! each node places it's local certificate in the global vector
+            call VecSetValues(temp,N*N*localStateNum,[(j,j=Istart,Iend-1)],localCert,INSERT_VALUES,ierr) 
+
+            ! get total size of certificate, and create
+            ! a sequential vector of this length on node 0
+            if (rank == 0) then
+                call VecGetSize(temp,certSize,ierr)
+            else
+                certSize = 0
+            endif
+            
+            call VecSetSizes(cert0,certSize,PETSC_DECIDE,ierr)
+
+            ! Vector scatter the global certificate to node 0
+            call VecScatterCreateToZero(temp,ctx,cert0,ierr)
+            call VecScatterBegin(ctx,temp,cert0,INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterEnd(ctx,temp,cert0,INSERT_VALUES,SCATTER_FORWARD,ierr)
+            call VecScatterDestroy(ctx,ierr)
+
+            call VecDestroy(temp,ierr)
+            if (rank==0) deallocate(displacements,counts)
+        else
+            call VecSetSizes(cert0,N*N*localStateNum,PETSC_DECIDE,ierr)
+            call VecSetValues(cert0,N*N*localStateNum,[(j,j=0,N*N*localStateNum-1)],localCert,INSERT_VALUES,ierr)   
+        endif 
+
+        ! clean up
+        call MatDestroy(H,ierr)
+        call VecDestroy(psi0,ierr)
+        call VecDestroy(psi,ierr)
+        deallocate(localCert)
+
+        !call VecView(cert0,PETSC_VIEWER_STDOUT_WORLD,ierr)
+        if (rank==0) then 
+            call VecGetArrayF90(cert0,certArray,ierr)
+            
+            certArrayReal = certArray
+
+            call d_refsor(certArrayReal)
+
+            cert = -1.d0
+            currentProb = certArrayReal(1)
+            counter = 1
+            certPos = 1
+
+            do i=1, certSize
+                if (certArrayReal(i) - currentProb > tol) then
+                    cert(:,certPos) = [currentProb,real(counter,8)]
+                    currentProb = certArrayReal(i)
+                    counter = 1
+                    certPos = certPos + 1
+                else
+                    counter = counter + 1
+                endif
+            enddo
+
+            certLength = certPos-1
+
+            call VecRestoreArrayF90(cert0,certArray,ierr)
+        endif
+
+    end subroutine GraphISCert2P
 
 end module ctqwMPI

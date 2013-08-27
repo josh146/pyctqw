@@ -14,18 +14,43 @@ amp = [2.0,1.5]
 
 rank =  PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#-------------------- 2P Interacting Graph Isomorphism -------------------------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#~~~~~~~ Cayley Tree
 from libpyctqw_MPI import ctqwmpi
 
 adj=np.genfromtxt('../graphs/3-caley.txt')
-initstates = ctqwmpi.getAllEdgeStates(adj)
+cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,10)
+GICert = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
 
-import time
+adj=np.genfromtxt('../graphs/3-caley-v2.txt')
+cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,10)
+GICert2 = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
 
-time.sleep(rank*0.05)
+if rank == 0:
+	if np.subtract(GICert,GICert2).max() < 1.e-14:
+		print "Isomorphic"
+	else:
+		print "Not Isomorphic"
 
-for i in range(len(initstates)):
-	if initstates[i,0,2] != 0.:
-		print rank, initstates[i]
+#~~~~~~~ Strongly Regular
+adj=np.genfromtxt('../graphs/strong-regular-25-12-5-6/1.txt')
+cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,25)
+GICert = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
+
+adj=np.genfromtxt('../graphs/strong-regular-25-12-5-6/2.txt')
+cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,25)
+GICert2 = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
+
+if rank == 0:
+	if np.subtract(GICert,GICert2).max() < 1.e-14:
+		print "Isomorphic"
+	else:
+		print "Not Isomorphic"
+
 sys.exit()
 
 
@@ -227,8 +252,6 @@ init_state = [[0,4,4,1.0]]
 walk = qw.Line3P(20)
 walk.createH(interaction=10.)
 walk.createInitState(init_state)
-
-qw.func.exportVec( walk.psi0, 'text.txt', 'txt')
 
 walk.EigSolver.setEigSolver(tol=1.e-2)
 walk.EigSolver.setEigSolver(emin_estimate=0)
