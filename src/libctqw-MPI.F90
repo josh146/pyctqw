@@ -1479,7 +1479,6 @@ module ctqwMPI
                 endif
             enddo
         enddo
-
     end function getEdgeState
 
     subroutine getAllEdgeStates(init_states,adjArray,n)
@@ -1519,5 +1518,50 @@ module ctqwMPI
             endif
         endif
     end subroutine getAllEdgeStates
+
+    subroutine getAllEdgeStates3P(init_states,adjArray,n)
+        PetscInt, intent(in)    :: n, adjArray(n,n)
+        PetscScalar, intent(out):: init_states(n*(n-1)/2,2,4)
+
+        ! local variables
+        PetscMPIInt    :: rank, size
+        PetscInt       :: edgeNum, localStateNum, i ,j
+        PetscScalar    :: vertex(2)
+        PetscErrorCode :: ierr
+        
+        edgeNum = number_of_edges(adjArray,n)
+
+        call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+        call MPI_Comm_size(PETSC_COMM_WORLD,size,ierr)
+
+        if (edgeNum > size) then
+            localStateNum = edgeNum/size
+
+            if (rank < mod(edgeNum,size)) then
+                localStateNum = localStateNum + 1
+                do i=1, localStateNum
+                    vertex = getEdgeState(localStateNum*rank+i,adjArray,n)(:,1)
+                    init_states(i,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.0)]
+                    init_states(i,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.0)]
+                end do
+            else
+                do i=1, localStateNum
+                    vertex = getEdgeState(localStateNum*rank+mod(edgeNum,size)+i,adjArray,n)(:,1)
+                    init_states(i,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.0)]
+                    init_states(i,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.0)]
+                end do
+            endif
+
+        else
+            if (rank < edgeNum) then
+                localStateNum = 1
+                vertex = getEdgeState(rank+1,adjArray,n)(:,1)
+                init_states(1,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.0)]
+                init_states(1,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.0)]
+            else
+                localStateNum = 0
+            endif
+        endif
+    end subroutine getAllEdgeStates3P
 
 end module ctqwMPI
