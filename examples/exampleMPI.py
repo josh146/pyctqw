@@ -23,11 +23,13 @@ rank =  PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 from libpyctqw_MPI import ctqwmpi
 
 adj=np.genfromtxt('../graphs/3-caley.txt')
-cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,10)
+cert,certSize = ctqwmpi.GraphISCert(adj,2,1.e-2,
+	'chebyshev','krylovschur',0.,'null',0,0.,0,False)
 GICert = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
 
 adj=np.genfromtxt('../graphs/3-caley-v2.txt')
-cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,10)
+cert,certSize = ctqwmpi.GraphISCert(adj,2,1.e-2,
+	'chebyshev','krylovschur',0.,'null',0,0.,0,False)
 GICert2 = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
 
 if rank == 0:
@@ -38,11 +40,11 @@ if rank == 0:
 
 #~~~~~~~ Strongly Regular
 adj=np.genfromtxt('../graphs/strong-regular-25-12-5-6/1.txt')
-cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,25)
+cert,certSize = ctqwmpi.GraphISCert(adj,2,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,25)
 GICert = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
 
 adj=np.genfromtxt('../graphs/strong-regular-25-12-5-6/2.txt')
-cert,certSize = ctqwmpi.GraphISCert2P(adj,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,25)
+cert,certSize = ctqwmpi.GraphISCert(adj,2,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,25)
 GICert2 = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
 
 if rank == 0:

@@ -197,20 +197,21 @@ python module libpyctqw_MPI ! in
                 integer, intent(out)    :: localStateNum
                 complex(8), intent(out) :: init_states(n*(n-1)/2,2,3)
             end subroutine getAllEdgeStates
-            subroutine getAllEdgeStates3P(init_states,adjArray,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+            subroutine getAllEdgeStates3P(init_states,localStateNum,adjArray,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer, intent(in)     :: adjArray(n,n)
                 integer, intent(in)     :: n
+                integer, intent(out)    :: localStateNum
                 complex(8), intent(out) :: init_states(n*(n-1)/2,2,4)
             end subroutine getAllEdgeStates3P
-            subroutine GraphISCert2P(cert,certLength,adjArray,tol,expm_method,eig_solver,Emax_estimate,worktype,worktypeInt,tolIn,max_it,verbose,N)
-                integer, intent(in)          :: N, adjArray(N,N), worktypeInt, max_it
+            subroutine GraphISCert(cert,certLength,adjArray,p,tol,expm_method,eig_solver,Emax_estimate,worktype,worktypeInt,tolIn,max_it,verbose,N)
+                integer, intent(in)          :: N, adjArray(N,N), worktypeInt, max_it, p
                 real(8), intent(in)          :: tolIn, Emax_estimate, tol
                 character(len=*),intent(in)  :: expm_method, eig_solver
                 character(len=3),intent(in)  :: worktype
                 logical, intent(in)          :: verbose
-                real(8), intent(out)         :: cert(2,N*N*N*(N-1)/2)
+                real(8), intent(out)         :: cert(2,(N^(p+1))*(N-1)/2)
                 integer, intent(out)         :: certLength
-            end subroutine GraphISCert2P
+            end subroutine GraphISCert
         end module ctqwmpi
     end interface 
 end python module libpyctqw_MPI
