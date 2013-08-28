@@ -19,41 +19,40 @@ rank =  PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 #-------------------- 2P Interacting Graph Isomorphism -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#~~~~~~~ Cayley Tree
-from libpyctqw_MPI import ctqwmpi
+# gi = qw.GraphISO()
+# comparisonTable = gi.AllIsomorphicQ('../graphs/strong-regular-25-12-5-6')
 
-adj=np.genfromtxt('../graphs/3-caley.txt')
-cert,certSize = ctqwmpi.GraphISCert(adj,2,1.e-2,
-	'chebyshev','krylovschur',0.,'null',0,0.,0,False)
-GICert = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
+# if rank==0: print comparisonTable
 
-adj=np.genfromtxt('../graphs/3-caley-v2.txt')
-cert,certSize = ctqwmpi.GraphISCert(adj,2,1.e-2,
-	'chebyshev','krylovschur',0.,'null',0,0.,0,False)
-GICert2 = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
+# sys.exit()
 
-if rank == 0:
-	if np.abs(np.subtract(GICert,GICert2)).max() < 1.e-14:
-		print "Isomorphic"
-	else:
-		print "Non-isomorphic"
+# #~~~~~~~ Strongly Regular
 
-#~~~~~~~ Strongly Regular
-adj=np.genfromtxt('../graphs/strong-regular-25-12-5-6/1.txt')
-cert,certSize = ctqwmpi.GraphISCert(adj,2,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,25)
-GICert = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
+# adj1 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/1-permutations/SR1_perm_1.txt')
+# adj2 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/1-permutations/SR1_perm_3.txt')
+# cert1 = gi.GIcert(adj1)
+# cert2 = gi.GIcert(adj2)
 
-adj=np.genfromtxt('../graphs/strong-regular-25-12-5-6/2.txt')
-cert,certSize = ctqwmpi.GraphISCert(adj,2,1.e-2,'chebyshev','krylovschur',0.,'null',0,0.,0,False,25)
-GICert2 = np.array(cert).T[np.lexsort(np.array(cert)[:,0:certSize])[::-1]]
+# if rank == 0:
+# 	for i in range(len(cert1)):
+# 		print cert1[i], cert2[i]
 
-if rank == 0:
-	if np.abs(np.subtract(GICert,GICert2)).max() < 1.e-14:
-		print "Isomorphic"
-	else:
-		print "Non-isomorphic"
+# checkISO = gi.isomorphicQ(adj1,adj2)
+# if rank == 0: print checkISO
+# sys.exit()
 
-sys.exit()
+# #~~~~~~~ Cayley Tree
+# adj1 = np.genfromtxt('../graphs/cayley/3-cayley.txt')
+# adj2 = np.genfromtxt('../graphs/cayley/3-cayley-v2.txt')
+# checkISO = gi.isomorphicQ(adj1,adj2)
+# if rank == 0: print checkISO
+
+# #~~~~~~~ Strongly Regular
+# adj1 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/1.txt')
+# adj2 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/11.txt')
+# checkISO = gi.isomorphicQ(adj1,adj2)
+# if rank == 0: print checkISO
+# sys.exit()
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -86,7 +85,7 @@ init_state = [[0,1,1.0/np.sqrt(2.0)], [1,1,1.0j/np.sqrt(2.0)]]
 
 walk = qw.Graph2P(25)
 walk.createH('../graphs/strong-regular-25-12-5-6/1.txt','txt',layout='circle',d=[0],amp=[0.])
-#qw.func.exportMat(walk.H.Adj,'../graphs/strong-regular-25-12-5-6/1p.txt','txt',mattype='adj')
+#qw.io.exportMat(walk.H.Adj,'../graphs/strong-regular-25-12-5-6/1p.txt','txt',mattype='adj')
 
 walk.createInitState(init_state)
 
@@ -100,14 +99,14 @@ walk.plotGraph(output='out/reg-graph-2p.png')
 walk.destroy()
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ------------------------- 1P 3-Caley Tree CTQW --------------------------------
+# ------------------------- 1P 3-Cayley Tree CTQW --------------------------------
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if rank == 0:	print '1P 3-Caley Tree CTQW\n'
+if rank == 0:	print '1P 3-cayley Tree CTQW\n'
 
 init_state = [[0,1.0/np.sqrt(2.0)], [1,1.0j/np.sqrt(2.0)]]
 
 walk = qw.Graph(10)
-walk.createH('../graphs/3-caley.txt','txt',d=[0],amp=[3.])
+walk.createH('../graphs/cayley/3-cayley.txt','txt',d=[0],amp=[3.])
 
 walk.createInitState(init_state)
 
@@ -118,24 +117,24 @@ walk.watch([0,1,2,3,4])
 for t2 in np.arange(0.01,t+0.01,0.01):
 	walk.propagate(t2,method='chebyshev')
 
-walk.plot('out/3-caley-1p.png')
+walk.plot('out/3-cayley-1p.png')
 #walk.plotGraph(nodetextbg='blue')
-walk.plotGraph(output='out/3-caley-1p-graph.png')
-walk.plotNodes('out/3-caley-1p-nodes.png')
+walk.plotGraph(output='out/3-cayley-1p-graph.png')
+walk.plotNodes('out/3-cayley-1p-nodes.png')
 
 walk.destroy()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#--------------------------- 2P 3-Caley Tree CTQW ------------------------------
+#--------------------------- 2P 3-cayley Tree CTQW ------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if rank == 0:	print '2P 3-Caley Tree CTQW\n'
+if rank == 0:	print '2P 3-cayley Tree CTQW\n'
 
 init_state = [[0,1,1.0/np.sqrt(2.0)], [1,1,1.0j/np.sqrt(2.0)]]
 
 walk = qw.Graph2P(10)
-walk.createH('../graphs/3-caley.txt','txt',d=d,amp=amp,layout='spring',interaction=0.5)
+walk.createH('../graphs/cayley/3-cayley.txt','txt',d=d,amp=amp,layout='spring',interaction=0.5)
 
-qw.func.exportMat(walk.H.mat,'out/3-caley-2p-hamiltonian.txt','txt')
+qw.io.exportMat(walk.H.mat,'out/3-cayley-2p-hamiltonian.txt','txt')
 walk.createInitState(init_state)
 
 walk.EigSolver.setEigSolver(tol=1.e-2,verbose=False,emin_estimate=0.)
@@ -149,28 +148,28 @@ for t2 in np.arange(0.01,5+0.01,0.01):
 
 #walk.clearLiveGraph()
 
-walk.plot('out/3-caley-2p.png')
+walk.plot('out/3-cayley-2p.png')
 
-walk.plotGraph(output='out/3-caley-2p-graph.png')
+walk.plotGraph(output='out/3-cayley-2p-graph.png')
 
-walk.plotNode('out/3-caley-2p-node1.png',1)
-walk.plotNodes('out/3-caley-2p-nodes-particle1.png',p=1)
-walk.plotNodes('out/3-caley-2p-nodes-particle2.png',p=2)
+walk.plotNode('out/3-cayley-2p-node1.png',1)
+walk.plotNodes('out/3-cayley-2p-nodes-particle1.png',p=1)
+walk.plotNodes('out/3-cayley-2p-nodes-particle2.png',p=2)
 
-walk.plotEntanglement('out/3-caley-2p-ent.png')
+walk.plotEntanglement('out/3-cayley-2p-ent.png')
 
-walk.exportPartialTrace('out/3-caley-2p-rhoX.txt','txt',p=1)
+walk.exportPartialTrace('out/3-cayley-2p-rhoX.txt','txt',p=1)
 
 walk.destroy()
 
 
 # #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# #--------------------------- 3P 3-Caley Tree CTQW ------------------------------
+# #--------------------------- 3P 3-cayley Tree CTQW ------------------------------
 # #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if rank == 0:	print '3P 3-Caley Tree CTQW\n'
+if rank == 0:	print '3P 3-cayley Tree CTQW\n'
 
 walk = qw.Graph3P(10)
-walk.createH('../graphs/3-caley.txt','txt',d=d,amp=amp,layout='spring',interaction=1.5)
+walk.createH('../graphs/cayley/3-cayley.txt','txt',d=d,amp=amp,layout='spring',interaction=1.5)
 
 init_state = [[0,1,4,1.0/np.sqrt(2.0)], [1,1,4,1.j/np.sqrt(2.0)]]
 walk.createInitState(init_state)
@@ -182,11 +181,11 @@ walk.watch([0,1,2,3,4,9])
 for t2 in np.arange(0.01,5+0.01,0.01):
 	walk.propagate(t2,method='chebyshev')
 
-walk.plot('out/3-caley-3p.png')
-walk.plotNode('out/3-caley-3p-node1.png',1)
-walk.plotNodes('out/3-caley-3p-nodes-particle1.png',p=1)
-walk.plotNodes('out/3-caley-3p-nodes-particle2.png',p=2)
-walk.plotNodes('out/3-caley-3p-nodes-particle3.png',p=3)
+walk.plot('out/3-cayley-3p.png')
+walk.plotNode('out/3-cayley-3p-node1.png',1)
+walk.plotNodes('out/3-cayley-3p-nodes-particle1.png',p=1)
+walk.plotNodes('out/3-cayley-3p-nodes-particle2.png',p=2)
+walk.plotNodes('out/3-cayley-3p-nodes-particle3.png',p=3)
 
 
 walk.destroy()

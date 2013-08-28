@@ -58,9 +58,22 @@ pyctqw\\ install: src/libctqw-MPI.F90
 		use_mpi=$(use_mpi) PETSC_DIR=$(PETSC_DIR) PETSC_ARCH=$(PETSC_ARCH) SLEPC_DIR=$(SLEPC_DIR)\
 		python setup.py config_fc --f90flags="-Wno-unused-variable" -q install $(prefix)
 	${RM} -rf src/libpyctqw_MPImodule.c src/libpyctqw_MPI-f2pywrappers2.f90 src/*.o src/*.mod
+
+# documentation
+docs-html:
+	make -C docs/ html
+	ln -fs docs/_build/html/index.html ./index.html
+docs-pdf:
+	make -C docs/ latex
+	make -C docs/_build/latex
+	mv docs/_build/latex/pyCTQW.pdf ./
+
 	
 clean::
 	rm -f */*.o */*.so */*.s */*.mod */*temp.f90
 	rm -rf build lib include bin
 	rm -rf src/libpyctqw_MPImodule.c src/libpyctqw_MPI-f2pywrappers2.f90
+	rm -rf docs/_build/*
+	rm -rf index.html
+
 
