@@ -16,12 +16,9 @@ Features:
 
 TODO:
 -----
-* Support 3 walkers
-* Add graph isomorphism testing
 * CUDA support
 * Calculation of transmission
 * Add fallback modes when PETSc/SLEPc are not present
-* Documentation
 
 Dependencies
 ------------
@@ -108,8 +105,20 @@ Usage
 	or they can be changed in the programs themselves. See the PETSc and
 	SLEPc documentation for more information.
 
-4) If everything works, have a look at the examples to see how to use this
-   library!
+4) Build the documentation:
+	If Sphinx is installed, the documentation can be compiled by running
+
+		make docs-html
+
+	or
+
+		make docs-pdf
+
+	Note that in order to compile the PDF documentation, texlive must be
+	installed.
+
+5) If everything works, have a look at the examples and the documentation
+	to see how to use this library!
 
 
 Known Issues
