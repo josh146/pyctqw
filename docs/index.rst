@@ -25,11 +25,11 @@ Contents
 ------------
 
 .. toctree::
-	:maxdepth: 3
-	:glob:
+    :maxdepth: 3
 
-	examples
-	pyCTQW.MPI
+    examples
+    pyCTQW.MPI
+    libctqw-MPI
 
 
 

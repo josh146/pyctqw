@@ -24,9 +24,10 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     subroutine exportVec(vec,filename,filetype)
-        Vec, intent(in)                :: vec
-        character(len=50), intent(in)  :: filename
-        character(len=3), intent(in)   :: filetype
+        ! export a PETSc vector to a file
+        Vec, intent(in)                :: vec ! the PETSc vector to export
+        character(len=50), intent(in)  :: filename ! filename *only*, no path, of the output file
+        character(len=3), intent(in)   :: filetype ! filetype to export ('txt' or 'bin')
         
         ! local variables
         PetscMPIInt          :: rank
@@ -48,10 +49,11 @@ module ctqwMPI
     end subroutine exportVec
     
     subroutine importVec(vec,filename,filetype)
-        character(len=50), intent(in)  :: filename
-        character(len=3), intent(in)   :: filetype
+        ! export a PETSc vector to a file
+        character(len=50), intent(in)  :: filename ! filename *only*, no path, of the input file
+        character(len=3), intent(in)   :: filetype ! filetype to export ('txt' or 'bin')        
         
-        Vec, intent(out)                :: vec
+        Vec, intent(out)                :: vec ! the PETSc vector to import the file into
         
         ! local variables
         PetscMPIInt          :: rank
@@ -455,8 +457,12 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     function coord(x,y,n)
-        integer, intent(in)    :: n, x, y
-        integer                :: coord
+        ! convert from a 2D to 1D statespace for 2 particles, using
+        ! :math:`coord = n*(x + n/2 - 1) + y + n/2 - 1`
+        integer, intent(in)    :: n ! number of nodes in the system
+        integer, intent(in)    :: x ! vertex location of particle 1
+        integer, intent(in)    :: y ! vertex location of particle 2
+        integer                :: coord   ! output 2P statepace coordinate
     
         coord = n*(x + n/2 - 1) + y + n/2 - 1
     end function coord
