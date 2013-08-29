@@ -1404,19 +1404,38 @@ class Line3P(QuantumWalkP3):
 #----------------------------------- Graph Isomorphism -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class GraphISO(object):
+	"""
+	A graph isomorphism solver, containing functions for 
+	creating graph certificates and checking isomorphism
+	of adjacency matrices.
 
-	"""replaces template place holder with values
+	>>> gi = pyCTQW.MPI.GraphISO(p=2,propagator='krylov')
 
-	:param timestamp: formatted date to display
-	:type timestamp: str or unicode
-	:param priority: priority number
-	:type priority: str or unicode
-	:param priority_name: priority name
-	:type priority_name: str or unicode
-	:param message: message to display
-	:type message: str or unicode
-	:returns: formatted string
-	:rtype: str or unicode
+	:param int p:	number of particles, 2 *(default)* or 3,
+				to use in constructing the graph certificate.
+
+	:param float freqTol: the tolerance to use when constructing the
+					frequency table (*default* ``1.e-2``).
+
+					.. note::
+						For ``freqTol=1.e-2``, all decimal places
+						below 0.01 are discarded from the probability
+						distribution.
+					.. seealso:: :py:func:`GIcert`
+
+	:param float compareTol:	the tolerance used when comparing two Graph
+						certificates (*default* ``1.e-10``).
+
+						.. note::
+							Two isomorphic certificates satisfy
+							:math:`\max(|cert_1 - cert_2|) < compareTol`
+						.. seealso:: :py:func:`isomorphicQ`
+
+	:param str propagator:	the CTQW propagator algorithm to use
+						when calculating the graph certificate
+						(``'chebyshev'`` *(default)* or ``'krylov'``).
+
+	:returns: GraphISO solver
 	"""
 
 	def __init__(self,**kwargs):		
@@ -1424,8 +1443,7 @@ class GraphISO(object):
 						'p'				: 2,
 	                    'freqTol'		: 1.e-2,
 	                    'compareTol'    : 1.e-10,
-	                    'propagator'	: 'chebyshev',
-						'verbose' 		: False
+	                    'propagator'	: 'chebyshev'
 						}
 
 		self.__eigDefault = {
@@ -1434,7 +1452,8 @@ class GraphISO(object):
 						'workType'		: 'null',
 						'workSize'		: '35',
 						'tol'     		: 0.,
-						'maxIt'   		: 0
+						'maxIt'   		: 0,
+						'verbose' 		: False
 						}
 			   
 		self.__rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
@@ -1446,34 +1465,102 @@ class GraphISO(object):
 			setattr(self, key, kwargs.get(key,default))
 
 	def setProperties(self,**kwargs):
+		"""
+		Set some or all of the GraphISO properties.
+		For the list of the properties see :class:`GraphISO`.
+		"""
 		for key in kwargs:
 			if self.__default.has_key(key):
 				setattr(self, key, kwargs.get(key))
 			else:
-				'Property type does not exist!'
+				print 'Property {} does not exist!'.format(key)
 			
 	def getProperty(self,*args):
+		"""
+		Get some or all of the GraphISO properties.
+		For the list of the properties see :class:`GraphISO`.
+		"""
 		for key in args:
 			if self.__default.has_key(key):
 				return getattr(self, key)
 			else:
-				'Property type does not exist!'
+				print 'Property {} does not exist!'.format(key)
 
 	def setEigSolver(self,**kwargs):
+		"""
+		Set some or all of the eigenvalue solver properties.
+
+		:param str esolver: the eigensolver algorithm to use. 
+
+						* ``'krylovschur'`` *(default)* - Krylov-Schur
+						* ``'arnoldi'`` - Arnoldi Method
+						* ``'lanczos'`` - Lanczos Method
+						* ``'power'`` - Power Iteration/Rayleigh Quotient Iteration
+						* ``'gd'`` - Generalized Davidson
+						* ``'jd'`` - Jacobi-Davidson,
+						* ``'lapack'`` - Uses LAPACK eigenvalue solver routines
+						* ``'arpack'`` - *only available if SLEPc is\
+											compiled with ARPACK linking*
+
+		:param str workType:	can be used to set the eigensolver worktype
+							(either ``'ncv'`` or ``'mpd'``). The default
+							is to let SLEPc decide.
+
+		:param int workSize:	sets the work size **if** ``workType`` is set.
+
+		:param float tolIn:	tolerance of the eigenvalue solver
+						(*default* ``0.`` (SLEPc decides)).
+		
+		:param int maxIt:	maximum number of iterations of the eigenvalue solver
+						(*default* ``0`` (SLEPc decides)).
+		
+		:param bool verbose: if ``True``, writes eigensolver information to the console
+
+		:param float emax_estimate:	used to override the calculation
+								of the graphs maximum eigenvalue.
+
+					.. warning::	the supplied :math:`\hat{\lambda}_{\max}`
+									**must** satisfy :math:`\hat{\lambda}
+									_{\max}\geq\lambda_{\max}`. The greater
+									the value of :math:`\hat{\lambda}_{\max}
+									-\lambda_{\max}`, the longer the convergence
+									time of the ``chebyshev`` propagator
+
+		.. note::
+			* These properties only apply if ``propagator='chebyshev'``
+			* For more information regarding these properties,refer to \
+			the `SLEPc documentation\
+			<http://www.grycap.upv.es/slepc/documentation/manual.htm>`_
+
+		"""
 		for key in kwargs:
 			if self.__eigDefault.has_key(key):
 				setattr(self, key, kwargs.get(key))
 			else:
-				'EigSolver property type does not exist!'
+				print 'Eigsolver property {} does not exist!'.format(key)
 			
 	def getEigSolver(self,*args):
+		"""
+		Get some or all of the GraphISO properties.
+		For the list of the properties see :func:`setEigSolver`.
+		"""
 		for key in args:
 			if self.__eigDefault.has_key(key):
 				return getattr(self, key)
 			else:
-				'EigSolver property type does not exist!'
+				print 'Eigsolver property {} does not exist!'.format(key)
 
 	def GIcert(self,adj):
+		"""
+		Generate the GI certificate of a graph.
+
+		:param adj:	symmetric adjacency matrix in the form
+					of a dense array of numpy array.
+		:type adj:	array or numpy.array
+
+		:returns: graph certificate
+		:rtype: numpy.array
+		"""
 
 		cert, certSize = _ctqwmpi.GraphISCert(adj,self.p,self.freqTol,self.propagator,
 			self.esolver,self.emax_estimate,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
@@ -1481,6 +1568,15 @@ class GraphISO(object):
 		return _np.array(cert).T[_np.lexsort(_np.array(cert)[:,0:certSize])[::-1]]
 
 	def isomorphicQ(self,adj1,adj2):
+		"""
+		Returns ``True`` if two graphs are isomorphic.
+
+		:param adj1,adj2:	symmetric adjacency matrices in the form
+							of a dense array of numpy array.
+		:type adj1,adj2:	array or numpy.array
+
+		:rtype: bool
+		"""
 
 		GIcert1 = self.GIcert(adj1)
 		GIcert2 = self.GIcert(adj2)
@@ -1501,7 +1597,30 @@ class GraphISO(object):
 		result = comm.tompi4py().scatter(result)
 		return result
 
-	def AllIsomorphicQ(self,folder,start=None,end=None,info=True,checkSelf=False):
+	def AllIsomorphicQ(self,folder,graphRange=None,info=True,checkSelf=False):
+		"""
+		Calculates whether each pair of graphs (in a specified set of graphs)
+		are isomorphic, returning an array :math:`R` with :math:`R_{ij} = 1` if
+		graphs :math:`i` and :math:`j` are isomorphic, and :math:`R_{ij} = 0` otherwise.
+
+		:param str folder:	path to a folder containing a collection of adjacency
+							matrices in dense text file format.
+
+							.. note::
+								The text files must have filenames of the form *X.txt
+								where X represents a number (of any number of digits).
+								These are used to order the graphs.
+
+		:param array graphRange:	an array containing graph numbers to test.
+									By default, all graphs in a folder are tested.
+
+		:param bool info:	if `True`, information on each :math:`R_{ij}` comparison
+							is printed to the console.
+
+		:param bool info:	if `True`, each graph is also tested against itself.
+
+		:rtype: array
+		"""
 
 		if not _os.path.isdir(folder):
 			if self.__rank == 0:
@@ -1517,11 +1636,13 @@ class GraphISO(object):
 
 		filelist = sorted(_glob.glob(folder+'/*[0-9].txt'), key=numericalSort)
 
-		end = min(i for i in [len(filelist),end] if i is not None)
-
 		adj = []
 		for graph in filelist:
-			if start <= int(_glob.re.findall(r'\d+',graph)[-1]) <= end:
+			if graphRange is not None:
+				if int(_glob.re.findall(r'\d+',graph)[-1]) in graphRange:
+					adj.append(_np.genfromtxt(graph))
+					if (self.__rank==0 and info):	print 'Adding graph ' + graph
+			else:
 				adj.append(_np.genfromtxt(graph))
 				if (self.__rank==0 and info):	print 'Adding graph ' + graph
 

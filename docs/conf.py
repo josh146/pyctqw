@@ -168,7 +168,6 @@ htmlhelp_basename = 'pyCTQWdoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
-
 latex_elements = {
 # The paper size ('letterpaper' or 'a4paper').
 'papersize': 'a4paper',
