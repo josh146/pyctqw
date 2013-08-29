@@ -1,4 +1,7 @@
 #!/usr/bin/python
+"""
+Plotting functions.
+"""
 from petsc4py import PETSc as _PETSc
 from matplotlib import pyplot as _plt
 import numpy as _np

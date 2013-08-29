@@ -1,4 +1,9 @@
 #!/usr/bin/python
+"""
+Input and output functions.
+"""
+
+
 import os as _os
 import errno as _errno
 import sys as _sys
