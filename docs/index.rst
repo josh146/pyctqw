@@ -3,34 +3,31 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-==================================
+----------------------------------
 pyCTQW's Manual
-==================================
+----------------------------------
 
-**Features**
+.. only:: html
 
-Contains distributed memory methods for calculating:
-    * the continuous-time quantum walk on arbitrary graphs and lines for 1, 2 and 3 particles
-    * Non-interacting and interacting walks
-    * Entanglement calculations
-    * ability to place diagonal defects/barriers on graph vertices
-    * contains MPI graph isomorphism methods, for both 2 and 3 interacting particles
+    +---------------------------+------------------------------------------------------------------------------------------------+
+    |   **Contents**            |    **Features**                                                                                |
+    +===========================+================================================================================================+ 
+    |                           ||                                                                                               |
+    |                           |                                                                                                |
+    | .. toctree::              |  Contains distributed memory methods for calculating:                                          |
+    |    :glob:                 |                                                                                                |
+    |    :maxdepth: 3           |    * the continuous-time quantum walk on arbitrary graphs and lines for 1, 2 and 3 particles   |
+    |                           |    * Non-interacting and interacting walks                                                     |
+    |    index                  |    * Entanglement calculations                                                                 |   
+    |    examples               |    * ability to place diagonal defects/barriers on graph vertices                              |
+    |    pyCTQW.MPI             |    * contains MPI graph isomorphism methods, for both 2 and 3 interacting particles            |
+    |    libctqw-MPI            |                                                                                                |
+    |                           |    These classes also contain plotting methods, to visualise the quantum walking dynamics      |
+    +---------------------------+------------------------------------------------------------------------------------------------+
+       
 
-These classes also contain plotting methods, to visualise the quantum walking dynamics
-
-Quickstart
+Installation
 ------------
-
-Contents
-------------
-
-.. toctree::
-    :maxdepth: 3
-
-    examples
-    pyCTQW.MPI
-    libctqw-MPI
-
 
 
 Indices and tables

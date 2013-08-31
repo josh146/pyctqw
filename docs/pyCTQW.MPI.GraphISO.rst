@@ -4,13 +4,17 @@
 
 .. currentmodule:: pyCTQW.MPI
 
-.. rst-class:: html-toggle
+.. autoclass:: pyCTQW.MPI.GraphISO
+	:show-inheritance:
 
-.. rst-class:: emphasize-children
 
-**Summary:** Graph isomorphism routines
+Method Summary
+---------------
 
 .. autosummary::
+	:toctree: stub
+	:template: method.rst
+
 	GraphISO.AllIsomorphicQ
 	GraphISO.GIcert
 	GraphISO.getEigSolver
@@ -18,9 +22,3 @@
 	GraphISO.isomorphicQ
 	GraphISO.setEigSolver
 	GraphISO.setProperties
-
-**Details:**
-    
-.. autoclass:: pyCTQW.MPI.GraphISO
-    :inherited-members: 
-    :show-inheritance:

@@ -61,6 +61,8 @@ pyctqw\\ install: src/libctqw-MPI.F90
 
 # documentation
 docs-html:
+	rm -f docs/stub/*
+	make -C docs/ clean
 	make -C docs/ html
 	ln -fs docs/_build/html/index.html ./index.html
 docs-pdf:
@@ -75,5 +77,6 @@ clean::
 	rm -rf src/libpyctqw_MPImodule.c src/libpyctqw_MPI-f2pywrappers2.f90
 	rm -rf docs/_build/*
 	rm -rf index.html
+	rm -f docs/stub/*
 
 

@@ -18,18 +18,74 @@ import numpy as _np
 #------------------ Eigensolver object (PETSc matrix input) ------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class EigSolver(object):
+	""" Contains methods for setting up and solving for the boundary eigenvalues of a PETSc matrix.
 
-	def __init__(self,mat,**kwargs):		
+		Args:
+			mat (petsc4py.PETSc.Mat) : input matrix
+
+		Keyword Args:
+				esolver (str): the eigensolver algorithm to use. 
+
+							* ``'krylovschur'`` *(default)* - Krylov-Schur
+							* ``'arnoldi'`` - Arnoldi Method
+							* ``'lanczos'`` - Lanczos Method
+							* ``'power'`` - Power Iteration/Rayleigh Quotient Iteration
+							* ``'gd'`` - Generalized Davidson
+							* ``'jd'`` - Jacobi-Davidson,
+							* ``'lapack'`` - Uses LAPACK eigenvalue solver routines
+							* ``'arpack'`` - *only available if SLEPc is\
+												compiled with ARPACK linking*
+
+				workType (str):    can be used to set the eigensolver worktype \
+								(either ``'ncv'`` or ``'mpd'``). The default \
+								is to let SLEPc decide.
+
+				workSize (int):    sets the work size **if** :attr:`workType` is set.
+
+				tolIn (float): tolerance of the eigenvalue solver \
+								(*default* ``0.`` (SLEPc decides)).
+				
+				maxIt (int):   maximum number of iterations of the eigenvalue solver \
+								(*default* ``0`` (SLEPc decides)).
+				
+				verbose (bool): if ``True``, writes eigensolver information to the console
+
+				emax_estimate (float): used to override the calculation \
+										of the graphs maximum eigenvalue.
+
+				emin_estimate (float): used to override the calculation \
+										of the graphs minimum eigenvalue. For a *finite* graph, \
+										``emin_estimate=0`` is set by default.
+
+					.. caution::
+						* If supplied, the value of :attr:`emax_estimate` (:math:`\hat{\lambda}_{\max}`) \
+						**must** satisfy :math:`\hat{\lambda}_{\max}\geq\lambda_{\max}`, \
+						where :math:`\lambda_{\max}` is the actual maximum eigenvalue of the graph.
+						* Similarly, the value of :attr:`emin_estimate` (:math:`\hat{\lambda}_{\min}`) \
+						**must** satisfy :math:`\hat{\lambda}_{\min}\leq\lambda_{\min}`, \
+						where :math:`\lambda_{\min}` is the actual minimum eigenvalue of the graph.
+						* The greater the difference value of :math:`|\hat{\lambda}_{\max} \
+						-\lambda_{\max}|` and :math:`|\hat{\lambda}_{\min} \
+						-\lambda_{\min}|`, the longer the convergence \
+						time of the ``chebyshev`` propagator when simulating a CTQW.
+
+					Note:
+						* For more information regarding these properties,refer to \
+						the `SLEPc documentation\
+						<http://www.grycap.upv.es/slepc/documentation/manual.htm>`_		
+		"""
+
+	def __init__(self,mat,**kwargs):        
 		self.__default = {'esolver' : 'krylovschur',
-			          'workType': 'null',
-			          'workSize': '35',
-			          'tol'     : 0.,
-			          'maxIt'   : 0,
-			          'verbose' : False,
-			          'emax_estimate' : None,
-			          'emin_estimate' : None,
-			          'Emin_val': None,
-			          'Emax_val': None}
+					  'workType': 'null',
+					  'workSize': '35',
+					  'tol'     : 0.,
+					  'maxIt'   : 0,
+					  'verbose' : False,
+					  'emax_estimate' : None,
+					  'emin_estimate' : None,
+					  'Emin_val': None,
+					  'Emax_val': None}
 			   
 		self.__mat = mat
 		self.__rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
@@ -38,6 +94,52 @@ class EigSolver(object):
 			setattr(self, key, kwargs.get(key,default))
 
 	def setEigSolver(self,**kwargs):
+		"""Set some or all of the eigenvalue solver properties.
+
+			Keyword Args:
+				esolver (str): the eigensolver algorithm to use. 
+
+							* ``'krylovschur'`` *(default)* - Krylov-Schur
+							* ``'arnoldi'`` - Arnoldi Method
+							* ``'lanczos'`` - Lanczos Method
+							* ``'power'`` - Power Iteration/Rayleigh Quotient Iteration
+							* ``'gd'`` - Generalized Davidson
+							* ``'jd'`` - Jacobi-Davidson,
+							* ``'lapack'`` - Uses LAPACK eigenvalue solver routines
+							* ``'arpack'`` - *only available if SLEPc is\
+												compiled with ARPACK linking*
+
+				workType (str):    can be used to set the eigensolver worktype
+								(either ``'ncv'`` or ``'mpd'``). The default
+								is to let SLEPc decide.
+
+				workSize (int):    sets the work size **if** ``workType`` is set.
+
+				tolIn (float): tolerance of the eigenvalue solver
+								(*default* ``0.`` (SLEPc decides)).
+				
+				maxIt (int):   maximum number of iterations of the eigenvalue solver
+								(*default* ``0`` (SLEPc decides)).
+				
+				verbose (bool): if ``True``, writes eigensolver information to the console
+
+				emax_estimate (float): used to override the calculation
+										of the graphs maximum eigenvalue.
+
+			.. caution::
+				* If supplied, the value of :attr:`emax_estimate`:math:`\hat{\lambda}_{\max}` \
+				**must** satisfy :math:`\hat{\lambda}_{\max}\geq\lambda_{\max}`, \
+				where :math:`\lambda_{\max}` is the actual maximum eigenvalue of the graph.
+				* The greater the value of :math:`\hat{\lambda}_{\max} \
+				-\lambda_{\max}`, the longer the convergence \
+				time of the ``chebyshev`` propagator when simulating a CTQW.
+
+			Note:
+				* For more information regarding these properties,refer to \
+				the `SLEPc documentation\
+				<http://www.grycap.upv.es/slepc/documentation/manual.htm>`_
+
+			"""
 		for key in kwargs:
 			if hasattr(self, key):
 				setattr(self, key, kwargs.get(key))
@@ -45,6 +147,9 @@ class EigSolver(object):
 				'Property type does not exist!'
 			
 	def getEigSolver(self,*args):
+		"""	Get some or all of the GraphISO properties.
+			For the list of the properties see :func:`setEigSolver`.
+			"""
 		for key in args:
 			if hasattr(self, key):
 				return getattr(self, key)
@@ -52,6 +157,16 @@ class EigSolver(object):
 				'Property type does not exist!'
 
 	def findEmax(self):
+		""" Returns the maximum Eigenvalue of the matrix, along with associated error.
+
+			Example:
+
+				>>> Emax, error = EigSolver.findEmax()
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`min_max_eigs`.
+			"""
 		# Calcaulate the eigenvalues
 		if self.emax_estimate is not None:
 			self.Emax_val = self.emax_estimate
@@ -67,6 +182,16 @@ class EigSolver(object):
 				self.Emax_err = Emax_error
 
 	def findEmin(self):
+		""" Returns the minimum Eigenvalue of the matrix, along with associated error.
+
+			Example:
+
+				>>> Emin, error = EigSolver.findEmin()
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`min_max_eigs`.
+			"""
 		# Calcaulate the eigenvalues
 		
 		if self.emin_estimate is not None:
@@ -86,6 +211,22 @@ class EigSolver(object):
 #------------------ Hamiltonian object (grid size input) -----------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Hamiltonian(object):
+	""" Contains methods for initializing, creating and manipulating Hamiltonian matrices.
+
+		Args:
+			N (int) : number of nodes to initialize the Hamiltonian object with.
+
+		Returns:
+				:	creates an unallocated PETSc matrix on communicator \
+					:attr:`petsc4py.PETSc.COMM_WORLD`. This is accessed \
+					via the attribute :attr:`Hamiltonian.mat`.
+		:rtype: petsc4py.PETSc.Mat
+
+		Returns:
+				:	an associated :class:`EigSolver` object is also created \
+					at :attr:`Hamiltonian.EigSolver`.
+		:rtype: :class:`EigSolver`
+		"""
 
 	def __init__(self,N):
 		self.rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
@@ -99,11 +240,61 @@ class Hamiltonian(object):
 		self.EigSolver = EigSolver(self.mat)
 	
 	def reinitialize(self):
+		""" Destroy and reinitialize the PETSc matrix :attr:`Hamiltonian.mat`."""
 		self.destroy()
 		self.mat = _PETSc.Mat()
 		self.mat.create(_PETSc.COMM_WORLD)
 		
 	def importAdj(self,filename,filetype,d=[0],amp=[0.],layout='spring',delimiter=None):
+		""" Create a Hamiltonian from an imported adjacency matrix.
+
+			Args:
+				filename (str): path to the file containing the adjacency matrix of the graph
+
+				filetype (str): the filetype of the imported adjacency matrix.
+
+								* ``'txt'`` - an :math:`N\\times N` dense 2D array in text format.
+								* ``'bin'`` - an :math:`N\\times N` PETSc binary matrix.
+
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+				layout (str):  the format to store the position of the nodes.
+
+								* ``spring`` *(default)* - spring layout.
+								* ``circle`` - nodes are arranged in a circle.
+								* ``spectral`` - nodes are laid out according to the \
+												spectrum of the graph.
+								* ``random`` - nodes are arranged in a random pattern.
+
+				delimiter (str): this is passed to `numpy.genfromtxt\
+					<http://docs.scipy.org/doc/numpy/reference/generated/numpy.genfromtxt.html>`_
+					in the case of strange delimiters in an imported ``txt`` file.
+
+			Returns:
+				:this allocates and builds a Hamiltonian matrix at :attr:`Hamiltonian.mat`.
+			:rtype: :func:`petsc4py.PETSc.Mat`
+
+			Returns:
+				: the original adjacency matrix is also stored as a PETSc matrix at :attr:`Hamiltonian.Adj`.
+			:rtype: :func:`petsc4py.PETSc.Mat`
+			
+			.. important::
+				* The number of nodes in the imported adjacency matrix \
+				**must** match the number of nodes the Hamiltonian object \
+				is initialized with.
+				* The length of ``amp`` and ``d`` must be identical.
+
+			.. note::
+				* This function calls Python functions located at :mod:`pyCTQW.MPI.io`, \
+				and is somewhat slower than :func:`importAdjToH`, but with the advantage of \
+				a more flexible text file importer.
+				* For the ability to generate 2 or 3 particle Hamiltonians with or without \
+				interactions, please see :func:`importAdjToH`.
+			"""
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
@@ -120,6 +311,58 @@ class Hamiltonian(object):
 		self.nodePos, self.lineX, self.lineY = _plot.getGraphNodes(self.Adj,layout=layout)
 
 	def importAdjToH(self,filename,filetype,d=[0.],amp=[0.],p='1',layout='spring',delimiter=None,interaction=0.):
+		""" Create a Hamiltonian from an imported adjacency matrix.
+
+			Args:
+				filename (str): path to the file containing the adjacency matrix of the graph
+
+				filetype (str): the filetype of the imported adjacency matrix.
+
+								* ``'txt'`` - an :math:`N\\times N` dense 2D array in text format.
+								* ``'bin'`` - an :math:`N\\times N` PETSc binary matrix.
+
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+				p (str) : (``'1'``|``'2'``|``'3'``) - specify whether to create a 1, 2 or 3 \
+							particle Hamiltonian.
+
+				layout (str):  the format to store the position of the nodes.
+
+								* ``spring`` *(default)* - spring layout.
+								* ``circle`` - nodes are arranged in a circle.
+								* ``spectral`` - nodes are laid out according to the \
+												spectrum of the graph.
+								* ``random`` - nodes are arranged in a random pattern.
+
+				delimiter (str): this is passed to `numpy.genfromtxt \
+					<http://docs.scipy.org/doc/numpy/reference/generated/numpy.genfromtxt.html>`_
+					in the case of strange delimiters in an imported ``txt`` file.
+
+				interaction (float): the amplitude of interaction between the walkers \
+									 when located on the same vertex.
+
+			Returns:
+				 :	* :attr:`Hamiltonian.mat` *(petsc4py.PETSc.Mat)* - the Hamiltonian matrix.
+				 	* :attr:`Hamiltonian.Adj` *(petsc4py.PETSc.Mat)* - the adjacency matrix stored as a PETSc matrix.
+					* :attr:`Hamiltonian.nodePos` *(array)* - the :math:`(x,y)` coordinates of the graph vertices.
+					* :attr:`Hamiltonian.lineX` *(array)* - the :math:`x` coordinates of the edges connecting graph vertices.
+					* :attr:`Hamiltonian.lineY` *(array)* - the :math:`y` coordinates of the edges connecting graph vertices.
+			
+			.. important::
+				* The number of nodes in the imported adjacency matrix \
+				 **must** match the number of nodes the Hamiltonian object \
+				 is initialized with.
+				* The length of ``amp`` and ``d`` must be identical.
+
+			.. admonition:: Fortran interface
+				
+				This function calls the Fortran function :f:func:`importadjtoh` and is \
+				faster than :func:`importAdjToH`, but with a 'pickier' text file importer.
+			"""
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
@@ -137,6 +380,29 @@ class Hamiltonian(object):
 		self.nodePos, self.lineX, self.lineY = _plot.getGraphNodes(self.Adj,layout=layout)
 	
 	def createLine2P(self,d=[0],amp=[0.],interaction=0.):
+		""" Create a 2 particle infinite line Hamiltonian.
+
+			Args:
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+				interaction (float): the amplitude of interaction between the walkers \
+									 when located on the same vertex.
+
+			Returns:
+				 :	:attr:`Hamiltonian.mat`, the Hamiltonian matrix.
+			:rtype: :func:`petsc4py.PETSc.Mat`
+			
+			.. important::
+				* The length of ``amp`` and ``d`` must be identical.
+
+			.. admonition:: Fortran interface
+
+				This function calls the Fortran function :f:func:`hamiltonian_2p_line`.
+			"""
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
@@ -150,6 +416,29 @@ class Hamiltonian(object):
 		Hamiltonian.pop()
 
 	def createLine3P(self,d=[0],amp=[0.],interaction=0.):
+		""" Create a 3 particle infinite line Hamiltonian.
+
+			Args:
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+				interaction (float): the amplitude of interaction between the walkers \
+									 when located on the same vertex.
+
+			Returns:
+				 :	:attr:`Hamiltonian.mat`, the Hamiltonian matrix.
+			:rtype: :func:`petsc4py.PETSc.Mat`
+			
+			.. important::
+				* The length of ``amp`` and ``d`` must be identical.
+
+			.. admonition:: Fortran interface
+				
+				This function calls the Fortran function :f:func:`hamiltonian_3p_line`.
+			"""
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
@@ -163,6 +452,29 @@ class Hamiltonian(object):
 		Hamiltonian.pop()
 	
 	def createLine(self,d=[0],amp=[0.]):
+		""" Create a 1 particle infinite line Hamiltonian.
+
+			Args:
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+				interaction (float): the amplitude of interaction between the walkers \
+									 when located on the same vertex.
+
+			Returns:
+				 :	:attr:`Hamiltonian.mat`, the Hamiltonian matrix.
+			:rtype: :func:`petsc4py.PETSc.Mat`
+			
+			.. important::
+				* The length of ``amp`` and ``d`` must be identical.
+
+			.. admonition:: Fortran interface
+
+				This function calls the Fortran function :f:func:`hamiltonian_1p_line`.
+			"""
 		try:
 			if self.mat.isAssembled():
 				self.reinitialize()
@@ -176,16 +488,29 @@ class Hamiltonian(object):
 		Hamiltonian.pop()
 	
 	def Emax(self,**kwargs):
+		""" Returns the maximum Eigenvalue of the matrix.
+
+			Example:
+
+				>>> Emax = Hamiltonian.Emax()
+			"""
 		if self.EigSolver.Emax_val is None:
 			self.EigSolver.findEmax()
 		return self.EigSolver.Emax_val
 	
 	def Emin(self,**kwargs):
+		""" Returns the minimum Eigenvalue of the matrix.
+
+			Example:
+
+				>>> Emin = Hamiltonian.Emin()
+			"""
 		if self.EigSolver.Emin_val is None:
 			self.EigSolver.findEmin()
 		return self.EigSolver.Emin_val
 		
 	def destroy(self):
+		""" Destroys all associated PETSc matrices."""
 		self.mat.destroy()
 		try:
 			self.Adj.destroy()
@@ -193,6 +518,20 @@ class Hamiltonian(object):
 			pass
 
 class nodeHandle(object):
+	""" Creates a handle with the ability to store and updates node probability.
+
+		Args:
+			nodes (array of ints): the nodes to watch (e.g. ``[0,1,4]``).
+			t (float): the elapsed time at handle initialization.
+			psi (petsc4py.PETSc.Vec) : vector containing the global probability for particle 1. 
+			psi2 (None or petsc4py.PETSc.Vec) : vector containing the global probability for particle 2.
+			psi3 (None or petsc4py.PETSc.Vec) : vector containing the global probability for particle 3.
+
+		Warning:
+			Note that the handle attributes/methods are **not** collective;
+			if running on multiple nodes, only *local* values will be
+			stored/updated on each node.
+		"""
 	def __init__(self,nodes,t,psi,psi2=None,psi3=None):
 		self.rank = _PETSc.COMM_WORLD.Get_rank()
 		self.time = [t]
@@ -215,6 +554,14 @@ class nodeHandle(object):
 			self.local_prob3 = psi3.getValues(self.local_nodes)
 
 	def update(self,t,psi,psi2=None,psi3=None):
+		""" Update the handle with node probability for an additional timestep.
+
+			Args:
+				t (float): the elapsed time at handle update.
+				psi (petsc4py.PETSc.Vec) : vector containing the global probability for particle 1. 
+				psi2 (None or petsc4py.PETSc.Vec) : vector containing the global probability for particle 2.
+				psi3 (None or petsc4py.PETSc.Vec) : vector containing the global probability for particle 3.
+			"""        
 		self.time.append(t)
 
 		prob_update = psi.getValues(self.local_nodes)
@@ -229,11 +576,31 @@ class nodeHandle(object):
 			self.local_prob3 = _np.vstack([self.local_prob3,prob_update])
 
 	def getLocalNodes(self,t=None,p=1):
+		""" Get thet stored node probability and timestep array for particle :attr:`p` over all watched nodes.
+
+			Keyword Args:
+				t (None or float): the elapsed time at which to return the node probabilities. \
+										If ``None``, **all** timesteps will be returned.
+				p (int) : (``1``,``2``,``3``) - the particle to return probability data for.
+
+			Returns:
+				tuple of arrays : returns arrays corresponding to the times recorded (if ``t=None``) \
+									and the probabilities over watched nodes.
+
+			Example:
+
+				>>> timeArray, probXArray, probYArray = nodeHandle.getLocalNodes()
+
+				or
+
+				>>> probXArray, probYArray = nodeHandle.getLocalNodes(t=4)
+
+			"""        
 		if t is not None:
 			try:
 				indt = self._time.index(t)
 			except ValueError:
-				if self.rank == 0:	print '\nERROR: time {} was not handled'.format(t)
+				if self.rank == 0:  print '\nERROR: time {} was not handled'.format(t)
 				return
 
 			if p == 1:
@@ -252,6 +619,23 @@ class nodeHandle(object):
 				return _np.array(self.time), self.local_prob.T.tolist(), self.local_prob2.T.tolist(), self.local_prob3.T.tolist()
 
 	def getLocalNode(self,node,p=1):
+		""" Get thet stored probability and timestep array for particle :attr:`p` at a specified node.
+
+			Args:
+				node (int) : the node to retrieve data from.
+
+			Keyword Args:
+				p (int) : (``1``,``2``,``3``) - the particle to return probability data for.
+
+			Returns:
+				tuple of arrays : returns arrays corresponding to the times recorded (if ``t=None``) \
+									and the probabilities over the specified node.
+
+			Example:
+
+					>>> timeArray, probXArray, probYArray = nodeHandle.getLocalNodes(3)
+
+			"""   
 		try:
 			indN = self.local_nodes.index(node)
 		except ValueError:
@@ -270,14 +654,26 @@ class nodeHandle(object):
 			return _np.array(self.time), self.local_prob.T.tolist()[indN], self.local_prob2.T.tolist()[indN], self.local_prob3.T.tolist()[indN]
 
 class entanglementHandle(object):
+	""" Creates a handle with the ability to store and updates entanglement.
+
+		Args:
+			t (float): the elapsed time at handle initialization.
+			psi (petsc4py.PETSc.Vec) : vector containing the statespace.
+			N (int) : the size of the quantum walker's position space (i.e. number \
+						of graph vertices).
+
+		.. admonition:: Fortran interface
+		
+			This function calls the Fortran function :f:func:`entanglement`.
+		"""
 	def __init__(self,t,psi,N,**kwargs):
 		self.__default = {'esolver' : 'krylovschur',
-			          'workType': 'null',
-			          'workSize': '35',
-			          'tol'     : 0.,
-			          'maxIt'   : 0,
-			          'verbose' : False,
-			          'p'		: 2}
+					  'workType': 'null',
+					  'workSize': '35',
+					  'tol'     : 0.,
+					  'maxIt'   : 0,
+					  'verbose' : False,
+					  'p'       : 2}
 
 		self._rank = _PETSc.COMM_WORLD.Get_rank()
 		self.time = [t]
@@ -293,6 +689,16 @@ class entanglementHandle(object):
 		self.entanglement = [entInit]
 
 	def update(self,t,psi):
+		""" Creates a handle with the ability to store and updates entanglement.
+
+			Args:
+				t (float): the timestep of the handle update.
+				psi (petsc4py.PETSc.Vec) : vector containing the statespace.
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`entanglement`.
+			"""
 		self.time.append(t)
 
 		if self.p==2:
@@ -302,11 +708,29 @@ class entanglementHandle(object):
 		self.entanglement.append(entUpdate)
 
 	def getEntanglement(self,t=None):
+		""" Returns the stored entanglement.
+
+			Keyword Args:
+				t (None or float): the timestep to retrieve the entanglement. \
+									If ``None``, the the entanglement at **all** \
+									recorded timesteps is returned.
+			Returns:
+				tuple of arrays : returns arrays corresponding to the times recorded (if ``t=None``) \
+									and the entanglement over the recorded times.
+
+			Example:
+
+				>>> timeArray, entArray = entanglementHandle.getEntanglement()
+
+				or
+
+				>>> entArray = entanglementHandle.getEntanglement(t=4)
+			"""
 		if t is not None:
 			try:
 				indt = self._time.index(t)
 			except ValueError:
-				if self._rank == 0:	print '\nERROR: time {} was not handled'.format(t)
+				if self._rank == 0: print '\nERROR: time {} was not handled'.format(t)
 				return
 
 			return self.entanglement[indt]
@@ -320,6 +744,14 @@ class entanglementHandle(object):
 #--------------------------- 1 particle CTQW   ---------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class QuantumWalkP1(object):
+	""" Methods providing a very basic framework of a 1 particle CTQW.
+
+		.. caution::
+			This object constructs some of the *framework* of a 1 particle
+			quantum walk, but is not feature complete. For a feature complete
+			construction, see :func:`pyCTQW.MPI.Graph` or :func:`pyCTQW.MPI.Line`
+			for which this is a base.
+		"""
 	def __init__(self,N):
 		self.rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 		self.N = N
@@ -327,7 +759,10 @@ class QuantumWalkP1(object):
 		self._timestep = False
 		
 		# define vectors
+
+		#: Initial state vector
 		self.psi0 = _PETSc.Vec()
+
 		self.psi0.create(_PETSc.COMM_WORLD)
 		self.psi0.setSizes(self.N)
 		self.psi0.setUp()
@@ -339,26 +774,25 @@ class QuantumWalkP1(object):
 		self.EigSolver = self.H.EigSolver
 	
 	def importInitState(self,filename,filetype):
-		"""	Imports the initial state of the quantum walk from a file.
+		""" Imports the initial state of the quantum walk from a file.
 
-			:param str filename: path to the file containing the input state.
+			Args:
+				filename (str): path to the file containing the input state.
+				filetype (str): the filetype of the imported adjacency matrix.
 
-							.. note::
-								The number of elements in the imported input state vector
-								**must** match the number of nodes the Graph object 
-								is initialized with.
+									* ``'txt'`` - an :math:`N` element column vector in text format.
+									* ``'bin'`` - an :math:`N` element PETSc binary vector.
+			Returns:
+				: this creates a PETSc vector containing the initial state, \
+											accessed via :attr:`Graph.psi0`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
 
-			:param str filetype: the filetype of the imported adjacency matrix.
+			Warning:
+				The number of elements in the imported input state vector
+				**must** match the number of nodes the 1P CTQW object
+				is initialized with. 
 
-								* ``'txt'`` - an :math:`N` element column vector in text format.
-								* ``'bin'`` - an :math:`N` element PETSc binary vector.
-
-			:returns:	this creates a PETSc vector containing the initial state, accessed via
-
-						>>> walk.psi0
-
-			:rtype: ``petsc4py.PETSc.Vec()``
-			"""		
+			"""
 		self.initState = 'file:'+filename
 		# create the inital stage
 		initStateS = _PETSc.Log.Stage('initState')
@@ -380,58 +814,106 @@ class QuantumWalkP1(object):
 		Marginal.pop()
 
 	def watch(self,nodes):
-		"""	Creates a handle that watches node probability during propagation.
+		""" Creates a handle that watches node probability during propagation.
 
-			:param array nodes:	the nodes to watch (e.g. ``[0,1,4]``).
+			Args:
+				nodes (array of ints): the nodes to watch (e.g. ``[0,1,4]``).
 
-			:returns:	creates a handle that can be
-						accessed to retrieve node probabilities for various :math:`t`
+			Returns:
+				:	creates a handle that can be
+					accessed to retrieve node probabilities for various :math:`t`
+			:rtype: :func:`pyCTQW.MPI.ctqw.nodeHandle`
 
-						For example,
+			Example:
+				>>> walk.watch([0,1,2,3,4])
+				>>> walk.propagate(5.,method='chebyshev')
+				>>> timeArray, probArray = walk.handle.getLocalNodes()
 
-						>>> walk.watch([0,1,2,3,4])
-						>>> walk.propagate(5.,method='chebyshev')
-						>>> timeArray, probArray = walk.handle.getLocalNodes()
-
-						.. warning::
-							note that `walk.handle` attributes are **not** collective;
-							if running on multiple nodes, only *local* values will be
-							returned.
-
-			:rtype: ``pyCTQW.MPI.ctqw.nodeHandle()``
-
-			"""				
+			Warning:
+				Note that `walk.handle` attributes are **not** collective;
+				if running on multiple nodes, only *local* values will be
+				returned.
+			"""             
 		self.handle = nodeHandle(nodes,self.t,self.prob)
 		
 	def propagate(self,t,method='chebyshev',**kwargs):
-		"""	Propagates the quantum walk for time t.
+		""" Propagates the quantum walk for time t.
 
-			:param float t:	the timestep over which to propagate the state ``walk.psi0``
+			Args:
+				t (float): the timestep over which to propagate the state ``walk.psi0`` via the relationship
+					:math:`\\left|\\psi\\right\\rangle = e^{-iHt}\\left|\\psi0\\right\\rangle`.
 
-							.. math::
-								\\left|\\psi\\right\\rangle = e^{-iHt}\\left|\\psi0\\right\\rangle
+				method (str):  the propagation algorithm to use
+								(``'chebyshev'`` *(default)* or ``'krylov'``).
 
-			:param str method:	the propagation algorithm to use
-								(``'chebyshev'`` *(default)* or ``'krylov'``)
+			Keyword Args:
+				esolver (str): the eigensolver algorithm to use. 
 
-			:param kwargs:	EigSolver keywords can also be passed to the propagator;
-							for more details of the available EigSolver properties,
-							see :class:`pyCTQW.MPI.ctqw.EigSolver`.
+							* ``'krylovschur'`` *(default)* - Krylov-Schur
+							* ``'arnoldi'`` - Arnoldi Method
+							* ``'lanczos'`` - Lanczos Method
+							* ``'power'`` - Power Iteration/Rayleigh Quotient Iteration
+							* ``'gd'`` - Generalized Davidson
+							* ``'jd'`` - Jacobi-Davidson,
+							* ``'lapack'`` - Uses LAPACK eigenvalue solver routines
+							* ``'arpack'`` - *only available if SLEPc is\
+												compiled with ARPACK linking*
 
-							.. note::
-								these EigSolver properties only take effect if
-								`method='chebyshev'`.
+				workType (str):    can be used to set the eigensolver worktype \
+								(either ``'ncv'`` or ``'mpd'``). The default \
+								is to let SLEPc decide.
 
-			:returns:	this creates a PETSc vector containing the propagated state, accessed via
+				workSize (int):    sets the work size **if** :attr:`workType` is set.
 
-						>>> walk.psi
+				tolIn (float): tolerance of the eigenvalue solver \
+								(*default* ``0.`` (SLEPc decides)).
+				
+				maxIt (int):   maximum number of iterations of the eigenvalue solver \
+								(*default* ``0`` (SLEPc decides)).
+				
+				verbose (bool): if ``True``, writes eigensolver information to the console
 
-						as well as a PETSc vector containing the marginal probabilities,
+				emax_estimate (float): used to override the calculation \
+										of the graphs maximum eigenvalue.
 
-						>>> walk.prob
+				emin_estimate (float): used to override the calculation \
+										of the graphs minimum eigenvalue. For a *finite* graph, \
+										``emin_estimate=0`` is set by default.
 
-			:rtype: ``petsc4py.PETSc.Vec()``
-			"""				
+					.. caution::
+						* If supplied, the value of :attr:`emax_estimate` (:math:`\hat{\lambda}_{\max}`) \
+						**must** satisfy :math:`\hat{\lambda}_{\max}\geq\lambda_{\max}`, \
+						where :math:`\lambda_{\max}` is the actual maximum eigenvalue of the graph.
+						* Similarly, the value of :attr:`emin_estimate` (:math:`\hat{\lambda}_{\min}`) \
+						**must** satisfy :math:`\hat{\lambda}_{\min}\leq\lambda_{\min}`, \
+						where :math:`\lambda_{\min}` is the actual minimum eigenvalue of the graph.
+						* The greater the difference value of :math:`|\hat{\lambda}_{\max} \
+						-\lambda_{\max}|` and :math:`|\hat{\lambda}_{\min} \
+						-\lambda_{\min}|`, the longer the convergence \
+						time of the ``chebyshev`` propagator.
+
+					Note:
+						* The keyword arguments properties only apply if ``propagator='chebyshev'``
+						* For more information regarding these properties,refer to \
+						the `SLEPc documentation\
+						<http://www.grycap.upv.es/slepc/documentation/manual.htm>`_
+
+			Returns:
+				:	this creates a PETSc vector containing the
+					propagated state, accessed via the attribute
+					:attr:`psi`, as well as a PETSc vector containing
+					the marginal probabilities, :attr:`prob`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
+
+			Note:
+				The EigSolver properties only take effect if
+				`method='chebyshev'`.
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`expm`. for the Krylov
+				method, and the function :f:func:`qw_cheby` for the Chebyshev method.
+			"""             
 		if self._timestep:
 			self.t = t + self.t
 		else:
@@ -462,20 +944,23 @@ class QuantumWalkP1(object):
 		self._timestep = False
 
 	def plotNodes(self,filename,t=None):
-		"""	Creates a plot of the node probablities over time.
+		""" Creates a plot of the node probablities over time.
 
-			:param str filename: the absolute/relative path to the desired output file.
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
 
-			.. note::
-				* :func:`watch` **must** be called prior to propagation in order for\
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
 				the probabilities at the specified nodes to be stored.
+
+			Note:
 				* if multiple nodes are watched, they will **all** be plotted.
 				* ensure a file extension is present so that filetype is correctly set\
 				(choose one of png, pdf, ps, eps or svg).
 				* Timesteps are recorded when propagations occur - to increase the number\
 				of timesteps, increase the number of propagations.
 
-			"""				
+			"""             
 
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
@@ -493,38 +978,35 @@ class QuantumWalkP1(object):
 			_plot.plotNodes(timeArray,nodeArray,probArray,filename)
 
 	def exportState(self,filename,filetype):
-		"""	Exports the final state of the quantum walk to a file.
+		""" Exports the final state of the quantum walk to a file.
 
-			:param str filename: path to desired output file.
-
-			:param str filetype: the filetype of the exported adjacency matrix.
+			Args:
+				filename (str): path to desired output file.
+				filetype (str): the filetype of the exported adjacency matrix.
 
 								* ``'txt'`` - an :math:`N` element column vector in text format.
 								* ``'bin'`` - an :math:`N` element PETSc binary vector.
-			"""		
+			"""     
 		_io.exportVec(self.psi,filename,filetype)
 
 	def psiToInit(self):
-		"""	Copies the state :attr:`Graph.psi` to :attr:`Graph.psi0`.
+		""" Copies the state :attr:`self.psi` to :attr:`self.psi0`.
 
-			For example, this can be used to iterate the propagation
-			over discrete timesteps: ::
+			Example:
+				This can be used to iterate the propagation
+				over discrete timesteps: ::
 
-				for i in range(10):
-					walk.propagate(0.01,method='chebyshev')
-					walk.psiToInit()
-
-			"""				
+					for i in range(10):
+						walk.propagate(0.01,method='chebyshev')
+						walk.psiToInit()
+			"""             
 		self.psi0 = self.psi
 		self._timestep = True
 	
 	def destroy(self):
-		"""	Destroys the 1 particle :class:`Graph` object, and all \
+		""" Destroys the 1 particle quantum walk object, and all \
 			associated PETSc matrices/vectors.
-
-			>>> walk.destroy()
-
-			"""	
+			""" 
 		self.H.destroy()
 		self.psi.destroy()
 		self.psi0.destroy()
@@ -534,6 +1016,14 @@ class QuantumWalkP1(object):
 #--------------------------- 2 particle CTQW   ---------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class QuantumWalkP2(object):
+	""" Methods providing a very basic framework of a 2 particle CTQW.
+
+		.. caution::
+			This object constructs some of the *framework* of a 2 particle
+			quantum walk, but is not feature complete. For a feature complete
+			construction, see :func:`pyCTQW.MPI.Graph2P` or :func:`pyCTQW.MPI.Line2P`
+			for which this is a base.
+		"""
 	def __init__(self,N):
 		self.rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 		self.N = N
@@ -561,6 +1051,27 @@ class QuantumWalkP2(object):
 		self.EigSolver = self.H.EigSolver
 	
 	def importInitState(self,filename,filetype):
+		""" Imports the initial state of the quantum walk from a file.
+
+			Args:
+				filename (str): path to the file containing the input state.
+				filetype (str): the filetype of the imported adjacency matrix.
+
+									* ``'txt'`` - an :math:`N\\times N` *2D array* in text format.
+									* ``'bin'`` - an :math:`N^2` element PETSc binary *vector*.
+			Returns:
+				: this creates a PETSc vector containing the initial statespace, \
+					accessed via :attr:`self.psi0`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
+
+			Warning:
+				The number of elements in the imported input statespace
+				**must** equal :math:`N^2` (either as a :math:`N\\times N`
+				text file or a :math:`N^2` PETSc binary vector),
+				where :math:`N` is the number of nodes the 2P CTQW object
+				is initialized with. 
+
+			"""
 		self.initState = 'file:'+filename
 		# create the inital stage
 		initStateS = _PETSc.Log.Stage('initState')
@@ -585,6 +1096,53 @@ class QuantumWalkP2(object):
 		Marginal.pop()
 
 	def watch(self,nodes,watchtype='prob',**kwargs):
+		""" Creates a handle that watches either marginal probability \
+			or walker entanglement during propagation.
+
+			Args:
+				nodes (array of ints): the nodes to watch marginal probability (e.g. ``[0,1,4]``).
+				watchtype (str):	(`'prob'` , `'entanglement'`).
+									
+									the type of watch handle to produce.
+
+			Keyword Args:
+				: If ``watchtype='entanglement'``, EigSolver keywords can also be passed;
+					for more details of the available EigSolver properties,
+					see :func:`propagate`.
+
+			Returns:
+				:	* if ``watchtype='prob'``, creates a handle that can be \
+					accessed to retrieve marginal node probabilities for various :math:`t`
+					* if ``watchtype='entanglment'``, creates a handle that can be \
+					accessed to retrieve entanglement values for various :math:`t`
+			:rtype: * if ``watchtype='prob'``: :func:`pyCTQW.MPI.ctqw.nodeHandle`
+					* if ``watchtype='entanglement'``: :func:`pyCTQW.MPI.ctqw.entanglementHandle`
+
+			Examples:
+				To watch the entanglement,
+					>>> walk.watch(None,watchtype='entanglement')
+					>>> walk.propagate(5.,method='chebyshev')
+					>>> timeArray, entArray = walk.entanglementHandle.getEntanglement()
+
+					.. note::
+						* The entanglement measure used in Von Neumann entropy, calculated \
+							via :math:`S=-\\sum_{i}\\lambda_i\log_{2}\\lambda_i`, where :math:`\lambda_i` \
+							are the eigenvalues of the reduced density matrix \
+							:math:`\\rho_2 = \\text{Tr}_1(|\\psi(t)\\rangle\\langle\\psi(t)|)`
+						* Nodes do not need to be specified, as entanglement is a global measurement.
+						* As it is a global measurement, there is a large amount of node communication \
+						which may increase overall program run time.
+
+				To watch the probabilities,
+					>>> walk.watch([0,1,4])
+					>>> walk.propagate(2.,method='chebyshev')					
+					>>> timeArray, probXArray, probYArray = walk.handle.getLocalNode(4,p=2)
+
+					.. warning::
+						Note that `walk.handle` attributes are **not** collective;
+						if running on multiple nodes, only *local* values will be
+						returned.
+			"""      
 		if watchtype == 'prob':
 			self._watchProb = True
 			self.handle = nodeHandle(nodes,self.t,self.psiX,psi2=self.psiY)
@@ -592,7 +1150,84 @@ class QuantumWalkP2(object):
 			self._watchEnt = True
 			self.entanglementHandle = entanglementHandle(self.t,self.psi0,self.N,**kwargs)
 		
-	def propagate(self,t,method='expm',**kwargs):
+	def propagate(self,t,method='chebyshev',**kwargs):
+		""" Propagates the quantum walk for time t.
+
+			Args:
+				t (float): the timestep over which to propagate the state ``walk.psi0`` via the relationship
+					:math:`\\left|\\psi\\right\\rangle = e^{-iHt}\\left|\\psi0\\right\\rangle`.
+
+				method (str):  the propagation algorithm to use
+								(``'chebyshev'`` *(default)* or ``'krylov'``).
+
+			Keyword Args:
+				esolver (str): the eigensolver algorithm to use. 
+
+							* ``'krylovschur'`` *(default)* - Krylov-Schur
+							* ``'arnoldi'`` - Arnoldi Method
+							* ``'lanczos'`` - Lanczos Method
+							* ``'power'`` - Power Iteration/Rayleigh Quotient Iteration
+							* ``'gd'`` - Generalized Davidson
+							* ``'jd'`` - Jacobi-Davidson,
+							* ``'lapack'`` - Uses LAPACK eigenvalue solver routines
+							* ``'arpack'`` - *only available if SLEPc is\
+												compiled with ARPACK linking*
+
+				workType (str):    can be used to set the eigensolver worktype \
+								(either ``'ncv'`` or ``'mpd'``). The default \
+								is to let SLEPc decide.
+
+				workSize (int):    sets the work size **if** :attr:`workType` is set.
+
+				tolIn (float): tolerance of the eigenvalue solver \
+								(*default* ``0.`` (SLEPc decides)).
+				
+				maxIt (int):   maximum number of iterations of the eigenvalue solver \
+								(*default* ``0`` (SLEPc decides)).
+				
+				verbose (bool): if ``True``, writes eigensolver information to the console
+
+				emax_estimate (float): used to override the calculation \
+										of the graphs maximum eigenvalue.
+
+				emin_estimate (float): used to override the calculation \
+										of the graphs minimum eigenvalue. For a *finite* graph, \
+										``emin_estimate=0`` is set by default.
+
+					.. caution::
+						* If supplied, the value of :attr:`emax_estimate` (:math:`\hat{\lambda}_{\max}`) \
+						**must** satisfy :math:`\hat{\lambda}_{\max}\geq\lambda_{\max}`, \
+						where :math:`\lambda_{\max}` is the actual maximum eigenvalue of the graph.
+						* Similarly, the value of :attr:`emin_estimate` (:math:`\hat{\lambda}_{\min}`) \
+						**must** satisfy :math:`\hat{\lambda}_{\min}\leq\lambda_{\min}`, \
+						where :math:`\lambda_{\min}` is the actual minimum eigenvalue of the graph.
+						* The greater the difference value of :math:`|\hat{\lambda}_{\max} \
+						-\lambda_{\max}|` and :math:`|\hat{\lambda}_{\min} \
+						-\lambda_{\min}|`, the longer the convergence \
+						time of the ``chebyshev`` propagator.
+
+					Note:
+						* The keyword arguments properties only apply if ``propagator='chebyshev'``
+						* For more information regarding these properties,refer to \
+						the `SLEPc documentation\
+						<http://www.grycap.upv.es/slepc/documentation/manual.htm>`_
+
+			Returns:
+				:	this creates a PETSc vector containing the
+					propagated state, accessed via the attribute
+					:attr:`psi`, as well as a PETSc vector containing
+					the marginal probabilities, :attr:`prob`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
+
+			Note:
+				The EigSolver properties only take effect if
+				`method='chebyshev'`.
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`expm`. for the Krylov
+				method, and the function :f:func:`qw_cheby` for the Chebyshev method.
+			"""             
 		if self.timestep:
 			self.t = t + self.t
 		else:
@@ -624,6 +1259,21 @@ class QuantumWalkP2(object):
 		self.timestep = False
 
 	def plotEntanglement(self,filename):
+		""" Creates a plot of the entanglement over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the entanglement to be stored during propagation.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations prior to plotting.
+			"""             
 
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
@@ -633,6 +1283,24 @@ class QuantumWalkP2(object):
 			_plot.plotEntanglement(timeArray,entArray,filename,self.initState,self.defectNodes,self.defectAmp)
 
 	def plotNode(self,filename,node,t=None):
+		""" Creates a plot of the marginal probablities on a *specified node* over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+				node (int): the node to plot.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the probabilities at the specified nodes to be stored.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations.
+				* See :func:`plotNodes` to plot multiple nodes.
+
+			"""             
 
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
@@ -649,6 +1317,26 @@ class QuantumWalkP2(object):
 			_plot.plotNodes2P(timeArray,node,probXArray,probYArray,filename)
 
 	def plotNodes(self,filename,p=1,t=None):
+		""" Creates a plot of the node probablities over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+				p (int): (1|2) - choose whether to plot the marginal probability of particle 1 or 2.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the probabilities at the specified nodes to be stored.
+
+			Note:
+				* if multiple nodes are watched, they will **all** be plotted.
+				* if you wish to plot marginal probabilities for both particle \
+					1 and 2, see :func:`plotNode`.
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations.
+
+			"""             
 
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
@@ -674,12 +1362,40 @@ class QuantumWalkP2(object):
 			_plot.plotNodes(timeArray,nodeArray,probArray,filename,p=p)
 	
 	def exportState(self,filename,filetype):
+		""" Exports the final state :attr:`psi` of the quantum walk to a file.
+
+			Args:
+				filename (str): path to desired output file.
+				filetype (str): the filetype of the exported adjacency matrix.
+
+								* ``'txt'`` - an :math:`N\\times N` 2D array in text format.
+								* ``'bin'`` - an :math:`N^2` element PETSc binary vector.
+			"""     
 		if filetype == 'txt':
 			_io.exportVecToMat(self.psi,filename,filetype)
 		elif filetype == 'bin':
 			_io.exportVec(self.psi,filename,filetype)
 
 	def exportPartialTrace(self,filename,filetype,p=1):
+		""" Exports the partial trace of the density matrix to a file.
+
+			Args:
+				filename (str): path to desired output file.
+				filetype (str): the filetype of the exported adjacency matrix.
+
+								* ``'txt'`` - an :math:`N\\times N` 2D array in text format.
+								* ``'bin'`` - an :math:`N\\times N` PETSc binary matrix.
+
+				p (int): (1|2) - the particle to trace over.
+
+			For example, when ``p=1``, :math:`\\rho_2 = \\text{Tr}_1(\\rho_{12})`,
+			where :math:`\\rho_{12} = |\\psi(t)\\rangle\\langle\\psi(t)|`, is exported.
+				
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`partial_trace_array` for ``bin``
+				filetypes, and the function :f:func:`partial_trace_array` otherwise.
+			""" 
 		if p == 1:
 			if filetype == 'bin':
 				rho = _PETSc.Mat().create(_PETSc.COMM_WORLD)
@@ -688,16 +1404,29 @@ class QuantumWalkP2(object):
 				rho.destroy()
 			else:
 				rho = _ctqwmpi.partial_trace_array(self.psi.fortran,self.N)
-				if self.rank == 0:	_np.savetxt(filename, rho.real)
+				if self.rank == 0:  _np.savetxt(filename, rho.real)
 		if p == 2:
 			#to do
 			pass
 
 	def psiToInit(self):
+		""" Copies the state :attr:`self.psi` to :attr:`self.psi0`.
+
+			Example:
+				This can be used to iterate the propagation
+				over discrete timesteps: ::
+
+					for i in range(10):
+						walk.propagate(0.01,method='chebyshev')
+						walk.psiToInit()
+			"""             
 		self.psi0 = self.psi
 		self.timestep = True
 	
 	def destroy(self):
+		""" Destroys the 2 particle quantum walk object, and all \
+			associated PETSc matrices/vectors.
+			""" 
 		self.H.destroy()
 		self.psi.destroy()
 		self.psi0.destroy()
@@ -708,6 +1437,14 @@ class QuantumWalkP2(object):
 #--------------------------- 3 particle CTQW   ---------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class QuantumWalkP3(object):
+	""" Methods providing a very basic framework of a 3 particle CTQW.
+
+		.. caution::
+			This object constructs some of the *framework* of a 3 particle
+			quantum walk, but is not feature complete. For a feature complete
+			construction, see :func:`pyCTQW.MPI.Graph3P` or :func:`pyCTQW.MPI.Line3P`
+			for which this is a base.
+		"""
 	def __init__(self,N):
 		self.rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 		self.N = N
@@ -736,6 +1473,24 @@ class QuantumWalkP3(object):
 		self.EigSolver = self.H.EigSolver
 	
 	def importInitState(self,filename,filetype):
+		""" Imports the initial state of the quantum walk from a file.
+
+			Args:
+				filename (str): path to the file containing the input state.
+				filetype (str): the filetype of the imported adjacency matrix.
+
+									* ``'txt'`` - TODO: not yet implemented! Please use ``'bin'`` for now.
+									* ``'bin'`` - an :math:`N^3` element PETSc binary *vector*.
+			Returns:
+				: this creates a PETSc vector containing the initial statespace, \
+					accessed via :attr:`self.psi0`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
+
+			Warning:
+				The number of elements in the imported input statespace
+				**must** equal :math:`N^3` where :math:`N` is the number
+				of nodes the 3P CTQW object	is initialized with. 
+			"""
 		self.initState = 'file:'+filename
 		# create the inital stage
 		initStateS = _PETSc.Log.Stage('initState')
@@ -763,6 +1518,53 @@ class QuantumWalkP3(object):
 		Marginal.pop()
 
 	def watch(self,nodes,watchtype='prob',**kwargs):
+		""" Creates a handle that watches either marginal probability \
+			or walker entanglement during propagation.
+
+			Args:
+				nodes (array of ints): the nodes to watch marginal probability (e.g. ``[0,1,4]``).
+				watchtype (str):	(`'prob'` , `'entanglement'`).
+									
+									the type of watch handle to produce.
+
+			Keyword Args:
+				: If ``watchtype='entanglement'``, EigSolver keywords can also be passed;
+					for more details of the available EigSolver properties,
+					see :func:`propagate`.
+
+			Returns:
+				:	* if ``watchtype='prob'``, creates a handle that can be \
+					accessed to retrieve marginal node probabilities for various :math:`t`
+					* if ``watchtype='entanglment'``, creates a handle that can be \
+					accessed to retrieve entanglement values for various :math:`t`
+			:rtype: * if ``watchtype='prob'``: :func:`pyCTQW.MPI.ctqw.nodeHandle`
+					* if ``watchtype='entanglement'``: :func:`pyCTQW.MPI.ctqw.entanglementHandle`
+
+			Examples:
+				To watch the entanglement,
+					>>> walk.watch(None,watchtype='entanglement')
+					>>> walk.propagate(5.,method='chebyshev')
+					>>> timeArray, entArray = walk.entanglementHandle.getEntanglement()
+
+					.. note::
+						* The entanglement measure used in Von Neumann entropy, calculated \
+							via :math:`S=-\\sum_{i}\\lambda_i\log_{2}\\lambda_i`, where :math:`\lambda_i` \
+							are the eigenvalues of the reduced density matrix \
+							:math:`\\rho_2 = \\text{Tr}_1(|\\psi(t)\\rangle\\langle\\psi(t)|)`
+						* Nodes do not need to be specified, as entanglement is a global measurement.
+						* As it is a global measurement, there is a large amount of node communication \
+						which may increase overall program run time.
+
+				To watch the probabilities,
+					>>> walk.watch([0,1,4])
+					>>> walk.propagate(2.,method='chebyshev')					
+					>>> timeArray, probXArray, probYArray, probZArray = walk.handle.getLocalNodes(p=2)
+
+					.. warning::
+						Note that `walk.handle` attributes are **not** collective;
+						if running on multiple nodes, only *local* values will be
+						returned.
+			"""      
 		if watchtype == 'prob':
 			self._watchProb = True
 			self.handle = nodeHandle(nodes,self.t,self.psiX,psi2=self.psiY,psi3=self.psiZ)
@@ -771,6 +1573,83 @@ class QuantumWalkP3(object):
 			self.entanglementHandle = entanglementHandle(self.t,self.psi0,self.N,**kwargs)
 		
 	def propagate(self,t,method='expm',**kwargs):
+		""" Propagates the quantum walk for time t.
+
+			Args:
+				t (float): the timestep over which to propagate the state ``walk.psi0`` via the relationship
+					:math:`\\left|\\psi\\right\\rangle = e^{-iHt}\\left|\\psi0\\right\\rangle`.
+
+				method (str):  the propagation algorithm to use
+								(``'chebyshev'`` *(default)* or ``'krylov'``).
+
+			Keyword Args:
+				esolver (str): the eigensolver algorithm to use. 
+
+							* ``'krylovschur'`` *(default)* - Krylov-Schur
+							* ``'arnoldi'`` - Arnoldi Method
+							* ``'lanczos'`` - Lanczos Method
+							* ``'power'`` - Power Iteration/Rayleigh Quotient Iteration
+							* ``'gd'`` - Generalized Davidson
+							* ``'jd'`` - Jacobi-Davidson,
+							* ``'lapack'`` - Uses LAPACK eigenvalue solver routines
+							* ``'arpack'`` - *only available if SLEPc is\
+												compiled with ARPACK linking*
+
+				workType (str):    can be used to set the eigensolver worktype \
+								(either ``'ncv'`` or ``'mpd'``). The default \
+								is to let SLEPc decide.
+
+				workSize (int):    sets the work size **if** :attr:`workType` is set.
+
+				tolIn (float): tolerance of the eigenvalue solver \
+								(*default* ``0.`` (SLEPc decides)).
+				
+				maxIt (int):   maximum number of iterations of the eigenvalue solver \
+								(*default* ``0`` (SLEPc decides)).
+				
+				verbose (bool): if ``True``, writes eigensolver information to the console
+
+				emax_estimate (float): used to override the calculation \
+										of the graphs maximum eigenvalue.
+
+				emin_estimate (float): used to override the calculation \
+										of the graphs minimum eigenvalue. For a *finite* graph, \
+										``emin_estimate=0`` is set by default.
+
+					.. caution::
+						* If supplied, the value of :attr:`emax_estimate` (:math:`\hat{\lambda}_{\max}`) \
+						**must** satisfy :math:`\hat{\lambda}_{\max}\geq\lambda_{\max}`, \
+						where :math:`\lambda_{\max}` is the actual maximum eigenvalue of the graph.
+						* Similarly, the value of :attr:`emin_estimate` (:math:`\hat{\lambda}_{\min}`) \
+						**must** satisfy :math:`\hat{\lambda}_{\min}\leq\lambda_{\min}`, \
+						where :math:`\lambda_{\min}` is the actual minimum eigenvalue of the graph.
+						* The greater the difference value of :math:`|\hat{\lambda}_{\max} \
+						-\lambda_{\max}|` and :math:`|\hat{\lambda}_{\min} \
+						-\lambda_{\min}|`, the longer the convergence \
+						time of the ``chebyshev`` propagator.
+
+					Note:
+						* The keyword arguments properties only apply if ``propagator='chebyshev'``
+						* For more information regarding these properties,refer to \
+						the `SLEPc documentation\
+						<http://www.grycap.upv.es/slepc/documentation/manual.htm>`_
+
+			Returns:
+				:	this creates a PETSc vector containing the
+					propagated state, accessed via the attribute
+					:attr:`psi`, as well as a PETSc vector containing
+					the marginal probabilities, :attr:`prob`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
+
+			Note:
+				The EigSolver properties only take effect if
+				`method='chebyshev'`.
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`expm`. for the Krylov
+				method, and the function :f:func:`qw_cheby` for the Chebyshev method.
+			"""             
 		if self.timestep:
 			self.t = t + self.t
 		else:
@@ -802,6 +1681,21 @@ class QuantumWalkP3(object):
 		self.timestep = False
 
 	def plotEntanglement(self,filename):
+		""" Creates a plot of the entanglement over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the entanglement to be stored during propagation.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations prior to plotting.
+			"""		
 
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
@@ -811,6 +1705,24 @@ class QuantumWalkP3(object):
 			_plot.plotEntanglement(timeArray,entArray,filename,self.initState,self.defectNodes,self.defectAmp)
 
 	def plotNode(self,filename,node,t=None):
+		""" Creates a plot of the marginal probablities on a *specified node* over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+				node (int): the node to plot.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the probabilities at the specified nodes to be stored.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations.
+				* See :func:`plotNodes` to plot multiple nodes.
+
+			"""
 
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
@@ -829,6 +1741,25 @@ class QuantumWalkP3(object):
 			_plot.plotNodes3P(timeArray,node,probXArray,probYArray,probZArray,filename)
 
 	def plotNodes(self,filename,p=1,t=None):
+		""" Creates a plot of the node probablities over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+				p (int): (1|2|3) - choose whether to plot the marginal probability of particle 1, 2 or 3.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the probabilities at the specified nodes to be stored.
+
+			Note:
+				* if multiple nodes are watched, they will **all** be plotted.
+				* if you wish to plot marginal probabilities for all particles, see :func:`plotNode`.
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations.
+
+			""" 
 
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
@@ -856,16 +1787,38 @@ class QuantumWalkP3(object):
 			_plot.plotNodes(timeArray,nodeArray,probArray,filename,p=p)
 	
 	def exportState(self,filename,filetype):
+		""" Exports the final state :attr:`psi` of the quantum walk to a file.
+
+			Args:
+				filename (str): path to desired output file.
+				filetype (str): the filetype of the exported adjacency matrix.
+
+								* ``'txt'`` - an :math:`N^3` element column vector in text format.
+								* ``'bin'`` - an :math:`N^3` element PETSc binary vector.
+			"""     
 		if filetype == 'txt':
 			_io.exportVec(self.psi,filename,filetype)
 		elif filetype == 'bin':
 			_io.exportVec(self.psi,filename,filetype)
 
 	def psiToInit(self):
+		""" Copies the state :attr:`psi` to :attr:`psi0`.
+
+			Example:
+				This can be used to iterate the propagation
+				over discrete timesteps: ::
+
+					for i in range(10):
+						walk.propagate(0.01,method='chebyshev')
+						walk.psiToInit()
+			"""             
 		self.psi0 = self.psi
 		self.timestep = True
 	
 	def destroy(self):
+		""" Destroys the 3 particle quantum walk object, and all \
+			associated PETSc matrices/vectors.
+			""" 
 		self.H.destroy()
 		self.psi.destroy()
 		self.psi0.destroy()
@@ -879,62 +1832,51 @@ class QuantumWalkP3(object):
 #------------------------------- Arbitrary CTQW --------------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Graph(QuantumWalkP1):
-	"""	Performs and analyses 1 particle continuous-time quantum walks on graphs
+	""" Performs and analyses 1 particle continuous-time quantum walks on graphs
 
-		:param int N:	number of nodes to initialize the walker with. Nodes are \
+		Args:
+			N (int) :	number of nodes to initialize the walker with. Nodes are \
 						labeled :math:`j\\in\\{0,N-1\\}`.
 
-		For example, to create a CTQW Graph object for a 10 node graph,
+		Example:
+			To create a CTQW Graph object for a 10 node graph,
 
-		>>> walk = pyCTQW.MPI.Graph(10)
+			>>> walk = pyCTQW.MPI.Graph(10)
 
-		.. note::	**if filename *and* filetype are provided**, this automatically
-					creates a PETSc Hamiltonian matrix, neglecting the need to run
-					:func:`createH`. For details on the other keyword arguments,
-					see :func:`createH`.
+		Note:
+			**if filename AND filetype are provided**, this automatically
+			creates a PETSc Hamiltonian matrix, neglecting the need to run
+			:func:`createH`. For details on the other keyword arguments,
+			see :func:`createH`.
 		"""
 
 	def __init__(self,N,filename=None,filetype=None,d=None,amp=None,layout='spring',delimiter=None):
 		QuantumWalkP1.__init__(self,N)
 		self.liveplot = False
+		self.EigSolver.setEigSolver(emin_estimate=0.)
 		
 		if (filename and filetype) is not None:
 			self.createH(filename,filetype,d=d,amp=amp,layout=layout,delimiter=delimiter)
 		
 	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None):
-		"""	Generate the Hamiltonian of the graph.
+		""" Generate the Hamiltonian of the graph.
 
-			.. note::	this needs to be called **only** if the filename and filetype
-						of the graph were not already called when the Graph object
-						was initialized.
+			Args:
+				filename (str): path to the file containing the adjacency matrix of the graph
 
-			:param str filename: path to the file containing the adjacency matrix of the graph
-
-							.. note::
-								The number of nodes in the imported adjacency matrix
-								**must** match the number of nodes the Graph object 
-								is initialized with.
-
-			:param str filetype: the filetype of the imported adjacency matrix.
+				filetype (str): the filetype of the imported adjacency matrix.
 
 								* ``'txt'`` - an :math:`N\\times N` dense 2D array in text format.
 								* ``'bin'`` - an :math:`N\\times N` PETSc binary matrix.
 
-			:param array d:	an array containing *integers* indicating the nodes
-							where diagonal defects are to be placed.
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
 
-							>>> d = [0,1,4]
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
 
-			:param array amp:	an array containing *floats* indicating the diagonal defect
-							amplitudes corresponding to each element in ``d``.
 
-							>>> amp = [0.5,-1.,4.2]
-							>>> len(d) == len(amp)
-							True
-
-							.. warning:: the size of ``a`` and ``d`` must be identical
-
-			:param str layout:	the format to store the position of the nodes (only used
+				layout (str):  the format to store the position of the nodes (only used
 								when running :func:`plotGraph`).
 
 								* ``spring`` *(default)* - spring layout.
@@ -943,16 +1885,29 @@ class Graph(QuantumWalkP1):
 												spectrum of the graph.
 								* ``random`` - nodes are arranged in a random pattern.
 
-			:param str delimiter: this is passed to `numpy.genfromtxt\
+				delimiter (str): this is passed to `numpy.genfromtxt\
 					<http://docs.scipy.org/doc/numpy/reference/generated/numpy.genfromtxt.html>`_
 					in the case of strange delimiters in an imported ``txt`` file.
 
+			Returns:
+				:this creates a Hamiltonian object, accessed via the attibute
+						:attr:`Graph.H`.
+			:rtype: :func:`pyCTQW.MPI.ctqw.Hamiltonian`
 
-			:returns:	this creates a PETSc Hamiltonian matrix, accessed via
+			Note:
+				This needs to be called **only** if the filename and filetype
+				of the graph were not already called when the Graph object
+				was initialized.
+			
+			.. important::
+				* The number of nodes in the imported adjacency matrix \
+				**must** match the number of nodes the Graph object \
+				is initialized with.
+				* The size of ``amp`` and ``d`` must be identical
 
-						>>> walk.H.mat
-
-			:rtype: ``petsc4py.PETSc.Mat()``
+					>>> amp = [0.5,-1.,4.2]
+					>>> len(d) == len(amp)
+					True
 			"""
 		if (d and amp) is None:
 			self.defectNodes = [0]
@@ -963,34 +1918,31 @@ class Graph(QuantumWalkP1):
 		self.H.importAdj(filename,filetype,d=self.defectNodes,amp=self.defectAmp,layout=layout,delimiter=delimiter)
 		
 	def createInitState(self,initState):
-		"""	Generate the initial state of the quantum walk.
+		""" Generate the initial state of the quantum walk.
 
-			:param array initState:	an :math:`n\\times 2` array, containing the initial
-									state of the quantum walker in the format::
+			Args:
+				initState (array) : an :math:`n\\times 2` array, containing the initial \
+									state of the quantum walker in the format ``[[j1,amp1],[j2,amp2],...]``.
 
-										[[j1,amp1],[j2,amp2],...]
+			Returns:
+				:	this creates a PETSc vector containing the initial state,
+					accessed via the attribute :attr:`Graph.ps0`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
 
-									For example, for a CTQW initially located in a
-									superposition of nodes 1 and 2, e.g.
+			Example:
+				For a CTQW initially located in a
+				superposition of nodes 1 and 2, e.g.
+				:math:`\\left|\\psi(0)\\right\\rangle = \\frac{1}{\\sqrt{2}}\\left|1\\right\\rangle \
+					- \\frac{1}{\\sqrt{2}} \\left|2\\right\\rangle`,
+				the initial state would be created like so:
 
-									.. math::
-										\\left|\\psi(0)\\right\\rangle = \\frac{1}{\\sqrt{2}}\\left|1\\right\\rangle
-										- \\frac{1}{\\sqrt{2}} \\left|2\\right\\rangle
+				>>> import numpy as np
+				>>> init_state = [[1,1./np.sqrt(2.)], [2,-1./np.sqrt(2.)]]
+				>>> walk.createInitState(init_state)
 
-									the initial state would be created like so:
-
-									>>> import numpy as np
-									>>> init_state = [[1,1./np.sqrt(2.)], [2,-1./np.sqrt(2.)]]
-									>>> walk.createInitState(init_state)
-
-			:returns:	this creates a PETSc vector containing the initial state, accessed via
-
-						>>> walk.psi0
-
-			:rtype: ``petsc4py.PETSc.Vec()``
-			"""		
+			"""     
 		self.initState = _np.vstack([_np.array(initState).T[0]-self.N/2+1,
-			   	 	    _np.array(initState).T[1]]).T.tolist()
+						_np.array(initState).T[1]]).T.tolist()
 	
 		# create the inital stage
 		initStateS = _PETSc.Log.Stage('initState')
@@ -1001,17 +1953,18 @@ class Graph(QuantumWalkP1):
 		self.marginal(self.psi0)
 		
 	def plot(self,filename):
-		"""	Creates a plot of probability vs node.
+		""" Creates a plot of probability vs node.
 
-			:param str filename: the absolute/relative path to the desired output file.
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
 
-			.. note::
+			Note:
 				* ensure a file extension is present so that filetype is correctly set\
 				(choose one of png, pdf, ps, eps or svg).
 				* if :func:`propagate` has not been called, the probability of the \
 				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
-				time (``walk.t``) is used.
-			"""		
+				time (:attr:`Graph.t`) is used.
+			"""     
 		if _os.path.isabs(filename):
 			outDir = _os.path.dirname(filename)
 		else:
@@ -1028,12 +1981,54 @@ class Graph(QuantumWalkP1):
 		for i in range(len(self.initState)):
 			initstateLabels.append([sum(pair) for pair in zip(self.initState[i], [self.N/2-1,0])])
 
-		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()      
 		_plot.plot(_np.arange(self.N),self.prob,filename,self.t,initstateLabels,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 
-	def plotGraph(self,size=(12,8),probX=True,output=None,**kwargs):
+	def plotGraph(self,output=None,probX=True,size=(12,8),**kwargs):
+		""" Creates a plot of probability vs node superimposed on a 3D visualisation of the graph vertices.
+
+			Args:
+				output (str) :  the absolute/relative path to the desired output file.
+				probX (bool) :  if set to ``True`` *(default)*, the probability is represented
+								as bars placed on each graph vertex; if ``False``, the graph
+								is plotted without any probability.
+				size (tuple) :  ``size=(x,y)`` sets the horizontal and vertical size of the output figure.
+			
+			Keyword Args:
+				nodesize (float) :  size of the vertices in the plot. If left blank, this is
+									determined automatically.
+				nodecolor (str)  :  vertex color (*default* ``'red'``).
+
+									For more details on how to specify a color,
+									see the `matplotlib documentation
+									<http://matplotlib.org/api/colors_api.html#module-matplotlib.colors>`_.
+
+				nodealpha (float)  :  value between 0 and 1 specifying the vertex opacity (*default* 0.25)
+
+				nodetext (bool) :  if set ``True``, the vertices are labelled by number.
+				nodetextcolor (str) : vertex label text color (*default* ``'black'``).
+				nodetextbg (str) : vertex label background color (*default* ``'None'``).                
+				ntofffset (array of floats): the :math:`(x,y,z)` vertex label offset relative \
+											 to the vertex (*default* ``[0.,0.,-0.15]``).
+
+				barscale (float) :  scaled height of the probability bars (*default* ``1``).
+				barcolor (str)   :  probability bar color (*default* ``'green'``).
+				baralpha (float) : value between 0 and 1 specifying the opacity (*default* 0.25)
+				bartext (bool) :  if set ``True``, the probability bars are labelled with their value.
+				bartextcolor (str) : probability label text color (*default* ``'black'``).
+				bartextbg (str) : probability label background color (*default* ``'None'``).
+				btoffset (array of floats): the :math:`(x,y,z)` probability label offset relative to the top of
+											the probability bars (*default* ``[-0.025,-0.025,0.05]``)
+
+			Note:
+				* ensure a file extension is present so that file type is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* if :func:`propagate` has not been called, the probability of the \
+				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
+				time (``walk.t``) is used.
+			"""
 
 		rank = _PETSc.COMM_WORLD.Get_rank()
 
@@ -1069,12 +2064,36 @@ class Graph(QuantumWalkP1):
 				plt.close()
 
 		if probX:
-			# deallocate	
+			# deallocate    
 			commX.barrier()
 			scatterX.destroy()
 			probX0.destroy()
 
 	def plotLiveGraph(self,dt,size=(12,8),**kwargs):
+		""" Creates a *live*, updated plot of probability vs node superimposed \
+			on a 3D visualisation of the graph vertices.
+
+			Args:
+				dt (str) :  the amount of time to 'sleep' before resuming the program.
+							This can be used to 'slow down' propagation, providing
+							time to view small changes on the graph.
+				size (tuple) :  ``size=(x,y)`` sets the horizontal and vertical size of the output figure.
+			
+			Keyword Args:
+				: For available keyword arguments, see :func:`Graph.plotGraph`.
+
+			Note:
+				* Once the live plot is no longer needed, :func:`Graph.clearLiveGraph()` \
+				should be called in order to destroy the live plot object (this will *not* \
+				close the plot window).
+				* if :func:`propagate` has not been called, the probability of the \
+				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
+				time (:attr:`Graph.t`) is used.
+
+			Warning:
+				This feature attempts to uses ``matplotlib`` in a sort of `hackish` way
+				and is not well tested - your mileage may vary.
+			"""
 
 		rank = _PETSc.COMM_WORLD.Get_rank()
 
@@ -1108,12 +2127,14 @@ class Graph(QuantumWalkP1):
 			plt.draw()#show(block=True)
 			_time.sleep(dt)
 
-		# deallocate	
+		# deallocate    
 		commX.barrier()
 		scatterX.destroy()
 		probX0.destroy()
 
 	def clearLiveGraph(self):
+		""" Destroys the live plot object previously created by :func:`Graph.plotLiveGraph()`.
+			"""
 		rank = _PETSc.COMM_WORLD.Get_rank()
 
 		if rank == 0:
@@ -1126,14 +2147,85 @@ class Graph(QuantumWalkP1):
 #------------------------------- 2P Arbitrary CTQW -----------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Graph2P(QuantumWalkP2):
+	""" Performs and analyses 2 particle continuous-time quantum walks on graphs
+
+		Args:
+			N (int) :	number of nodes to initialize the walker with. Nodes are \
+						labeled :math:`j\\in\\{0,N-1\\}`.
+
+		Example:
+			To create a 2P CTQW Graph object for a 10 node graph,
+
+			>>> walk = pyCTQW.MPI.Graph2P(10)
+
+		Note:
+			**if filename AND filetype are provided**, this automatically
+			creates a PETSc Hamiltonian matrix, neglecting the need to run
+			:func:`createH`. For details on the other keyword arguments,
+			see :func:`createH`.
+		"""
 	def __init__(self,N,filename=None,filetype=None,d=None,amp=None,interaction=0.):
 		QuantumWalkP2.__init__(self,N)
 		self.liveplot = False
+		self.EigSolver.setEigSolver(emin_estimate=0.)
 		
 		if (filename and filetype) is not None:
 			self.createH(filename,filetype,d=d,amp=amp,interaction=interaction)
 		
 	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None,interaction=0.):
+		""" Generate the Hamiltonian of the graph.
+
+			Args:
+				filename (str): path to the file containing the adjacency matrix of the graph
+
+				filetype (str): the filetype of the imported adjacency matrix.
+
+								* ``'txt'`` - an :math:`N\\times N` dense 2D array in text format.
+								* ``'bin'`` - an :math:`N\\times N` PETSc binary matrix.
+
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+
+				layout (str):  the format to store the position of the nodes (only used
+								when running :func:`plotGraph`).
+
+								* ``spring`` *(default)* - spring layout.
+								* ``circle`` - nodes are arranged in a circle.
+								* ``spectral`` - nodes are laid out according to the \
+												spectrum of the graph.
+								* ``random`` - nodes are arranged in a random pattern.
+
+				delimiter (str): this is passed to `numpy.genfromtxt\
+					<http://docs.scipy.org/doc/numpy/reference/generated/numpy.genfromtxt.html>`_
+					in the case of strange delimiters in an imported ``txt`` file.
+
+				interaction (float): the amplitude of interaction between the two walkers \
+									 when located on the same vertex.
+
+			Returns:
+				:this creates a Hamiltonian object, accessed via the attibute
+						:attr:`Graph2P.H`.
+			:rtype: :func:`pyCTQW.MPI.ctqw.Hamiltonian`
+
+			Note:
+				This needs to be called **only** if the filename and filetype
+				of the graph were not already called when the Graph object
+				was initialized.
+			
+			.. important::
+				* The number of nodes in the imported adjacency matrix \
+				**must** match the number of nodes the :class:`Graph2P` object \
+				is initialized with.
+				* The size of ``amp`` and ``d`` must be identical
+
+					>>> amp = [0.5,-1.,4.2]
+					>>> len(d) == len(amp)
+					True
+			"""
 		if (d or amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
@@ -1148,11 +2240,37 @@ class Graph2P(QuantumWalkP2):
 			layout=layout,delimiter=delimiter)
 
 		# _ctqwmpi.importadjtoh(self.H.mat.fortran,filename,'2',
-		# 	d=self.defectNodes,amp=self.defectAmp,layout=layout)
+		#   d=self.defectNodes,amp=self.defectAmp,layout=layout)
 		
 	def createInitState(self,initState):
+		""" Generate the initial state of the quantum walk.
+
+			Args:
+				initState (array) : an :math:`n\\times 3` array, containing the initial \
+									state of the quantum walker in the format ``[[x1,y1,amp1],[x2,y2,amp2],...]``.
+
+			Returns:
+				:	this creates a PETSc vector containing the initial state,
+					accessed via the attribute :attr:`Graph2P.ps0`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
+
+			Example:
+				For a CTQW initially located in state
+				:math:`\\left|\\psi(0)\\right\\rangle = \\frac{1}{\\sqrt{2}}\\left|0\\right\\rangle\\otimes\\left|1\\right\\rangle \
+					- \\frac{1}{\\sqrt{2}} \\left|1\\right\\rangle\\otimes\\left|0\\right\\rangle`,
+				the initial state would be created like so:
+
+				>>> import numpy as np
+				>>> init_state = [[0,1,1./np.sqrt(2.)], [1,0,-1./np.sqrt(2.)]]
+				>>> walk.createInitState(init_state)
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`p2_init`.
+
+			"""     
 		self.initState = _np.vstack([_np.array(initState).T[0]-self.N/2+1,
-			   	 	    _np.array(initState).T[1]-self.N/2+1,_np.array(initState).T[2]]).T.tolist()
+						_np.array(initState).T[1]-self.N/2+1,_np.array(initState).T[2]]).T.tolist()
 	
 		# create the inital stage
 		initStateS = _PETSc.Log.Stage('initState')
@@ -1161,6 +2279,18 @@ class Graph2P(QuantumWalkP2):
 		initStateS.pop()
 		
 	def plot(self,filename):
+		""" Creates a plot of probability vs node.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* if :func:`propagate` has not been called, the probability of the \
+				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
+				time (:attr:`Graph2P.t`) is used.
+			"""
 		if _os.path.isabs(filename):
 			outDir = _os.path.dirname(filename)
 		else:
@@ -1177,12 +2307,59 @@ class Graph2P(QuantumWalkP2):
 		for i in range(len(self.initState)):
 			initstateLabels.append([sum(pair) for pair in zip(self.initState[i], [self.N/2-1,self.N/2-1,0])])
 
-		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()      
 		_plot.plot2P(_np.arange(self.N),self.psiX,self.psiY,filename,self.t,initstateLabels,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 
 	def plotGraph(self,size=(12,8),probX=True,probY=True,output=None,**kwargs):
+		""" Creates a plot of probability vs node superimposed on a 3D visualisation of the graph vertices.
+
+			Args:
+				output (str) :  the absolute/relative path to the desired output file.
+				probX (bool) :  if set to ``True`` *(default)*, the particle 1 marginale probability is represented
+								as bars placed on each graph vertex.
+				probY (bool) :  if set to ``True`` *(default)*, the particle 2 marginal probability is represented
+								as bars placed below each graph vertex.
+				size (tuple) :  ``size=(x,y)`` sets the horizontal and vertical size of the output figure.
+			
+			Keyword Args:
+				nodesize (float) :  size of the vertices in the plot. If left blank, this is
+									determined automatically.
+				nodecolor (str)  :  vertex color (*default* ``'red'``).
+
+									For more details on how to specify a color,
+									see the `matplotlib documentation
+									<http://matplotlib.org/api/colors_api.html#module-matplotlib.colors>`_.
+
+				nodealpha (float)  :  value between 0 and 1 specifying the vertex opacity (*default* 0.25)
+
+				nodetext (bool) :  if set ``True``, the vertices are labelled by number.
+				nodetextcolor (str) : vertex label text color (*default* ``'black'``).
+				nodetextbg (str) : vertex label background color (*default* ``'None'``).                
+				ntofffset (array of floats): the :math:`(x,y,z)` vertex label offset relative \
+											 to the vertex (*default* ``[0.,0.,-0.15]``).
+
+				barscaleP (float) :  scaled height of the probability bars (*default* ``1``).
+				barcolorP (str)   :  probability bar color (*default* ``'green'``).
+				baralphaP (float) : value between 0 and 1 specifying the opacity (*default* 0.25)
+				bartext (bool) :  if set ``True``, the probability bars are labelled with their value.
+				bartextcolorP (str) : probability label text color (*default* ``'black'``).
+				bartextbgP (str) : probability label background color (*default* ``'None'``).
+				btoffsetP (array of floats): the :math:`(x,y,z)` probability label offset relative to the top of \
+											the probability bars (*default* ``[-0.025,-0.025,+-0.05]``)
+
+					.. important:
+						where a keyword argument ends with ``P`` above, substitute ``P=(1|2)`` to
+						access the probability bar property for particle 1 and 2 respectively.
+
+			Note:
+				* ensure a file extension is present so that file type is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* if :func:`propagate` has not been called, the probability of the \
+				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
+				time (``walk.t``) is used.
+			"""
 
 		rank = _PETSc.COMM_WORLD.Get_rank()
 
@@ -1230,19 +2407,43 @@ class Graph2P(QuantumWalkP2):
 				plt.show(block=True)
 
 		if probX:
-			# deallocate	
+			# deallocate    
 			commX.barrier()
 			scatterX.destroy()
 			probX0.destroy()
 
 		if probY:
-			# deallocate	
+			# deallocate    
 			commY.barrier()
 			scatterY.destroy()
 			probY0.destroy()
 
 	def plotLiveGraph(self,dt,size=(12,8),
 				probX=True,probY=True,**kwargs):
+		""" Creates a *live*, updated plot of probability vs node superimposed \
+			on a 3D visualisation of the graph vertices.
+
+			Args:
+				dt (str) :  the amount of time to 'sleep' before resuming the program.
+							This can be used to 'slow down' propagation, providing
+							time to view small changes on the graph.
+				size (tuple) :  ``size=(x,y)`` sets the horizontal and vertical size of the output figure.
+			
+			Keyword Args:
+				: For available keyword arguments, see :func:`Graph2P.plotGraph`.
+
+			Note:
+				* Once the live plot is no longer needed, :func:`Graph.clearLiveGraph()` \
+				should be called in order to destroy the live plot object (this will *not* \
+				close the plot window).
+				* if :func:`propagate` has not been called, the probability of the \
+				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
+				time (:attr:`Graph2P.t`) is used.
+
+			Warning:
+				This feature attempts to uses ``matplotlib`` in a sort of `hackish` way
+				and is not well tested - your mileage may vary.
+			"""
 
 		rank = _PETSc.COMM_WORLD.Get_rank()
 
@@ -1294,18 +2495,20 @@ class Graph2P(QuantumWalkP2):
 			_time.sleep(dt)
 
 		if probX:
-			# deallocate	
+			# deallocate    
 			commX.barrier()
 			scatterX.destroy()
 			probX0.destroy()
 
 		if probY:
-			# deallocate	
+			# deallocate    
 			commY.barrier()
 			scatterY.destroy()
 			probY0.destroy()
 
 	def clearLiveGraph(self):
+		""" Destroys the live plot object previously created by :func:`Graph2P.plotLiveGraph()`.
+			"""
 		rank = _PETSc.COMM_WORLD.Get_rank()
 
 		if rank == 0:
@@ -1318,13 +2521,84 @@ class Graph2P(QuantumWalkP2):
 #------------------------------- 3P Arbitrary CTQW -----------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Graph3P(QuantumWalkP3):
+	""" Performs and analyses 3 particle continuous-time quantum walks on graphs
+
+		Args:
+			N (int) :	number of nodes to initialize the walker with. Nodes are \
+						labeled :math:`j\\in\\{0,N-1\\}`.
+
+		Example:
+			To create a 3P CTQW Graph object for a 10 node graph,
+
+			>>> walk = pyCTQW.MPI.Graph3P(10)
+
+		Note:
+			**if filename AND filetype are provided**, this automatically
+			creates a PETSc Hamiltonian matrix, neglecting the need to run
+			:func:`createH`. For details on the other keyword arguments,
+			see :func:`createH`.
+		"""
 	def __init__(self,N,filename=None,filetype=None,d=None,amp=None,interaction=0.):
 		QuantumWalkP3.__init__(self,N)
+		self.EigSolver.setEigSolver(emin_estimate=0.)
 		
 		if (filename and filetype) is not None:
 			self.createH(filename,filetype,d=d,amp=amp,interaction=interaction)
 		
 	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None,interaction=0.):
+		""" Generate the Hamiltonian of the graph.
+
+			Args:
+				filename (str): path to the file containing the adjacency matrix of the graph
+
+				filetype (str): the filetype of the imported adjacency matrix.
+
+								* ``'txt'`` - an :math:`N\\times N` dense 2D array in text format.
+								* ``'bin'`` - an :math:`N\\times N` PETSc binary matrix.
+
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+
+				layout (str):  the format to store the position of the nodes (only used
+								when running :func:`plotGraph`).
+
+								* ``spring`` *(default)* - spring layout.
+								* ``circle`` - nodes are arranged in a circle.
+								* ``spectral`` - nodes are laid out according to the \
+												spectrum of the graph.
+								* ``random`` - nodes are arranged in a random pattern.
+
+				delimiter (str): this is passed to `numpy.genfromtxt\
+					<http://docs.scipy.org/doc/numpy/reference/generated/numpy.genfromtxt.html>`_
+					in the case of strange delimiters in an imported ``txt`` file.
+
+				interaction (float): the amplitude of interaction between the two walkers \
+									 when located on the same vertex.
+
+			Returns:
+				:this creates a Hamiltonian object, accessed via the attibute
+						:attr:`Graph3P.H`.
+			:rtype: :func:`pyCTQW.MPI.ctqw.Hamiltonian`
+
+			Note:
+				This needs to be called **only** if the filename and filetype
+				of the graph were not already called when the Graph object
+				was initialized.
+			
+			.. important::
+				* The number of nodes in the imported adjacency matrix \
+				**must** match the number of nodes the :class:`Graph2P` object \
+				is initialized with.
+				* The size of ``amp`` and ``d`` must be identical
+
+					>>> amp = [0.5,-1.,4.2]
+					>>> len(d) == len(amp)
+					True
+			"""		
 		if (d and amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
@@ -1339,13 +2613,41 @@ class Graph3P(QuantumWalkP3):
 			layout=layout,delimiter=delimiter)
 
 		# _ctqwmpi.importadjtoh(self.H.mat.fortran,filename,'2',
-		# 	d=self.defectNodes,amp=self.defectAmp,layout=layout)
+		#   d=self.defectNodes,amp=self.defectAmp,layout=layout)
 		
 	def createInitState(self,initState):
+		""" Generate the initial state of the quantum walk.
+
+			Args:
+				initState (array) : an :math:`n\\times 4` array, containing the initial \
+									state of the quantum walker in the format ``[[x1,y1,z1,amp1],[x2,y2,z2,amp2],...]``.
+
+			Returns:
+				:	this creates a PETSc vector containing the initial state,
+					accessed via the attribute :attr:`Graph3P.ps0`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
+
+			Example:
+				For a CTQW initially located in state
+				:math:`\\left|\\psi(0)\\right\\rangle = \\frac{1}{\\sqrt{2}}\\left|0\\right\\rangle \
+					\\otimes\\left|1\\right\\rangle \\otimes\\left|5\\right\\rangle \
+					- \\frac{i}{\\sqrt{2}} \\left|1\\right\\rangle\\otimes\\left|0\\right\\rangle \
+					\\otimes\\left|2\\right\\rangle`,
+				the initial state would be created like so:
+
+				>>> import numpy as np
+				>>> init_state = [[0,1,5,1./np.sqrt(2.)], [1,0,2,-1j./np.sqrt(2.)]]
+				>>> walk.createInitState(init_state)
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`p3_init`.
+
+			"""     
 		self.initState = _np.vstack(  [ _np.array(initState).T[0],
-			   	 	    				_np.array(initState).T[1],
-			   	 	    				_np.array(initState).T[2],
-			   	 	    				_np.array(initState).T[3] ]).T.tolist()
+										_np.array(initState).T[1],
+										_np.array(initState).T[2],
+										_np.array(initState).T[3] ]).T.tolist()
 	
 		# create the inital stage
 		initStateS = _PETSc.Log.Stage('initState')
@@ -1354,6 +2656,18 @@ class Graph3P(QuantumWalkP3):
 		initStateS.pop()
 		
 	def plot(self,filename):
+		""" Creates a plot of probability vs node.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* if :func:`propagate` has not been called, the probability of the \
+				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
+				time (:attr:`Graph3P.t`) is used.
+			"""
 		if _os.path.isabs(filename):
 			outDir = _os.path.dirname(filename)
 		else:
@@ -1366,7 +2680,7 @@ class Graph3P(QuantumWalkP3):
 			if exception.errno != _errno.EEXIST:
 				raise
 
-		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()      
 		_plot.plot3P(_np.arange(self.N),self.psiX,self.psiY,self.psiZ,filename,self.t,self.initState,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
@@ -1375,41 +2689,43 @@ class Graph3P(QuantumWalkP3):
 #--------------------------- 1 particle CTQW on a line -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Line(QuantumWalkP1):
-	"""	Performs and analyses 1 particle continuous-time quantum walks on an infinite line
+	""" Performs and analyses 1 particle continuous-time \
+		quantum walks on an infinite line
 
-		:param int N:	an **even** number of nodes to initialize the walker with. Nodes are \
+		Args:
+			N (int) : an **even** number of nodes to initialize the walker with. Nodes are \
 						labeled :math:`j\\in\\{1-N/2,N/2\\}`.
 
-		For example, to create a CTQW Line object for a 10 node line,
+		Example:
+			To create a CTQW Line object for a 10 node line,
 
-		>>> walk = pyCTQW.MPI.Line(10)
+				>>> walk = pyCTQW.MPI.Line(10)
 
 		"""
 	def __init__(self,N):
 		QuantumWalkP1.__init__(self,N)
 		
 	def createH(self,d=None,amp=None):
-		"""	Generate the Hamiltonian of the graph.
+		""" Generate the Hamiltonian of the graph.
 
-			:param array d:	an array containing *integers* indicating the nodes
-							where diagonal defects are to be placed.
+			Args:
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
 
-							>>> d = [0,1,4]
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
 
-			:param array amp:	an array containing *floats* indicating the diagonal defect
-							amplitudes corresponding to each element in ``d``.
+			Returns:
+				: this creates a Hamiltonian matrix, accessed via the attribute
+					:attr:`Line.H`.
+			:rtype: :func:`pyCTQW.MPI.ctqw.Hamiltonian`
 
-							>>> amp = [0.5,-1.,4.2]
-							>>> len(d) == len(amp)
-							True
+			Warning:
+				The size of ``amp`` and ``d`` must be identical
 
-							.. warning:: the size of ``a`` and ``d`` must be identical
-
-			:returns:	this creates a PETSc Hamiltonian matrix, accessed via
-
-						>>> walk.H.mat
-
-			:rtype: ``petsc4py.PETSc.Mat()``
+					>>> amp = [0.5,-1.,4.2]
+					>>> len(d) == len(amp)
+					True			
 			"""
 		if (d and amp) is None:
 			self.defectNodes = [0]
@@ -1420,32 +2736,33 @@ class Line(QuantumWalkP1):
 		self.H.createLine(d=self.defectNodes,amp=self.defectAmp)
 		
 	def createInitState(self,initState):
-		"""	Generate the initial state of the quantum walk.
+		""" Generate the initial state of the quantum walk.
 
-			:param array initState:	an :math:`n\\times 2` array, containing the initial
-									state of the quantum walker in the format::
+			Args:
+				initState (array) : an :math:`n\\times 2` array, containing the initial \
+									state of the quantum walker in the format ``[[j1,amp1],[j2,amp2],...]``.
 
-										[[j1,amp1],[j2,amp2],...]
+			Returns:
+				:	this creates a PETSc vector containing the initial state,
+					accessed via the attribute :attr:`Line.psi0`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
 
-									For example, for a CTQW initially located in a
-									superposition of nodes -4 and 2, e.g.
+			Example:
+				For a CTQW initially located in a
+				superposition of nodes -4 and 2, e.g.
+				:math:`\\left|\\psi(0)\\right\\rangle = \\frac{1}{\\sqrt{2}}\\left|-4\\right\\rangle \
+					- \\frac{1}{\\sqrt{2}} \\left|2\\right\\rangle`,
+				the initial state would be created like so:
 
-									.. math::
-										\\left|\\psi(0)\\right\\rangle = \\frac{1}{\\sqrt{2}}\\left|-4\\right\\rangle
-										- \\frac{1}{\\sqrt{2}} \\left|2\\right\\rangle
+				>>> import numpy as np
+				>>> init_state = [[-4,1./np.sqrt(2.)], [2,-1./np.sqrt(2.)]]
+				>>> walk.createInitState(init_state)
 
-									the initial state would be created like so:
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`p1_init`.
 
-									>>> import numpy as np
-									>>> init_state = [[-4,1./np.sqrt(2.)], [1,-1./np.sqrt(2.)]]
-									>>> walk.createInitState(init_state)
-
-			:returns:	this creates a PETSc vector containing the initial state, accessed via
-
-						>>> walk.psi0
-
-			:rtype: ``petsc4py.PETSc.Vec()``
-			"""		
+			"""  
 		self.initState = initState
 		# create the inital stage
 		initStateS = _PETSc.Log.Stage('initState')
@@ -1454,42 +2771,42 @@ class Line(QuantumWalkP1):
 		initStateS.pop()
 
 	def watch(self,nodes,type='prob'):
-		"""	Creates a handle that watches node probability during propagation.
+		""" Creates a handle that watches node probability during propagation.
 
-			:param array nodes:	the nodes to watch (e.g. ``[-5,1,4]``).
+			Args:
+				nodes (array of ints): the nodes to watch (e.g. ``[0,1,4]``).
 
-			:returns:	creates a handle that can be
-						accessed to retrieve node probabilities for various :math:`t`
+			Returns:
+				:	creates a handle that can be
+					accessed to retrieve node probabilities for various :math:`t`
+			:rtype: :func:`pyCTQW.MPI.ctqw.nodeHandle`
 
-						For example,
+			Example:
+				>>> walk.watch([0,1,2,3,4])
+				>>> walk.propagate(5.,method='chebyshev')
+				>>> timeArray, probArray = walk.handle.getLocalNodes()
 
-						>>> walk.watch([0,1,2,3,4])
-						>>> walk.propagate(5.,method='chebyshev')
-						>>> timeArray, probArray = walk.handle.getLocalNodes()
-
-						.. warning::
-							note that `walk.handle` attributes are **not** collective;
-							if running on multiple nodes, only *local* values will be
-							returned.
-
-			:rtype: ``pyCTQW.MPI.ctqw.nodeHandle()``
-
-			"""				
+			Warning:
+				Note that `walk.handle` attributes are **not** collective;
+				if running on multiple nodes, only *local* values will be
+				returned.
+			"""            
 		nodes = [i+self.N/2-1 for i in nodes]
 		super(Line,self).watch(nodes,type=type)
 		
 	def plot(self,filename):
-		"""	Creates a plot of probability vs node.
+		""" Creates a plot of probability vs node.
 
-			:param str filename: the absolute/relative path to the desired output file.
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
 
-			.. note::
+			Note:
 				* ensure a file extension is present so that filetype is correctly set\
 				(choose one of png, pdf, ps, eps or svg).
 				* if :func:`propagate` has not been called, the probability of the \
 				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
 				time (``walk.t``) is used.
-			"""		
+			"""     
 		if _os.path.isabs(filename):
 			outDir = _os.path.dirname(filename)
 		else:
@@ -1502,26 +2819,29 @@ class Line(QuantumWalkP1):
 			if exception.errno != _errno.EEXIST:
 				raise
 
-		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()      
 		_plot.plot(_np.arange(1-self.N/2,self.N/2+1),self.prob,filename,self.t,self.initState,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 
 	def plotNodes(self,filename,t=None):
-		"""	Creates a plot of the node probablities over time.
+		""" Creates a plot of the node probablities over time.
 
-			:param str filename: the absolute/relative path to the desired output file.
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
 
-			.. note::
-				* :func:`watch` **must** be called prior to propagation in order for\
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
 				the probabilities at the specified nodes to be stored.
+
+			Note:
 				* if multiple nodes are watched, they will **all** be plotted.
 				* ensure a file extension is present so that filetype is correctly set\
 				(choose one of png, pdf, ps, eps or svg).
 				* Timesteps are recorded when propagations occur - to increase the number\
 				of timesteps, increase the number of propagations.
 
-			"""	
+			"""     
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
 		node = self.handle.local_nodes
@@ -1541,6 +2861,19 @@ class Line(QuantumWalkP1):
 #--------------------------- 2 particle CTQW on a line -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Line2P(QuantumWalkP2):
+	""" Performs and analyses 2 particle continuous-time \
+		quantum walks on an infinite line
+
+		Args:
+			N (int) : an **even** number of nodes to initialize the walker with. Nodes are \
+						labeled :math:`j\\in\\{1-N/2,N/2\\}`.
+
+		Example:
+			To create a CTQW Line object for a 10 node line,
+
+				>>> walk = pyCTQW.MPI.Line2P(10)
+
+		"""
 	def __init__(self,N,d=None,amp=None,interaction=0.):
 		QuantumWalkP2.__init__(self,N)
 
@@ -1550,6 +2883,30 @@ class Line2P(QuantumWalkP2):
 			self.H.createLine2P(d=d,amp=amp,interaction=interaction)
 		
 	def createH(self,d=None,amp=None,interaction=0.):
+		""" Generate the Hamiltonian of the graph.
+
+			Args:
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+				interaction (float): the amplitude of interaction between the two walkers \
+									 when located on the same vertex.
+
+			Returns:
+				: this creates a Hamiltonian matrix, accessed via the attribute
+					:attr:`Line2P.H`.
+			:rtype: :func:`pyCTQW.MPI.ctqw.Hamiltonian`
+
+			Warning:
+				The size of ``amp`` and ``d`` must be identical
+
+					>>> amp = [0.5,-1.,4.2]
+					>>> len(d) == len(amp)
+					True
+			"""
 		if (d and amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
@@ -1561,6 +2918,33 @@ class Line2P(QuantumWalkP2):
 		self.H.createLine2P(d=self.defectNodes,amp=self.defectAmp,interaction=self.interaction)
 		
 	def createInitState(self,initState):
+		""" Generate the initial state of the quantum walk.
+
+			Args:
+				initState (array) : an :math:`n\\times 3` array, containing the initial \
+									state of the quantum walker in the format ``[[x1,y1,amp1],[x2,y2,amp2],...]``.
+
+			Returns:
+				:	this creates a PETSc vector containing the initial state,
+					accessed via the attribute :attr:`Line2P.psi0`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
+
+			Example:
+				For a CTQW initially located in state
+				:math:`\\left|\\psi(0)\\right\\rangle = \\frac{1}{\\sqrt{2}}\\left|0\\right\\rangle \
+				\otimes \\left|0\\right\\rangle \
+					- \\frac{i}{\\sqrt{2}} \\left|2\\right\\rangle\otimes \\left|2\\right\\rangle`,
+				the initial state would be created like so:
+
+				>>> import numpy as np
+				>>> init_state = [[0,0,1./np.sqrt(2.)], [2,2,-1j./np.sqrt(2.)]]
+				>>> walk.createInitState(init_state)
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`p2_init`.
+
+			"""  
 		self.initState = initState
 		# create the inital stage
 		initStateS = _PETSc.Log.Stage('initState')
@@ -1569,11 +2953,70 @@ class Line2P(QuantumWalkP2):
 		initStateS.pop()
 
 	def watch(self,nodes,watchtype='prob',**kwargs):
+		""" Creates a handle that watches either marginal probability \
+			or walker entanglement during propagation.
+
+			Args:
+				nodes (array of ints): the nodes to watch marginal probability (e.g. ``[0,1,4]``).
+				watchtype (str):	(`'prob'` , `'entanglement'`).
+									
+									the type of watch handle to produce.
+
+			Keyword Args:
+				: If ``watchtype='entanglement'``, EigSolver keywords can also be passed;
+					for more details of the available EigSolver properties,
+					see :func:`propagate`.
+
+			Returns:
+				:	* if ``watchtype='prob'``, creates a handle that can be \
+					accessed to retrieve marginal node probabilities for various :math:`t`
+					* if ``watchtype='entanglment'``, creates a handle that can be \
+					accessed to retrieve entanglement values for various :math:`t`
+			:rtype: * if ``watchtype='prob'``: :func:`pyCTQW.MPI.ctqw.nodeHandle`
+					* if ``watchtype='entanglement'``: :func:`pyCTQW.MPI.ctqw.entanglementHandle`
+
+			Examples:
+				To watch the entanglement,
+					>>> walk.watch(None,watchtype='entanglement')
+					>>> walk.propagate(5.,method='chebyshev')
+					>>> timeArray, entArray = walk.entanglementHandle.getEntanglement()
+
+					.. note::
+						* The entanglement measure used in Von Neumann entropy, calculated \
+							via :math:`S=-\\sum_{i}\\lambda_i\log_{2}\\lambda_i`, where :math:`\lambda_i` \
+							are the eigenvalues of the reduced density matrix \
+							:math:`\\rho_2 = \\text{Tr}_1(|\\psi(t)\\rangle\\langle\\psi(t)|)`
+						* Nodes do not need to be specified, as entanglement is a global measurement.
+						* As it is a global measurement, there is a large amount of node communication \
+						which may increase overall program run time.
+
+				To watch the probabilities,
+					>>> walk.watch([0,1,4])
+					>>> walk.propagate(2.,method='chebyshev')					
+					>>>timeArray, probXArray, probYArray = self.handle.getLocalNode(0,p=2)
+
+					.. warning::
+						Note that `walk.handle` attributes are **not** collective;
+						if running on multiple nodes, only *local* values will be
+						returned.
+			"""      
 		if watchtype == 'prob':
 			nodes = [i+self.N/2-1 for i in nodes]
 		super(Line2P,self).watch(nodes,watchtype=watchtype,**kwargs)
 		
 	def plot(self,filename):
+		""" Creates a plot of probability vs node.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* if :func:`propagate` has not been called, the probability of the \
+				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
+				time (:attr:`Line2P.t`) is used.
+			"""
 		if _os.path.isabs(filename):
 			outDir = _os.path.dirname(filename)
 		else:
@@ -1586,16 +3029,54 @@ class Line2P(QuantumWalkP2):
 			if exception.errno != _errno.EEXIST:
 				raise
 
-		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()      
 		_plot.plot2P(_np.arange(1-self.N/2,self.N/2+1),self.psiX,self.psiY,filename,self.t,self.initState,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 
 	def plotNode(self,filename,node,t=None):
+		""" Creates a plot of the marginal probablities on a *specified node* over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+				node (int): the node to plot.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the probabilities at the specified nodes to be stored.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations.
+				* See :func:`plotNodes` to plot multiple nodes.
+
+			"""             
 		node = node+self.N/2-1
 		super(Line2P,self).plotNode(filename,node)
 
 	def plotNodes(self,filename,p=1,t=None):
+		""" Creates a plot of the node probablities over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+				p (int): (1|2) - choose whether to plot the marginal probability of particle 1 or 2.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the probabilities at the specified nodes to be stored.
+
+			Note:
+				* if multiple nodes are watched, they will **all** be plotted.
+				* if you wish to plot marginal probabilities for both particle \
+					1 and 2, see :func:`plotNode`.
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations.
+
+			""" 
 
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
@@ -1624,6 +3105,19 @@ class Line2P(QuantumWalkP2):
 #--------------------------- 3 particle CTQW on a line -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class Line3P(QuantumWalkP3):
+	""" Performs and analyses 3 particle continuous-time \
+		quantum walks on an infinite line
+
+		Args:
+			N (int) : an **even** number of nodes to initialize the walker with. Nodes are \
+						labeled :math:`j\\in\\{1-N/2,N/2\\}`.
+
+		Example:
+			To create a CTQW Line object for a 10 node line,
+
+				>>> walk = pyCTQW.MPI.Line3P(10)
+
+		"""
 	def __init__(self,N,d=None,amp=None,interaction=0.):
 		QuantumWalkP3.__init__(self,N)
 
@@ -1633,6 +3127,30 @@ class Line3P(QuantumWalkP3):
 			self.H.createLine3P(d=d,amp=amp,interaction=interaction)
 		
 	def createH(self,d=None,amp=None,interaction=0.):
+		""" Generate the Hamiltonian of the graph.
+
+			Args:
+				d (array of ints): an array containing *integers* indicating the nodes
+							where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+				amp (array of floats):   an array containing *floats* indicating the diagonal defect
+							amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+				interaction (float): the amplitude of interaction between the two walkers \
+									 when located on the same vertex.
+
+			Returns:
+				: this creates a Hamiltonian matrix, accessed via the attribute
+					:attr:`Line3P.H`.
+			:rtype: :func:`pyCTQW.MPI.ctqw.Hamiltonian`
+
+			Warning:
+				The size of ``amp`` and ``d`` must be identical
+
+					>>> amp = [0.5,-1.,4.2]
+					>>> len(d) == len(amp)
+					True
+			"""
 		if (d and amp) is None:
 			self.defectNodes = [0]
 			self.defectAmp = [0.]
@@ -1645,10 +3163,38 @@ class Line3P(QuantumWalkP3):
 		self.H.createLine3P(d=self.defectNodes,amp=self.defectAmp,interaction=self.interaction)
 		
 	def createInitState(self,initState):
+		""" Generate the initial state of the quantum walk.
+
+			Args:
+				initState (array) : an :math:`n\\times 4` array, containing the initial \
+									state of the quantum walker in the format ``[[x1,y1,z1,amp1],[x2,y2,z2,amp2],...]``.
+
+			Returns:
+				:	this creates a PETSc vector containing the initial state,
+					accessed via the attribute :attr:`Line3P.ps0`.
+			:rtype: :func:`petsc4py.PETSc.Vec`
+
+			Example:
+				For a CTQW initially located in state
+				:math:`\\left|\\psi(0)\\right\\rangle = \\frac{1}{\\sqrt{2}}\\left|-4\\right\\rangle \
+					\\otimes\\left|1\\right\\rangle \\otimes\\left|5\\right\\rangle \
+					- \\frac{i}{\\sqrt{2}} \\left|1\\right\\rangle\\otimes\\left|0\\right\\rangle \
+					\\otimes\\left|2\\right\\rangle`,
+				the initial state would be created like so:
+
+				>>> import numpy as np
+				>>> init_state = [[-4,1,5,1./np.sqrt(2.)], [1,0,2,-1j./np.sqrt(2.)]]
+				>>> walk.createInitState(init_state)
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`p3_init`.
+
+			"""     
 		self.initState = _np.vstack(  [ _np.array(initState).T[0]+self.N/2-1,
-			   	 	    				_np.array(initState).T[1]+self.N/2-1,
-			   	 	    				_np.array(initState).T[2]+self.N/2-1,
-			   	 	    				_np.array(initState).T[3] ]).T.tolist()
+										_np.array(initState).T[1]+self.N/2-1,
+										_np.array(initState).T[2]+self.N/2-1,
+										_np.array(initState).T[3] ]).T.tolist()
 
 		# create the inital stage
 		initStateS = _PETSc.Log.Stage('initState')
@@ -1657,10 +3203,69 @@ class Line3P(QuantumWalkP3):
 		initStateS.pop()
 
 	def watch(self,nodes,type='prob'):
+		""" Creates a handle that watches either marginal probability \
+			or walker entanglement during propagation.
+
+			Args:
+				nodes (array of ints): the nodes to watch marginal probability (e.g. ``[0,1,4]``).
+				watchtype (str):	(`'prob'` , `'entanglement'`).
+									
+									the type of watch handle to produce.
+
+			Keyword Args:
+				: If ``watchtype='entanglement'``, EigSolver keywords can also be passed;
+					for more details of the available EigSolver properties,
+					see :func:`propagate`.
+
+			Returns:
+				:	* if ``watchtype='prob'``, creates a handle that can be \
+					accessed to retrieve marginal node probabilities for various :math:`t`
+					* if ``watchtype='entanglment'``, creates a handle that can be \
+					accessed to retrieve entanglement values for various :math:`t`
+			:rtype: * if ``watchtype='prob'``: :func:`pyCTQW.MPI.ctqw.nodeHandle`
+					* if ``watchtype='entanglement'``: :func:`pyCTQW.MPI.ctqw.entanglementHandle`
+
+			Examples:
+				To watch the entanglement,
+					>>> walk.watch(None,watchtype='entanglement')
+					>>> walk.propagate(5.,method='chebyshev')
+					>>> timeArray, entArray = walk.entanglementHandle.getEntanglement()
+
+					.. note::
+						* The entanglement measure used in Von Neumann entropy, calculated \
+							via :math:`S=-\\sum_{i}\\lambda_i\log_{2}\\lambda_i`, where :math:`\lambda_i` \
+							are the eigenvalues of the reduced density matrix \
+							:math:`\\rho_2 = \\text{Tr}_1(|\\psi(t)\\rangle\\langle\\psi(t)|)`
+						* Nodes do not need to be specified, as entanglement is a global measurement.
+						* As it is a global measurement, there is a large amount of node communication \
+						which may increase overall program run time.
+
+				To watch the probabilities,
+					>>> walk.watch([0,1,4])
+					>>> walk.propagate(2.,method='chebyshev')					
+					>>>timeArray, probXArray, probYArray, probZArray = self.handle.getLocalNode(4,p=2)
+
+					.. warning::
+						Note that `walk.handle` attributes are **not** collective;
+						if running on multiple nodes, only *local* values will be
+						returned.
+			"""      
 		nodes = [i+self.N/2-1 for i in nodes]
 		super(Line3P,self).watch(nodes,type=type)
 		
 	def plot(self,filename):
+		""" Creates a plot of probability vs node.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* if :func:`propagate` has not been called, the probability of the \
+				initial state is plotted (:math:`t=0`). Otherwise, the last propagated \
+				time (:attr:`Line3P.t`) is used.
+			"""
 		if _os.path.isabs(filename):
 			outDir = _os.path.dirname(filename)
 		else:
@@ -1677,16 +3282,53 @@ class Line3P(QuantumWalkP3):
 		for i in range(len(self.initState)):
 			initstateLabels.append([sum(pair) for pair in zip(self.initState[i], [1-self.N/2,1-self.N/2,1-self.N/2,0])])
 
-		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()		
+		plotStage = _PETSc.Log.Stage('Plotting'); plotStage.push()      
 		_plot.plot3P(_np.arange(1-self.N/2,self.N/2+1),self.psiX,self.psiY,self.psiZ,filename,self.t,initstateLabels,
 					self.defectNodes,self.defectAmp,self.N,self.rank)
 		plotStage.pop()
 
 	def plotNode(self,filename,node,t=None):
+		""" Creates a plot of the marginal probablities on a *specified node* over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+				node (int): the node to plot.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the probabilities at the specified nodes to be stored.
+
+			Note:
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations.
+				* See :func:`plotNodes` to plot multiple nodes.
+
+			"""             
 		node = node+self.N/2-1
 		super(Line3P,self).plotNode(filename,node)
 
 	def plotNodes(self,filename,p=1,t=None):
+		""" Creates a plot of the node probablities over time.
+
+			Args:
+				filename (str): the absolute/relative path to the desired output file.
+				p (int): (1|2|3) - choose whether to plot the marginal probability of particle 1, 2 or 3.
+
+			.. important::
+				:func:`watch` **must** be called prior to propagation in order for\
+				the probabilities at the specified nodes to be stored.
+
+			Note:
+				* if multiple nodes are watched, they will **all** be plotted.
+				* if you wish to plot marginal probabilities for all particles, see :func:`plotNode`.
+				* ensure a file extension is present so that filetype is correctly set\
+				(choose one of png, pdf, ps, eps or svg).
+				* Timesteps are recorded when propagations occur - to increase the number\
+				of timesteps, increase the number of propagations.
+
+			""" 
 
 		comm = _PETSc.COMM_WORLD
 		rank = comm.Get_rank()
@@ -1718,55 +3360,53 @@ class Line3P(QuantumWalkP3):
 #----------------------------------- Graph Isomorphism -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 class GraphISO(object):
-	"""	A graph isomorphism solver, containing functions for 
+	""" A graph isomorphism solver, containing functions for 
 		creating graph certificates and checking isomorphism
 		of adjacency matrices.
 
 		>>> gi = pyCTQW.MPI.GraphISO(p=2,propagator='krylov')
 
-		:param int p:	number of particles, 2 *(default)* or 3,
+		Args:
+			p (int):   number of particles, 2 *(default)* or 3,
 					to use in constructing the graph certificate.
 
-		:param float freqTol: the tolerance to use when constructing the
-						frequency table (*default* ``1.e-2``).
+			freqTol (float): the tolerance to use when constructing the
+						frequency table (*default* ``1.e-2``). See also
+						:py:func:`GIcert`.
 
-						.. note::
-							For ``freqTol=1.e-2``, all decimal places
-							below 0.01 are discarded from the probability
-							distribution.
-						.. seealso:: :py:func:`GIcert`
+			compareTol (float):    the tolerance used when comparing two Graph
+							certificates (*default* ``1.e-10``). See also
+							:py:func:`isomorphicQ`.
 
-		:param float compareTol:	the tolerance used when comparing two Graph
-							certificates (*default* ``1.e-10``).
-
-							.. note::
-								Two isomorphic certificates satisfy
-								:math:`\max(|cert_1 - cert_2|) < compareTol`
-							.. seealso:: :py:func:`isomorphicQ`
-
-		:param str propagator:	the CTQW propagator algorithm to use
+			propagator (str):  the CTQW propagator algorithm to use
 							when calculating the graph certificate
 							(``'chebyshev'`` *(default)* or ``'krylov'``).
 
-		:returns: GraphISO solver
+		Note:
+			* For ``freqTol=1.e-2``, all decimal places \
+				below 0.01 are discarded from the probability \
+				distribution.
+			* Two isomorphic certificates satisfy \
+				:math:`\max(|cert_1 - cert_2|) < compareTol`.
+
 		"""
 
-	def __init__(self,**kwargs):		
+	def __init__(self,**kwargs):        
 		self.__default = {
-						'p'				: 2,
-	                    'freqTol'		: 1.e-2,
-	                    'compareTol'    : 1.e-10,
-	                    'propagator'	: 'chebyshev'
+						'p'             : 2,
+						'freqTol'       : 1.e-2,
+						'compareTol'    : 1.e-10,
+						'propagator'    : 'chebyshev'
 						}
 
 		self.__eigDefault = {
-						'esolver'		: 'krylovschur',
+						'esolver'       : 'krylovschur',
 						'emax_estimate' : 0.,
-						'workType'		: 'null',
-						'workSize'		: '35',
-						'tol'     		: 0.,
-						'maxIt'   		: 0,
-						'verbose' 		: False
+						'workType'      : 'null',
+						'workSize'      : '35',
+						'tol'           : 0.,
+						'maxIt'         : 0,
+						'verbose'       : False
 						}
 			   
 		self.__rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
@@ -1802,7 +3442,8 @@ class GraphISO(object):
 	def setEigSolver(self,**kwargs):
 		"""Set some or all of the eigenvalue solver properties.
 
-			:param str esolver: the eigensolver algorithm to use. 
+			Keyword Args:
+				esolver (str): the eigensolver algorithm to use. 
 
 							* ``'krylovschur'`` *(default)* - Krylov-Schur
 							* ``'arnoldi'`` - Arnoldi Method
@@ -1814,31 +3455,32 @@ class GraphISO(object):
 							* ``'arpack'`` - *only available if SLEPc is\
 												compiled with ARPACK linking*
 
-			:param str workType:	can be used to set the eigensolver worktype
+				workType (str):    can be used to set the eigensolver worktype
 								(either ``'ncv'`` or ``'mpd'``). The default
 								is to let SLEPc decide.
 
-			:param int workSize:	sets the work size **if** ``workType`` is set.
+				workSize (int):    sets the work size **if** ``workType`` is set.
 
-			:param float tolIn:	tolerance of the eigenvalue solver
-							(*default* ``0.`` (SLEPc decides)).
-			
-			:param int maxIt:	maximum number of iterations of the eigenvalue solver
-							(*default* ``0`` (SLEPc decides)).
-			
-			:param bool verbose: if ``True``, writes eigensolver information to the console
+				tolIn (float): tolerance of the eigenvalue solver
+								(*default* ``0.`` (SLEPc decides)).
+				
+				maxIt (int):   maximum number of iterations of the eigenvalue solver
+								(*default* ``0`` (SLEPc decides)).
+				
+				verbose (bool): if ``True``, writes eigensolver information to the console
 
-			:param float emax_estimate:	used to override the calculation
-									of the graphs maximum eigenvalue.
+				emax_estimate (float): used to override the calculation
+										of the graphs maximum eigenvalue.
 
-						.. warning::	the supplied :math:`\hat{\lambda}_{\max}`
-										**must** satisfy :math:`\hat{\lambda}
-										_{\max}\geq\lambda_{\max}`. The greater
-										the value of :math:`\hat{\lambda}_{\max}
-										-\lambda_{\max}`, the longer the convergence
-										time of the ``chebyshev`` propagator
+			.. caution::
+				* If supplied, the value of :attr:`emax_estimate`:math:`\hat{\lambda}_{\max}` \
+				**must** satisfy :math:`\hat{\lambda}_{\max}\geq\lambda_{\max}`, \
+				where :math:`\lambda_{\max}` is the actual maximum eigenvalue of the graph.
+				* The greater the value of :math:`\hat{\lambda}_{\max} \
+				-\lambda_{\max}`, the longer the convergence \
+				time of the ``chebyshev`` propagator.
 
-			.. note::
+			Note:
 				* These properties only apply if ``propagator='chebyshev'``
 				* For more information regarding these properties,refer to \
 				the `SLEPc documentation\
@@ -1865,12 +3507,17 @@ class GraphISO(object):
 	def GIcert(self,adj):
 		"""Generate the GI certificate of a graph.
 
-			:param adj:	symmetric adjacency matrix in the form
+			Args:
+				adj (array or numpy.array): symmetric adjacency matrix in the form
 						of a dense array of numpy array.
-			:type adj:	array or numpy.array
 
-			:returns: graph certificate
-			:rtype: numpy.array
+			Returns:
+				graph certificate
+			:rtype: :func:`numpy.array`
+
+			.. admonition:: Fortran interface
+			
+				This function calls the Fortran function :f:func:`GraphISCert`.
 			"""
 
 		cert, certSize = _ctqwmpi.GraphISCert(adj,self.p,self.freqTol,self.propagator,
@@ -1881,11 +3528,12 @@ class GraphISO(object):
 	def isomorphicQ(self,adj1,adj2):
 		"""Returns ``True`` if two graphs are isomorphic.
 
-			:param adj1,adj2:	symmetric adjacency matrices in the form
-								of a dense array of numpy array.
-			:type adj1,adj2:	array or numpy.array
-
-			:rtype: bool
+			Args:
+				adj(1|2) (array or numpy.array): \
+					symmetric adjacency matrices in the form
+					of a dense array of numpy array.
+			
+			:rtype: *bool*
 			"""
 
 		GIcert1 = self.GIcert(adj1)
@@ -1912,23 +3560,24 @@ class GraphISO(object):
 			are isomorphic, returning an array :math:`R` with :math:`R_{ij} = 1` if
 			graphs :math:`i` and :math:`j` are isomorphic, and :math:`R_{ij} = 0` otherwise.
 
-			:param str folder:	path to a folder containing a collection of adjacency
+			Args:
+				folder (str):  path to a folder containing a collection of adjacency
 								matrices in dense text file format.
 
-								.. note::
-									The text files must have filenames of the form \*X.txt
-									where X represents a number (of any number of digits).
-									These are used to order the graphs.
-
-			:param array graphRange:	an array containing graph numbers to test.
+				graphRange (array):    an array containing graph numbers to test.
 										By default, all graphs in a folder are tested.
 
-			:param bool info:	if ``True``, information on each :math:`R_{ij}` comparison
+				info (bool):   if ``True``, information on each :math:`R_{ij}` comparison
 								is printed to the console.
 
-			:param bool info:	if ``True``, each graph is also tested against itself.
+				checkSelf (bool):   if ``True``, each graph is also tested against itself.
 
-			:rtype: array
+			:rtype: *array of ints*
+
+			Note:
+				The text files must have filenames of the form \*X.txt
+				where X represents a number (of any number of digits).
+				These are used to order the graphs.
 			"""
 
 		if not _os.path.isdir(folder):
@@ -1939,9 +3588,9 @@ class GraphISO(object):
 		numbers = _glob.re.compile(r'(\d+)')
 
 		def numericalSort(value):
-		    parts = numbers.split(value)
-		    parts[1::2] = map(int, parts[1::2])
-		    return parts
+			parts = numbers.split(value)
+			parts[1::2] = map(int, parts[1::2])
+			return parts
 
 		filelist = sorted(_glob.glob(folder+'/*[0-9].txt'), key=numericalSort)
 
@@ -1950,19 +3599,19 @@ class GraphISO(object):
 			if graphRange is not None:
 				if int(_glob.re.findall(r'\d+',graph)[-1]) in graphRange:
 					adj.append(_np.genfromtxt(graph))
-					if (self.__rank==0 and info):	print 'Adding graph ' + graph
+					if (self.__rank==0 and info):   print 'Adding graph ' + graph
 			else:
 				adj.append(_np.genfromtxt(graph))
-				if (self.__rank==0 and info):	print 'Adding graph ' + graph
+				if (self.__rank==0 and info):   print 'Adding graph ' + graph
 
 		NG = len(adj)
 		comparisonTable = _np.zeros([NG,NG])
 
 		for i in range(NG):
 			for j in range(i if checkSelf else i+1,NG):
-				if (self.__rank==0 and info):	print 'Testing graphs ' + str(i) + ',' + str(j)
+				if (self.__rank==0 and info):   print 'Testing graphs ' + str(i) + ',' + str(j)
 				comparisonTable[i,j] = 1 if self.isomorphicQ(adj[i],adj[j]) else 0
-				if (self.__rank==0 and info):	print '\tIsomorphic' if comparisonTable[i,j] == 1 else '\tNon-isomorphic'
+				if (self.__rank==0 and info):   print '\tIsomorphic' if comparisonTable[i,j] == 1 else '\tNon-isomorphic'
 
 		if checkSelf:
 			return comparisonTable + comparisonTable.T - _np.diag(comparisonTable.diagonal())

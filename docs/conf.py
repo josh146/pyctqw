@@ -25,7 +25,17 @@ sys.path.insert(0, os.path.abspath('../'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.mathjax', 'sphinx.ext.ifconfig', 'sphinx.ext.viewcode', 'sphinx.ext.autosummary', 'sphinxfortran.fortran_domain', 'sphinxfortran.fortran_autodoc']
+extensions = [	'sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.mathjax',
+				'sphinx.ext.ifconfig', 'sphinx.ext.viewcode', 'sphinx.ext.autosummary',
+				'sphinxfortran.fortran_domain', 'sphinxfortran.fortran_autodoc',
+				'sphinxcontrib.napoleon','sphinxcontrib.fulltoc']
+
+napoleon_use_rtype = True
+napoleon_include_special_with_doc = False
+autosummary_generate = True
+
+
+# autodoc_member_order = 'bysource'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -66,7 +76,7 @@ release = '0.1.0'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['_build','_templates']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -76,7 +86,7 @@ add_function_parentheses = True
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
-add_module_names = True
+add_module_names = False
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
@@ -86,7 +96,7 @@ add_module_names = True
 pygments_style = 'sphinx'
 
 # A list of ignored prefixes for module index sorting.
-modindex_common_prefix = ['ctqw']
+modindex_common_prefix = ['pyCTQW.MPI']
 
 
 # -- Options for HTML output ---------------------------------------------------
@@ -101,12 +111,17 @@ modindex_common_prefix = ['ctqw']
 # html_theme_options = { "roottarget": "index" }
 
 # Default Theme
-html_theme = "default"
-html_theme_options = {"stickysidebar" : True}
+# html_theme = "nature"
+# html_theme_options = {"stickysidebar" : True}
 
 # solar theme
-# html_theme = "solar"
-# html_theme_path = ['_themes']
+html_theme = "solar"
+html_theme_path = ['_themes']
+
+# readable theme
+# import sphinx_readable_theme
+# html_theme_path = [sphinx_readable_theme.get_html_theme_path()]
+# html_theme = 'readable'
 
 # Bootstrap theme
 # import sphinx_bootstrap_theme
@@ -215,7 +230,7 @@ latex_documents = [
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-#latex_logo = None
+latex_logo = 'silly_walk_html.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.

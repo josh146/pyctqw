@@ -13,6 +13,14 @@ from petsc4py import PETSc as _PETSc
 import fileinput as _fl
 
 def vecToArray(obj):
+	"""	Converts a PETSc vector to a numpy array, available on *all* MPI nodes.
+
+		Args:
+			obj (petsc4py.PETSc.Vec): input vector.
+
+		Returns:
+			numpy.array : 
+		"""
 	# scatter vector 'obj' to all processes
 	comm = obj.getComm()
 	scatter, obj0 = _PETSc.Scatter.toAll(obj)
@@ -26,6 +34,14 @@ def vecToArray(obj):
 	obj0.destroy()
 	
 def vecToArray0(obj):
+	"""	Converts a PETSc vector to a numpy array available on MPI node 0.
+
+		Args:
+			obj (petsc4py.PETSc.Vec): input vector.
+
+		Returns:
+			numpy.array : 
+		"""
 	# scatter vector 'obj' to process 0
 	comm = obj.getComm()
 	rank = comm.getRank()
@@ -40,6 +56,14 @@ def vecToArray0(obj):
 	obj0.destroy()
 	
 def arrayToVec(vecArray):
+	"""	Converts a (global) array to a PETSc vector over :attr:`petsc4py.PETSc.COMM_WORLD`.
+
+		Args:
+			vecArray (array or numpy.array): input vector.
+
+		Returns:
+			petsc4py.PETSc.Vec() : 
+		"""
 	vec = _PETSc.Vec().create(comm=_PETSc.COMM_WORLD)
 	vec.setSizes(len(vecArray))
 	vec.setUp()
@@ -49,6 +73,17 @@ def arrayToVec(vecArray):
 	vec.destroy()
 	
 def arrayToMat(matArray):
+	"""	Converts a (global) 2D array to a PETSc matrix over :attr:`petsc4py.PETSc.COMM_WORLD`.
+
+		Args:
+			matArray (array or numpy.array): input square array.
+
+		:rtype: petsc4py.PETSc.Mat()
+
+		.. important::
+			Requires `SciPy <http://www.scipy.org>`_.
+
+		"""
 	try:
 		import scipy.sparse as sparse
 	except:
@@ -71,6 +106,17 @@ def arrayToMat(matArray):
 	mat.destroy()
 
 def matToSparse(mat):
+	"""	Converts a PETSc matrix to a (global) sparse matrix.
+
+		Args:
+			mat (petsc4py.PETSc.Mat): input PETSc matrix.
+
+		:rtype: scipy.sparse.csr_matrix
+
+		.. important::
+			Requires `SciPy <http://www.scipy.org>`_.
+
+		"""
 	import scipy.sparse as sparse
 
 	data = mat.getValuesCSR()
@@ -86,6 +132,31 @@ def matToSparse(mat):
 	return sparse.vstack(sparseSubMat)
 
 def adjToH(adj,d=[0],amp=[0.]):
+	"""	Creates a 1 particle PETSc-type Hamiltonian matrix from a PETSc adjacency matrix.
+
+		Args:
+			adj (petsc4py.PETSc.Mat): input PETSc-type adjacency matrix.
+
+			d (array of ints): an array containing *integers* indicating the nodes
+						where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+
+			amp (array of floats):   an array containing *floats* indicating the diagonal defect
+						amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+		Returns:
+			 : 1 particle Hamiltonian matrix
+		:rtype: petsc4py.PETSc.Mat()
+
+		Warning:
+			* The size of ``a`` and ``d`` must be identical
+
+				>>> amp = [0.5,-1.,4.2]
+				>>> len(d) == len(amp)
+				True
+
+			* Elements of ``d`` can range from :math:`[0,N-1]` where the adjacency matrix is :math:`N\\times N`.
+
+		"""
 	(Istart,Iend) = adj.getOwnershipRange()
 	diagSum = []
 	for i in range(Istart,Iend):
@@ -110,6 +181,16 @@ def adjToH(adj,d=[0],amp=[0.]):
 #---------------------- Vec I/O functions ---------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def exportVec(vec,filename,filetype):
+	"""	Export a PETSc vector to a file.
+
+		Args:
+			vec (petsc4py.PETSc.Vec): input vector.
+			filename (str): path to desired output file.
+			filetype (str): the filetype of the exported vector.
+
+							* ``'txt'`` - a column vector in text format.
+							* ``'bin'`` - a PETSc binary vector.
+		"""
 	if _os.path.isabs(filename):
 		outDir = _os.path.dirname(filename)
 	else:
@@ -149,6 +230,15 @@ def exportVec(vec,filename,filetype):
 	vec.comm.barrier()
 
 def loadVec(filename,filetype):
+	"""	Import a PETSc vector from a file.
+
+		Args:
+			filename (str): path to input file.
+			filetype (str): the filetype.
+
+							* ``'txt'`` - a column vector in text format.
+							* ``'bin'`` - a PETSc binary vector.
+		"""
 	if filetype == 'txt':
 		try:
 			vecArray = _np.loadtxt(filename,dtype=_PETSc.ScalarType)
@@ -172,6 +262,19 @@ def loadVec(filename,filetype):
 #---------------------- Mat I/O functions ---------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def exportMat(mat,filename,filetype,mattype=None):
+	"""	Export a PETSc matrix to a file.
+
+		Args:
+			mat (petsc4py.PETSc.Mat): input matrix.
+			filename (str): path to desired output file.
+			filetype (str): the filetype of the exported vector.
+
+							* ``'txt'`` - a 2D matrix array in text format.
+							* ``'bin'`` - a PETSc binary matrix.
+			mattype (str): (``None``,``'adj'``) - if set to ``adj``, only
+							integers ``0`` and ``1`` are written. Note
+							that this only applied in ``txt`` mode.
+		"""
 	rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 
 	if _os.path.isabs(filename):
@@ -221,6 +324,19 @@ def exportMat(mat,filename,filetype,mattype=None):
 	mat.comm.barrier()
 
 def loadMat(filename,filetype,delimiter=None):
+	"""	Import a PETSc matrix from a file.
+
+		Args:
+			filename (str): path to input file.
+			filetype (str): the filetype.
+
+							* ``'txt'`` - a 2D matrix array in text format.
+							* ``'bin'`` - a PETSc matrix vector.
+
+			delimiter (str): this is passed to `numpy.genfromtxt\
+				<http://docs.scipy.org/doc/numpy/reference/generated/numpy.genfromtxt.html>`_
+				in the case of strange delimiters in an imported ``txt`` file.
+		"""
 	if filetype == 'txt':
 		try:
 			try:
@@ -256,6 +372,19 @@ def loadMat(filename,filetype,delimiter=None):
 		binLoad.destroy()
 
 def exportVecToMat(vec,filename,filetype):
+	"""	Export a :math:`N^2` element PETSc vector as a :math:`N\\times N` matrix.
+
+		This is useful when wanting to view the full statespace of a 2 particle
+		quantum walk.
+
+		Args:
+			vec (petsc4py.PETSc.Vec): input :math:`N^2` element vector.
+			filename (str): path to desired output file.
+			filetype (str): the filetype of the exported vector.
+
+							* ``'txt'`` - an :math:`N\\times N` 2D matrix array in text format.
+							* ``'bin'`` - an :math:`N\\times N` PETSc binary matrix.
+		"""
 	rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 	
 	if _os.path.isabs(filename):
@@ -295,6 +424,19 @@ def exportVecToMat(vec,filename,filetype):
 	vec.comm.barrier()
 	
 def loadMatToVec(filename,filetype):
+	"""	Load a :math:`N\\times N` matrix as a :math:`N^2` element PETSc vector.
+
+		This is useful when wanting to import the full statespace of a 2 particle
+		quantum walk to use for propagation.
+
+		Args:
+			filename (str): path to the input file.
+			filetype (str): the filetype
+
+							* ``'txt'`` - an :math:`N\\times N` 2D matrix array in text format.
+							* ``'bin'`` - **Not yet implemented! Please use a txt \
+										 format for this type of import**.
+		"""
 	if filetype == 'txt':
 		try:
 			try:

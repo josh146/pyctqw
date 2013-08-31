@@ -1,7 +1,4 @@
 #!/usr/bin/python
-"""
-Plotting functions.
-"""
 from petsc4py import PETSc as _PETSc
 from matplotlib import pyplot as _plt
 import numpy as _np
@@ -14,6 +11,27 @@ import io as _io
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def plot(x,prob,savefile,t,init_state,d,amp,N,rank):
+	""" Creates a plot of probability vs graph node for a specified time.
+
+		Args:
+			N (int) : the number of nodes to be plotted
+			x (array or numpy.array of ints) : array of length :math:`N` containing the nodes to be plotted
+			prob (petsc4py.PETSc.Vec) : vector of length :math:`N` containing probabilities for each node in ``x``.
+			savefile (str) : the absolute/relative path to the desired output file.
+			t (float) : the time of the measurement
+			init_state (array) : an :math:`n\\times 2` array, containing the initial \
+						state of the quantum walker in the format ``[[j1,amp1],[j2,amp2],...]``.
+			d (array of ints): an array containing *integers* indicating the nodes
+						where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+			amp (array of floats):   an array containing *floats* indicating the diagonal defect
+						amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+			rank (int): the rank of each MPI node calling this function.
+
+		Warning:
+			* The size of ``amp`` and ``d`` must be identical
+			* ensure a file extension is present so that filetype is correctly set\
+			(choose one of png, pdf, ps, eps or svg).
+		"""
 
 	def prob_plot_p1(probVec,savefile,t,initstate,d,a,N):
 		# convert vectors to arrays
@@ -75,6 +93,28 @@ def plot(x,prob,savefile,t,init_state,d,amp,N,rank):
 	prob0.destroy()
 
 def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
+	""" Creates a plot of probability vs graph node for two probability distributions at a specified time.
+
+		Args:
+			N (int) : the number of nodes to be plotted
+			x (array or numpy.array of ints) : array of length :math:`N` containing the nodes to be plotted
+			psiX (petsc4py.PETSc.Vec) : vector of length :math:`N` containing probabilities for each node in ``x``.
+			psiY (petsc4py.PETSc.Vec) : vector of length :math:`N` containing probabilities for each node in ``x``.
+			savefile (str) : the absolute/relative path to the desired output file.
+			t (float) : the time of the measurement
+			init_state (array) : an :math:`n\\times 3` array, containing the initial \
+						state of the quantum walker in the format ``[[x1,y1,amp1],[x2,y2,amp2],...]``.
+			d (array of ints): an array containing *integers* indicating the nodes
+						where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+			amp (array of floats):   an array containing *floats* indicating the diagonal defect
+						amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+			rank (int): the rank of each MPI node calling this function.
+
+		Warning:
+			* The size of ``a`` and ``d`` must be identical
+			* ensure a file extension is present so that filetype is correctly set\
+			(choose one of png, pdf, ps, eps or svg).
+		"""
 	
 	def prob_plot_p2(psiX,psiY,savefile,t,initstate,d,a,N):
 	
@@ -156,6 +196,29 @@ def plot2P(x,psiX,psiY,savefile,t,init_state,d,amp,N,rank):
 	psiY0.destroy()
 
 def plot3P(x,psiX,psiY,psiZ,savefile,t,init_state,d,amp,N,rank):
+	""" Creates a plot of probability vs graph node for three probability distributions at a specified time.
+
+		Args:
+			N (int) : the number of nodes to be plotted
+			x (array or numpy.array of ints) : array of length :math:`N` containing the nodes to be plotted
+			psiX (petsc4py.PETSc.Vec) : vector of length :math:`N` containing probabilities for each node in ``x``.
+			psiY (petsc4py.PETSc.Vec) : vector of length :math:`N` containing probabilities for each node in ``x``.
+			psiZ (petsc4py.PETSc.Vec) : vector of length :math:`N` containing probabilities for each node in ``x``.
+			savefile (str) : the absolute/relative path to the desired output file.
+			t (float) : the time of the measurement
+			init_state (array) : an :math:`n\\times 3` array, containing the initial \
+						state of the quantum walker in the format ``[[x1,y1,amp1],[x2,y2,amp2],...]``.
+			d (array of ints): an array containing *integers* indicating the nodes
+						where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+			amp (array of floats):   an array containing *floats* indicating the diagonal defect
+						amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+			rank (int): the rank of each MPI node calling this function.
+
+		Warning:
+			* The size of ``a`` and ``d`` must be identical
+			* ensure a file extension is present so that filetype is correctly set\
+			(choose one of png, pdf, ps, eps or svg).
+		"""
 	
 	def prob_plot_p3(psiX,psiY,psiZ,savefile,t,initstate,d,a,N):
 	
@@ -252,6 +315,34 @@ def plot3P(x,psiX,psiY,psiZ,savefile,t,init_state,d,amp,N,rank):
 #----------------------- Graph plot functions -----------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def getGraphNodes(adj,layout='spring'):
+	""" Returns arrays containing cartesian coordinates of the nodes/connections \
+		contained in the input adjacency matrix.
+
+		Args:
+			adj (petsc4py.PETSc.Vec) : an :math:`N\\times N` PETSc-type adjacency matrix.
+			layout (str):  the format to store the position of the nodes (only used
+							when running :func:`plotGraph`).
+
+							* ``spring`` *(default)* - spring layout.
+							* ``circle`` - nodes are arranged in a circle.
+							* ``spectral`` - nodes are laid out according to the \
+											spectrum of the graph.
+							* ``random`` - nodes are arranged in a random pattern.
+
+		:rtype:	tuple of arrays
+
+		.. important::
+			Requires `NetworkX <http://networkx.github.io/>`_
+
+		.. admonition:: Example
+
+				>>> nodePos, lineX, lineY = pyCTQW.MPI.plots.getGraphNodes(adj,layout='spring')
+
+			where
+				* :attr:`nodePos` contains the :math:`(x,y)` coordinates of the vertices
+				* :attr:`lineX` contains the :math:`x` coordinates of edges connecting vertices
+				* :attr:`lineY` contains the :math:`y` coordinates of edges connecting vertices
+		"""
 
 	try:
 		import networkx as _nx
@@ -285,12 +376,62 @@ def getGraphNodes(adj,layout='spring'):
 		
 	return testpos, lineX, lineY
 
-def plotGraph(ax,pos,lineX,lineY,prob=None,prob2=None,nodesize=None,barscale=1,output=None,
+def plotGraph(ax,pos,lineX,lineY,prob=None,prob2=None,nodesize=None,barscale=1,
 	barcolor='green',baralpha=0.25,barcolor2='blue',baralpha2=0.25,
 	bartext=False,bartextcolor='black',bartextbg=None,btoffset=[-0.025,-0.025,0.05],
 	bartext2=False,bartextcolor2='black',bartextbg2=None,btoffset2=[-0.025,-0.025,-0.05],
 	nodecolor='red',nodealpha=0.5,
 	nodetext=True,nodetextcolor='black',nodetextbg=None,nodetextbg2=None,ntoffset=[0,0,-0.15]):
+
+	""" Creates a plot of probability vs node superimposed on a 3D visualisation of the graph vertices.
+
+			Args:
+				ax (mpl_toolkits.mplot3d.plt3d.Axes3D): a matplotlib 3D axes to plot the graph on.
+				pos (array) : :math:`(x,y)` coordinates of the graph vertices.
+				lineX (array): :math:`x` coordinates of graph edges connecting vertices.
+				lineY (array): :math:`y` coordinates of graph edges connecting vertices.
+				probP (petsc4py.PETSc.Vec) : the probability to be represented
+								as bars placed above/below each graph vertex for ``P=(1|2)``
+								repectively. If ``None``, the graph	is plotted without any probability.
+			
+			Keyword Args:
+				nodesize (float) :  size of the vertices in the plot. If left blank, this is
+									determined automatically.
+				nodecolor (str)  :  vertex color (*default* ``'red'``).
+
+									For more details on how to specify a color,
+									see the `matplotlib documentation
+									<http://matplotlib.org/api/colors_api.html#module-matplotlib.colors>`_.
+
+				nodealpha (float)  :  value between 0 and 1 specifying the vertex opacity (*default* 0.25)
+
+				nodetext (bool) :  if set ``True``, the vertices are labelled by number.
+				nodetextcolor (str) : vertex label text color (*default* ``'black'``).
+				nodetextbg (str) : vertex label background color (*default* ``'None'``).                
+				ntofffset (array of floats): the :math:`(x,y,z)` vertex label offset relative \
+											 to the vertex (*default* ``[0.,0.,-0.15]``).
+
+				barscaleP (float) :  scaled height of the probability bars (*default* ``1``).
+				barcolorP (str)   :  probability bar color (*default* ``'green'``).
+				baralphaP (float) : value between 0 and 1 specifying the opacity (*default* 0.25)
+				bartext (bool) :  if set ``True``, the probability bars are labelled with their value.
+				bartextcolorP (str) : probability label text color (*default* ``'black'``).
+				bartextbgP (str) : probability label background color (*default* ``'None'``).
+				btoffsetP (array of floats): the :math:`(x,y,z)` probability label offset relative to the top of
+											the probability bars (*default* ``[-0.025,-0.025,0.05]``)
+
+			.. important::
+				* Where an argument ends with ``P`` above, substitute ``P=(1|2)`` to \
+					access the property for particle 1 and 2 respectively.
+
+				* Only MPI node **0** will run this function; all others will just ``Pass``. \
+					**Thus if the** :attr:`probP` **vectors are distributed over multiple nodes, \
+					they must first be gathered to node 0**
+
+				* This function does not initialize a 3D matplotlib figure/axes; that **must** be done \
+					independently, and passed through the :attr:`ax` argument.
+			"""
+
 
 	# use process 0 to create the plot
 	rank = _PETSc.COMM_WORLD.Get_rank()
@@ -356,6 +497,25 @@ def plotGraph(ax,pos,lineX,lineY,prob=None,prob2=None,nodesize=None,barscale=1,o
 		ax.set_axis_off()
 
 def plotEntanglement(t,entArray,savefile,initstate,d,a):
+	""" Creates a plot of entanglement vs time.
+
+		Args:
+			t (array of floats) : array containing the time data.
+			entArray (array or numpy.array of floats) : array of length matching :attr:`t` \
+											containing the entanglement data to be plotted.
+			savefile (str) : the absolute/relative path to the desired output file.
+			initstate (array) : an :math:`n\\times 3` array, containing the initial \
+						state of the quantum walker in the format ``[[x1,y1,amp1],[x2,y2,amp2],...]``.
+			d (array of ints): an array containing *integers* indicating the nodes
+						where diagonal defects are to be placed (e.g. ``d=[0,1,4]``).
+			a (array of floats):   an array containing *floats* indicating the diagonal defect
+						amplitudes corresponding to each element in ``d`` (e.g. ``amp=[0.5,-1,4.2]``).
+
+		Warning:
+			* The size of ``a`` and ``d`` must be identical
+			* ensure a file extension is present so that filetype is correctly set\
+			(choose one of png, pdf, ps, eps or svg).
+		"""
 
 	# create plot
 	fig = _plt.figure()
@@ -399,6 +559,20 @@ def plotEntanglement(t,entArray,savefile,initstate,d,a):
 	_plt.close()
 
 def plotNodes(time,nodes,probArray,savefile,p=0):
+	""" Creates a plot of probability vs time for specified nodes.
+
+		Args:
+			time (array or numpy.array of floats) : array containing the nodes to be plotted
+			nodes (array) : the node numbers to be plotted.
+			probArray (numpy.array of floats) : 2D array containing probabilities over time for each node.
+			savefile (str) : the absolute/relative path to the desired output file.
+			p (int) : (``0``-``3``) - the particle that is being plotted. If ``p=0``, then
+						it is assumed that this is a 1 particle system.
+
+		Warning:
+			* ensure a file extension is present so that filetype is correctly set\
+			(choose one of png, pdf, ps, eps or svg).
+		"""
 	from itertools import cycle
 	
 	nodeNum = probArray.shape[0]
@@ -432,6 +606,21 @@ def plotNodes(time,nodes,probArray,savefile,p=0):
 	_plt.close()
 
 def plotNodes2P(time,node,probXArray,probYArray,savefile):
+	""" Creates a 2 particle plot of probability vs time for specified nodes.
+
+		Args:
+			time (array or numpy.array of floats) : array containing the nodes to be plotted
+			nodes (array) : the node numbers to be plotted.
+			probXArray (numpy.array of floats) : 2D array containing particle 1 probabilities \
+												over time for each node.
+			probYArray (numpy.array of floats) : 2D array containing particle 2 probabilities \
+												over time for each node.
+			savefile (str) : the absolute/relative path to the desired output file.
+
+		Warning:
+			* ensure a file extension is present so that filetype is correctly set\
+			(choose one of png, pdf, ps, eps or svg).
+		"""
 	from itertools import cycle
 
 	# create plot
@@ -460,6 +649,23 @@ def plotNodes2P(time,node,probXArray,probYArray,savefile):
 	_plt.close()
 
 def plotNodes3P(time,node,probXArray,probYArray,probZArray,savefile):
+	""" Creates a 3 particle plot of probability vs time for specified nodes.
+
+		Args:
+			time (array or numpy.array of floats) : array containing the nodes to be plotted
+			nodes (array) : the node numbers to be plotted.
+			probXArray (numpy.array of floats) : 2D array containing particle 1 probabilities \
+												over time for each node.
+			probYArray (numpy.array of floats) : 2D array containing particle 2 probabilities \
+												over time for each node.
+			probZArray (numpy.array of floats) : 2D array containing particle 3 probabilities \
+												over time for each node.
+			savefile (str) : the absolute/relative path to the desired output file.
+
+		Warning:
+			* ensure a file extension is present so that filetype is correctly set\
+			(choose one of png, pdf, ps, eps or svg).
+		"""
 	from itertools import cycle
 
 	# create plot

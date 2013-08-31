@@ -1,5 +1,5 @@
 ==========================
-:mod:`pyCTQW.MPI` Glossary
+:mod:`pyCTQW.MPI` Package
 ==========================
 
 Contains distributed memory methods for calculating:
@@ -13,11 +13,7 @@ These classes also contain plotting methods, to visualise the quantum walking dy
 
 .. currentmodule:: pyCTQW.MPI
 
-.. rst-class:: html-toggle
-
-.. rst-class:: emphasize-children
-
-Arbitrary graph CTQW
+Arbitrary graph QW
 --------------------------
 
 .. autosummary::
@@ -27,11 +23,8 @@ Arbitrary graph CTQW
 	Graph2P
 	Graph3P
 
-.. rst-class:: html-toggle
 
-.. rst-class:: emphasize-children
-
-Infinite line CTQW
+Infinite line QW
 --------------------------
 
 .. autosummary::
@@ -49,10 +42,6 @@ Infinite line CTQW
 		label the nodes on the line from :math:`j\in\{1-N/2,\dots,N/2\}`.
 
 
-.. rst-class:: emphasize-children
-
-.. rst-class:: html-toggle
-
 Graph Isomorphism
 --------------------------
 
@@ -61,19 +50,9 @@ Graph Isomorphism
 
 	GraphISO
 
-.. rst-class:: emphasize-children
-
-.. rst-class:: html-toggle
 
 Submodules
 --------------------------
-
-.. caution::
-	The methods and classes available in these submodules have been
-	designed to work with the classes listed above; that is, they are
-	being called implicitly by the above classes, invisible to the user.
-	Therefore, it is not recommended that they be used by themselves, however it is
-	possible to do so.
 
 .. autosummary::
 	:toctree:
@@ -81,4 +60,12 @@ Submodules
 	pyCTQW.MPI.io
 	pyCTQW.MPI.plot
 	pyCTQW.MPI.ctqw
+
+.. caution::
+	The methods and classes available in these submodules have been
+	designed to work with the classes listed above; that is, they are
+	being called implicitly by the above classes, invisible to the user.
+
+	It is not recommended that they be used by themselves, however it is
+	possible to do so.
 
