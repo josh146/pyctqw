@@ -4,6 +4,8 @@
 
 .. currentmodule:: pyCTQW.MPI.ctqw
 
+.. automodule:: pyCTQW.MPI.ctqw
+
 .. caution::
   The functions available in this submodule have been
   designed to work with classes in the :class:`pyCTQW.MPI` module; that is, they are

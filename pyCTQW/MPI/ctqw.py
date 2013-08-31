@@ -662,12 +662,21 @@ class entanglementHandle(object):
 			N (int) : the size of the quantum walker's position space (i.e. number \
 						of graph vertices).
 
+		Keyword Args:
+			: EigSolver keywords can also be passed;
+				for more details of the available EigSolver properties,
+				see :class:`EigSolver`.
+
+				.. important::
+					The Eigsolver *must* be set to lapack, since **all**
+					the eigenvalues must be found in the calculation of entanglement.
+
 		.. admonition:: Fortran interface
 		
 			This function calls the Fortran function :f:func:`entanglement`.
 		"""
 	def __init__(self,t,psi,N,**kwargs):
-		self.__default = {'esolver' : 'krylovschur',
+		self.__default = {'esolver' : 'lapack',
 					  'workType': 'null',
 					  'workSize': '35',
 					  'tol'     : 0.,
@@ -2770,7 +2779,7 @@ class Line(QuantumWalkP1):
 		_ctqwmpi.p1_init(self.psi0.fortran,initState,self.N)
 		initStateS.pop()
 
-	def watch(self,nodes,type='prob'):
+	def watch(self,nodes):
 		""" Creates a handle that watches node probability during propagation.
 
 			Args:
@@ -2792,7 +2801,7 @@ class Line(QuantumWalkP1):
 				returned.
 			"""            
 		nodes = [i+self.N/2-1 for i in nodes]
-		super(Line,self).watch(nodes,type=type)
+		super(Line,self).watch(nodes)
 		
 	def plot(self,filename):
 		""" Creates a plot of probability vs node.

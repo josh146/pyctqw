@@ -20,40 +20,37 @@ rank =  PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 gi = qw.GraphISO()
-comparisonTable = gi.AllIsomorphicQ('../graphs/strong-regular-25-12-5-6')
+# comparisonTable = gi.AllIsomorphicQ('../graphs/strong-regular-25-12-5-6')
 
-if rank==0: print comparisonTable
+# if rank==0: print comparisonTable
 
-sys.exit()
-
-#~~~~~~~ Strongly Regular
-
-adj1 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/1-permutations/SR1_perm_1.txt')
-adj2 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/1-permutations/SR1_perm_3.txt')
-cert1 = gi.GIcert(adj1)
-cert2 = gi.GIcert(adj2)
-
-if rank == 0:
-	for i in range(len(cert1)):
-		print cert1[i], cert2[i]
-
-checkISO = gi.isomorphicQ(adj1,adj2)
-if rank == 0: print checkISO
-sys.exit()
-
-#~~~~~~~ Cayley Tree
-adj1 = np.genfromtxt('../graphs/cayley/3-cayley.txt')
-adj2 = np.genfromtxt('../graphs/cayley/3-cayley-v2.txt')
-checkISO = gi.isomorphicQ(adj1,adj2)
-if rank == 0: print checkISO
+# sys.exit()
 
 #~~~~~~~ Strongly Regular
-adj1 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/1.txt')
-adj2 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/11.txt')
-checkISO = gi.isomorphicQ(adj1,adj2)
-if rank == 0: print checkISO
-sys.exit()
 
+# adj1 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/1-permutations/SR1_perm_1.txt')
+# adj2 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/1-permutations/SR1_perm_3.txt')
+# cert1 = gi.GIcert(adj1)
+# cert2 = gi.GIcert(adj2)
+
+# if rank == 0:
+# 	for i in range(len(cert1)):
+# 		print cert1[i], cert2[i]
+
+# checkISO = gi.isomorphicQ(adj1,adj2)
+# if rank == 0: print checkISO
+
+# #~~~~~~~ Cayley Tree
+# adj1 = np.genfromtxt('../graphs/cayley/3-cayley-permutations/3-caley-v1.txt')
+# adj2 = np.genfromtxt('../graphs/cayley/3-cayley-permutations/3-caley-v2.txt')
+# checkISO = gi.isomorphicQ(adj1,adj2)
+# if rank == 0: print checkISO
+
+# #~~~~~~~ Strongly Regular
+# adj1 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/1.txt')
+# adj2 = np.genfromtxt('../graphs/strong-regular-25-12-5-6/11.txt')
+# checkISO = gi.isomorphicQ(adj1,adj2)
+# if rank == 0: print checkISO
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #------------------------------- Strong Regular --------------------------------
