@@ -1,9 +1,29 @@
+======================
 Examples
 ======================
 
-Python MPI Example
----------------------
+CTQW Examples
+-------------------------
 
-.. literalinclude:: ../examples/exampleMPI.py
-    :linenos:
-    :language: python
+.. toctree::
+	:maxdepth: 1
+	:glob:
+
+	examples/*P_line/*
+	examples/*P_3cayley/*
+	examples/*P_sr/*
+
+
+Graph Isomorphism Examples
+----------------------------
+
+.. toctree::
+	:maxdepth: 1
+	:glob:
+
+	examples/GraphISO*/*
+
+
+Fortran Examples
+----------------------------
+

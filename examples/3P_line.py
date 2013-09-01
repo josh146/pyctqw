@@ -10,7 +10,7 @@ import pyCTQW.MPI as qw
 
 # enable command line arguments -t and -N
 OptDB = PETSc.Options()
-N = OptDB.getInt('N', 100)
+N = OptDB.getInt('N', 20)
 t = OptDB.getReal('t', 2)
 
 # get the MPI rank
@@ -19,7 +19,7 @@ rank =  PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 if rank == 0:
 	print '3P Line\n'
 
-# initialise an N (default 100) node graph CTQW
+# initialise an N (default 20) node graph CTQW
 walk = qw.Line3P(N)
 
 # Create a Hamiltonian with 2P very strong interaction.

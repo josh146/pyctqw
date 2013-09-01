@@ -138,9 +138,9 @@ def configuration(parent_package='', top_path=''):
 	else:
 		mpi = False
 	
-	config.add_data_files(  ('pyCTQW/examples', 'examples/*.py'),
-				('pyCTQW/graphs/cayley', 'graphs/cayley/*'),
-				('pyCTQW/graphs/strong-regular-25-12-5-6', 'graphs/strong-regular-25-12-5-6/*') )
+	# config.add_data_files(  ('pyCTQW/examples', 'examples/*.py'),
+	# 			('pyCTQW/graphs/cayley', 'graphs/cayley/*'),
+	# 			('pyCTQW/graphs/strong-regular-25-12-5-6', 'graphs/strong-regular-25-12-5-6/*') )
 	
 	return config.todict(), mpi
 

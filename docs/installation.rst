@@ -1,0 +1,110 @@
+==================================
+Installation
+==================================
+
+.. note::
+	At the moment, only Unix based systems are supported.
+
+Dependencies
+============
+
+In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the Fortran library :f:mod:`libctqw-MPI.F90` and the :py:mod:`pyCTQW.MPI` module depend on the following components:
+
+* :f:mod:`libctqwMPI`
+	- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2	
+	- `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1
+
+* :py:mod:`pyCTQW.MPI`
+	- `Python <http://www.python.org/>`_ >= 2.7
+	- `NumPy <http://www.numpy.org/>`_ >= 1.6.0
+	- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2	
+	- `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1	
+	- `petsc4py 3.4 or petsc4py-dev <https://pypi.python.org/pypi/petsc4py/3.4>`_
+	- `mpi4py <http://mpi4py.scipy.org/>`_		(recommended, used for some plotting)
+	- `matplotlib <http://matplotlib.org/>`_	(recommended, for node plotting and graph visualisation)
+	- `SciPy <http://www.scipy.org/>`_			(recommended, for some I/O operations)
+	- `NetworkX <http://networkx.github.io/>`_		(recommended, graph visualisation)
+
+
+Compiling and installing :py:mod:`pyCTQW.MPI`
+=============================================
+
+1) Ensure all dependencies required above are installed
+
+2) Extract the :mod:`pyCTQW` tarball, and ``cd`` into the extracted directory:
+
+	.. code-block:: bash
+		
+		$ tar -zxvf pyCTQW-X.Y.tar.gz
+		$ cd pyCTQW-X.Y
+
+3) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
+
+	.. code-block:: bash
+
+		$ export PETSC_DIR=/path/to/petsc
+		$ export PETSC_ARCH=linux-gnu
+		$ export SLEPC_DIR=/path/to/slepc
+
+	If you are unsure what your PETSc or SLEPc variables should be, please refer to their documentation.
+
+	.. important::
+		If you plan to install :py:mod:`pyCTQW.MPI` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
+
+4) Compile the Python module :py:mod:`pyCTQW.MPI` by running
+
+	.. code-block:: bash
+		
+		$ make pyctqw
+
+5) System-wide install:
+
+	.. code-block:: bash
+		
+		$ sudo -E python setup.py install
+
+	where the command ``-E`` ensures that the environment variables set in step 3 are passed to the root.
+
+	.. note::
+		If you do not have root access, or the above command does not appear to work, you can install the package locally by running
+
+			.. code-block:: bash
+				
+				$ python setup.py install --user
+
+	Now, have a go running some of the :doc:`examples`!
+
+
+**Optional:** compiling :f:mod:`libctqwMPI`
+===========================================================
+
+If you wish to write programs linking directly to the Fortran library, follow steps 1-3 above, before simply open a terminal in the root directory of :file:`pyCTQW-X.Y` and run
+     
+    .. code-block:: bash    
+        
+        $ make fortran
+        
+The fortran libraries :file:`libctqwMPI.so` and :file:`librefsor.a` can be found in the :file:`pyCTQW-X.Y/lib` directory, with required interfaces found in the :file:`pyCTQW-X.Y/include` directory.
+
+**Optional:** build the documentation 
+=======================================
+
+If `Sphinx <http://sphinx-doc.org/>`_ is installed, the documentation can be compiled by running
+
+	.. code-block:: bash
+		
+		$ make docs-html
+
+or
+
+	.. code-block:: bash
+		
+		$ make docs-pdf
+
+Note that in order to compile the PDF documentation, texlive must be
+installed.
+
+Known Issues
+==============
+
+* Non-mpi fallback modes not present yet

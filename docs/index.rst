@@ -4,30 +4,46 @@
    contain the root `toctree` directive.
 
 ----------------------------------
-pyCTQW's Manual
+pyCTQW Manual
 ----------------------------------
 
 .. only:: html
 
-    +---------------------------+------------------------------------------------------------------------------------------------+
-    |   **Contents**            |    **Features**                                                                                |
-    +===========================+================================================================================================+ 
-    |                           ||                                                                                               |
-    |                           |                                                                                                |
-    | .. toctree::              |  Contains distributed memory methods for calculating:                                          |
-    |    :glob:                 |                                                                                                |
-    |    :maxdepth: 3           |    * the continuous-time quantum walk on arbitrary graphs and lines for 1, 2 and 3 particles   |
-    |                           |    * Non-interacting and interacting walks                                                     |
-    |    index                  |    * Entanglement calculations                                                                 |   
-    |    examples               |    * ability to place diagonal defects/barriers on graph vertices                              |
-    |    pyCTQW.MPI             |    * contains MPI graph isomorphism methods, for both 2 and 3 interacting particles            |
-    |    libctqw-MPI            |                                                                                                |
-    |                           |    These classes also contain plotting methods, to visualise the quantum walking dynamics      |
-    +---------------------------+------------------------------------------------------------------------------------------------+
-       
 
-Installation
-------------
+    +-----------------------+----------------------------------------------------------------------------------------------------------+
+    |  **Contents**         |                                               **Features**                                               |
+    +=======================+==========================================================================================================+
+    | .. toctree::          |                                                                                                          |
+    |    :glob:             |  * Fortran and Python bindings (in the form of a library and module respectively)                        |
+    |    :maxdepth: 2       |  * Supports MPI through the use of the PETSc and SLEPc high-performance sparse                           |
+    |                       |    matrix libraries (CUDA support planned)                                                               |
+    |    installation       |  * Has in-built support for infinite-line Hamiltonians                                                   |
+    |    quickstart         |                                                                                                          |
+    |    pyCTQW.MPI         |  * Can import custom adjancency matrices                                                                 |
+    |    libctqw-MPI        |  * Supports one, two and three continuous-time quantum walkers (with or without interactions)            |
+    |    examples           |  * Import and export matrices/states in binary or text format                                            |
+    |                       |  * Python module supports plotting and visualisation using matplotlib and networkx                       |
+    |                       |  * Entanglement calculations                                                                             |
+    |                       |  * Ability to place diagonal defects/barriers on graph vertices                                          |
+    |                       |  * MPI graph isomorphism methods, for both 2 and 3 interacting particles                                 |
+    |                       |                                                                                                          |
+    |                       | **Gallery**                                                                                              |
+    |                       +----------------------------------------------------------------------------------------------------------+
+    |                       | .. image:: examples/2P_3cayley/2p_3cayley_nodes_particle1.png                                            |
+    |                       |   :width: 300pt                                                                                          |
+    |                       |                                                                                                          |
+    |                       | .. image:: examples/1P_3cayley/1p_3cayley_graph.png                                                      |
+    |                       |   :width: 300pt                                                                                          |
+    |                       |                                                                                                          |
+    |                       | .. image:: examples/1P_sr/1p_sr_graph.png                                                                |
+    |                       |   :width: 300pt                                                                                          |
+    |                       |                                                                                                          |
+    |                       | .. image:: examples/2P_line/2p_line_plot.png                                                             |
+    |                       |   :width: 300pt                                                                                          |
+    |                       |                                                                                                          |
+    |                       | .. image: examples/2P_3cayley/2p_3cayley_ent.png                                                         |
+    |                       |   :width: 250pt                                                                                          |
+    +-----------------------+----------------------------------------------------------------------------------------------------------+
 
 
 Indices and tables

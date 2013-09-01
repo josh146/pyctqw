@@ -1402,7 +1402,7 @@ class QuantumWalkP2(object):
 				
 			.. admonition:: Fortran interface
 			
-				This function calls the Fortran function :f:func:`partial_trace_array` for ``bin``
+				This function calls the Fortran function :f:func:`partial_trace_mat` for ``bin``
 				filetypes, and the function :f:func:`partial_trace_array` otherwise.
 			""" 
 		if p == 1:
