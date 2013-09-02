@@ -1,14 +1,14 @@
-Module m_refsor
-Integer, Parameter :: kdp = selected_real_kind(15)
-public :: refsor
-private :: kdp
-public :: R_refsor, I_refsor, D_refsor
-private :: R_inssor, I_inssor, D_inssor
-private :: R_subsor, I_subsor, D_subsor
-interface refsor
-  module procedure d_refsor, r_refsor, i_refsor
-end interface refsor
-contains
+! ! Module m_refsor
+! Integer, Parameter :: kdp = selected_real_kind(15)
+! public :: refsor
+! private :: kdp
+! public :: R_refsor, I_refsor, D_refsor
+! private :: R_inssor, I_inssor, D_inssor
+! private :: R_subsor, I_subsor, D_subsor
+! interface refsor
+!   module procedure d_refsor, r_refsor, i_refsor
+! end interface refsor
+! contains
 
 Subroutine D_refsor (XDONT)
 !  Sorts XDONT into ascending order - Quicksort
@@ -397,6 +397,6 @@ Recursive Subroutine I_subsor (XDONT, IDEB1, IFIN1)
 !
 End Subroutine I_inssor
 !
-end module m_refsor
+! end module m_refsor
 
 

@@ -50,7 +50,7 @@ Compiling and installing :py:mod:`pyCTQW.MPI`
 
 	.. code-block:: bash
 		
-		$ make pyctqw
+		$ python setup.py build
 
 5) System-wide install:
 

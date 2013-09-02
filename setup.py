@@ -49,7 +49,8 @@ def MPIpackage(config):
 	INCLUDE_DIRS = []
 	LIBRARY_DIRS = []
 	LIBRARIES	= []
-	# PETSc
+	
+	# Get PETSc environment variables
 	try:
 		PETSC_ARCH = os.environ.get('PETSC_ARCH', '')
 		PETSC_DIR  = os.environ['PETSC_DIR']
@@ -58,10 +59,11 @@ def MPIpackage(config):
 		elif not os.path.isfile(PETSC_DIR+PETSC_ARCH+'/lib/libpetsc.so'):
 			raise dirError
 	except KeyError:
-		raise noMPI("WARNING: PETSC_DIR environment variable not set")
+		raise noMPI("ERROR: PETSC_DIR environment variable not set")
 	except dirError:
-		raise noMPI("WARNING: PETSC_DIR does not point towards a valid directory")
+		raise noMPI("ERROR: PETSC_DIR does not point towards a valid directory")
 	
+	# get PETSc include and library directories
 	if PETSC_ARCH and os.path.isdir(os.path.join(PETSC_DIR, PETSC_ARCH)):
 		INCLUDE_DIRS += [os.path.join(PETSC_DIR, PETSC_ARCH, 'include'),
 						 os.path.join(PETSC_DIR, 'include')]
@@ -76,12 +78,11 @@ def MPIpackage(config):
 	try:
 		import petsc4py
 	except ImportError:
-		raise noMPI("WARNING: petsc4py not installed")
+		raise noMPI("ERROR: petsc4py not installed")
 		
 	INCLUDE_DIRS += [petsc4py.get_include()]
 				  
-	# SLEPc
-	
+	# Get SLEPc environment variables
 	try:
 		SLEPC_DIR  = os.environ['SLEPC_DIR']
 		if SLEPC_DIR == '':
@@ -89,10 +90,11 @@ def MPIpackage(config):
 		elif not os.path.isfile(SLEPC_DIR+PETSC_ARCH+'/lib/libslepc.so'):
 			raise dirError
 	except KeyError:
-		raise noMPI("WARNING: SLEPC_DIR environment variable not set")
+		raise noMPI("ERROR: SLEPC_DIR environment variable not set")
 	except dirError:
-		raise noMPI("WARNING: SLEPC_DIR does not point towards a valid directory")
+		raise noMPI("ERROR: SLEPC_DIR does not point towards a valid directory")
 	
+	# get SLEPc include and library directories	
 	if PETSC_ARCH and os.path.isdir(os.path.join(PETSC_DIR, PETSC_ARCH)):
 		INCLUDE_DIRS += [os.path.join(SLEPC_DIR, PETSC_ARCH, 'include'),
 						 os.path.join(SLEPC_DIR, 'include')]
@@ -102,17 +104,17 @@ def MPIpackage(config):
 		LIBRARY_DIRS += [os.path.join(SLEPC_DIR, 'lib')]
 	LIBRARIES += ['slepc']
 	
+	# set the compiler to mpi
 	if os.getenv('LDSHARED', '') == '':
 		os.environ["CC"] = "mpicc"
 		os.environ["F90"] = "mpif90"
 		os.environ["LDSHARED"] = "mpif90"
-
-	config.add_installed_library('refsor', ['src/sort.f90'], '.')
-		
+	
+	# create the extension	
 	config.add_extension('libpyctqw_MPI',
-				 sources = ['src/sort.f90','src/libctqw-MPI.F90','src/libctqw-MPI.pyf'],
+				 sources = ['src/libctqw-MPI.F90','src/libctqw-MPI.pyf'],
 				 f2py_options=['--quiet'],
-				 extra_f90_compile_args=['-Wno-unused-variable'],
+				 extra_f90_compile_args=['-Wno-unused-variable','-Wno-conversion','-Wno-unused-dummy-argument'],
 				 #define_macros=[('F2PY_REPORT_ON_ARRAY_COPY',1)],
 				 include_dirs=INCLUDE_DIRS + [os.curdir],
 				 libraries=LIBRARIES,
@@ -124,19 +126,21 @@ def configuration(parent_package='', top_path=''):
 	from numpy.distutils.misc_util import Configuration
 
 	config = Configuration(None, parent_package, top_path)
+	MPIpackage(config)
+	mpi = True
 	
-	if os.getenv('use_mpi','True') == 'True':
-		try:
-			MPIpackage(config)
-			mpi = True
-		except noMPI, err:
-			warn(str(err))
-			warn("WARNING: error when looking for PETSc/SLEPc/petsc4py!\
-				 \nIf they are installed, double check $PETSC_DIR, $SLEPC_DIR and $PETSC_ARCH environment varibles.\
-				 \n\npyCTQW.MPI will not be installed\n")
-			mpi = False
-	else:
-		mpi = False
+	# if os.getenv('use_mpi','True') == 'True':
+	# 	try:
+	# 		MPIpackage(config)
+	# 		mpi = True
+	# 	except noMPI, err:
+	# 		warn(str(err))
+	# 		warn("WARNING: error when looking for PETSc/SLEPc/petsc4py!\
+	# 			 \nIf they are installed, double check $PETSC_DIR, $SLEPC_DIR and $PETSC_ARCH environment varibles.\
+	# 			 \n\npyCTQW.MPI will not be installed\n")
+	# 		mpi = False
+	# else:
+	# 	mpi = False
 	
 	# config.add_data_files(  ('pyCTQW/examples', 'examples/*.py'),
 	# 			('pyCTQW/graphs/cayley', 'graphs/cayley/*'),
@@ -162,6 +166,7 @@ def run_setup():
 	setup(
 		packages=packages,
 		classifiers=classifiers,
+		# ext_package='pyCTQW.MPI',
 		**(config)
 	)
 

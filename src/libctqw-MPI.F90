@@ -1,7 +1,5 @@
 module ctqwMPI
 
-    use m_refsor
-
 #ifdef __INTEL_COMPILER
     use IFPORT
 #endif
@@ -16,8 +14,16 @@ module ctqwMPI
 #include <finclude/slepceps.h>
 #include <finclude/slepcmfn.h>
 
+    Integer,parameter    :: kdp = selected_real_kind(15)
+    private              :: kdp
+
+    interface refsor
+        module procedure d_refsor, r_refsor, i_refsor
+    end interface refsor
+
     contains
 
+    include 'sort.f90'
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Vector I/O ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
