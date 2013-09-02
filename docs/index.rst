@@ -20,7 +20,7 @@ pyCTQW Manual
     |    installation       |  * Has in-built support for infinite-line Hamiltonians                                                   |
     |    quickstart         |                                                                                                          |
     |    pyCTQW.MPI         |  * Can import custom adjancency matrices                                                                 |
-    |    libctqw-MPI        |  * Supports one, two and three continuous-time quantum walkers (with or without interactions)            |
+    |    fortran            |  * Supports one, two and three continuous-time quantum walkers (with or without interactions)            |
     |    examples           |  * Import and export matrices/states in binary or text format                                            |
     |                       |  * Python module supports plotting and visualisation using matplotlib and networkx                       |
     |                       |  * Entanglement calculations                                                                             |

@@ -8,13 +8,8 @@ Installation
 Dependencies
 ============
 
-In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the Fortran library :f:mod:`libctqw-MPI.F90` and the :py:mod:`pyCTQW.MPI` module depend on the following components:
+In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the :py:mod:`pyCTQW.MPI` module depends on the following components:
 
-* :f:mod:`libctqwMPI`
-	- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2	
-	- `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1
-
-* :py:mod:`pyCTQW.MPI`
 	- `Python <http://www.python.org/>`_ >= 2.7
 	- `NumPy <http://www.numpy.org/>`_ >= 1.6.0
 	- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2	
@@ -75,18 +70,7 @@ Compiling and installing :py:mod:`pyCTQW.MPI`
 	Now, have a go running some of the :doc:`examples`!
 
 
-**Optional:** compiling :f:mod:`libctqwMPI`
-===========================================================
-
-If you wish to write programs linking directly to the Fortran library, follow steps 1-3 above, before simply open a terminal in the root directory of :file:`pyCTQW-X.Y` and run
-     
-    .. code-block:: bash    
-        
-        $ make fortran
-        
-The fortran libraries :file:`libctqwMPI.so` and :file:`librefsor.a` can be found in the :file:`pyCTQW-X.Y/lib` directory, with required interfaces found in the :file:`pyCTQW-X.Y/include` directory.
-
-**Optional:** build the documentation 
+**Optional:** build documentation 
 =======================================
 
 If `Sphinx <http://sphinx-doc.org/>`_ is installed, the documentation can be compiled by running
