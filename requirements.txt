@@ -1,4 +1,5 @@
 https://github.com/paulromano/sphinx-fortran-extension/archive/master.zip
 sphinxcontrib-napoleon
 sphinxcontrib-fulltoc
-petsc4py==dev
+petsc
+petsc4py
