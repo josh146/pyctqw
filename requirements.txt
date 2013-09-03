@@ -3,3 +3,4 @@ sphinxcontrib-napoleon
 sphinxcontrib-fulltoc
 petsc
 petsc4py
+slepc
