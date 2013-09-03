@@ -22,6 +22,12 @@ CTQW_INCLUDE = $(CTQW_DIR)/include
 
 F90library = libctqwMPI
 
+ifeq ($(shared_lib),1)
+	EXT = so
+else
+	EXT = a
+endif
+
 # include
 all: fortran examples
  
@@ -37,12 +43,18 @@ clean-fexampleMPI:
 	make -C $(CTQW_DIR)/examples/fortran clean
 
 # Fortran MPI library and interface
-libctqwMPI: $(CTQW_LIB)/libctqwMPI.so
+libctqwMPI: $(CTQW_LIB)/libctqwMPI.$(EXT)
 	
 lib/libctqwMPI.so: $(CTQW_DIR)/src/libctqw-MPI.F90 
 	mkdir -p $(CTQW_INCLUDE)
 	mkdir -p $(CTQW_LIB)
 	cd $(CTQW_DIR)/src && $(FLINKER) -shared -fPIC -Wno-conversion -J../$(CTQW_INCLUDE) libctqw-MPI.F90 -o ../$(CTQW_LIB)/libctqwMPI.so $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
+
+lib/libctqwMPI.a: $(CTQW_DIR)/src/libctqw-MPI.F90 
+	mkdir -p $(CTQW_INCLUDE)
+	mkdir -p $(CTQW_LIB)
+	cd $(CTQW_DIR)/src && $(FLINKER) -Wno-conversion -J../$(CTQW_INCLUDE) -c libctqw-MPI.F90 -o libctqw-MPI.o $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
+	ar cr $(CTQW_DIR)/lib/libctqwMPI.a $(CTQW_DIR)/src/libctqw-MPI.o
 
 # documentation
 docs-html:
@@ -60,5 +72,6 @@ clean:: clean-fexampleMPI
 	rm -f */*.o */*.so */*.s */*.mod
 	rm -rf build lib include bin
 	rm -rf src/libpyctqw_MPImodule.c src/libpyctqw_MPI-f2pywrappers2.f90
+	rm -rf examples/fortran/exampleMPI
 	rm -rf docs/_build/*
 	rm -rf index.html

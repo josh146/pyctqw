@@ -30,6 +30,10 @@ extensions = [	'sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.mathjax'
 				'sphinxfortran.fortran_domain', 'sphinxfortran.fortran_autodoc',
 				'sphinxcontrib.napoleon','sphinxcontrib.fulltoc']
 
+from sphinx.highlighting import lexers
+from pygments.lexers import FortranLexer
+lexers['fortran'] = FortranLexer()
+
 napoleon_use_rtype = True
 napoleon_include_special_with_doc = False
 autosummary_generate = True

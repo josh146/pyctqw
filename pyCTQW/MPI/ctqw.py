@@ -691,9 +691,12 @@ class entanglementHandle(object):
 		for key,default in self.__default.iteritems():
 			setattr(self, key, kwargs.get(key,default))
 
+		entanglementS = _PETSc.Log.Stage('Entanglement')
+		entanglementS.push()
 		if self.p==2:
 			entInit, ierr = _ctqwmpi.entanglement(psi.fortran,self.N,
 				self.esolver,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
+		entanglementS.pop()
 
 		self.entanglement = [entInit]
 
@@ -710,9 +713,12 @@ class entanglementHandle(object):
 			"""
 		self.time.append(t)
 
+		entanglementS = _PETSc.Log.Stage('Entanglement')
+		entanglementS.push()
 		if self.p==2:
 			entUpdate, ierr = _ctqwmpi.entanglement(psi.fortran,self.N,
 					self.esolver,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
+		entanglementS.pop()
 
 		self.entanglement.append(entUpdate)
 
@@ -3529,8 +3535,11 @@ class GraphISO(object):
 				This function calls the Fortran function :f:func:`GraphISCert`.
 			"""
 
+		GIcertS = _PETSc.Log.Stage('GICert')
+		GIcertS.push()
 		cert, certSize = _ctqwmpi.GraphISCert(adj,self.p,self.freqTol,self.propagator,
 			self.esolver,self.emax_estimate,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
+		GIcertS.pop()
 
 		return _np.array(cert).T[_np.lexsort(_np.array(cert)[:,0:certSize])[::-1]]
 

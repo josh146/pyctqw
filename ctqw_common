@@ -3,5 +3,5 @@ PETSC_INCLUDE = -I$(PETSC_DIR)/include
 PETSC_ARCH_INCLUDE = -I$(PETSC_DIR)/$(PETSC_ARCH)/include
 
 CTQW_DIRECTIVES = -E $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) \
-		| sed '/implicit none/,/! declare variables/d;/\# 1/,/!~/d' \
+		| sed '/implicit none/,/! declare variables/d' \
 		| $(FLINKER) -x f95-cpp-input -

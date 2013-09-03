@@ -1,3 +1,5 @@
+.. _examples:
+
 ======================
 Examples
 ======================
@@ -27,3 +29,8 @@ Graph Isomorphism Examples
 Fortran Examples
 ----------------------------
 
+.. toctree::
+	:maxdepth: 1
+	:glob:
+
+	examples/exampleMPI*/*
