@@ -144,12 +144,16 @@ pygments_style = 'sphinx'
 # html_theme = "nature"
 # html_theme_options = {"stickysidebar" : True}
 
-if on_rtd:
-  html_theme = "default"
-else:
-  # solar theme
-  html_theme = "solar"
-  html_theme_path = ['_themes']
+# if on_rtd:
+#   html_theme = "default"
+# else:
+#   # solar theme
+#   html_theme = "solar"
+#   html_theme_path = ['_themes']
+
+# solar theme
+html_theme = "solar"
+html_theme_path = ['_themes']
 
 
 # readable theme
