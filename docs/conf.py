@@ -60,7 +60,7 @@ class Mock(object):
             return Mock()
 
 if on_rtd:
-  MOCK_MODULES = ['petsc4py','libpyctqw_MPI','matplotlib','networkx']
+  MOCK_MODULES = ['petsc4py','libpyctqw_MPI','matplotlib','networkx','pylab']
   for mod_name in MOCK_MODULES:
       sys.modules[mod_name] = Mock()
     
