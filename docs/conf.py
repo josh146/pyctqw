@@ -38,6 +38,33 @@ napoleon_use_rtype = True
 napoleon_include_special_with_doc = False
 autosummary_generate = True
 
+# readthedocs config
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+class Mock(object):
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        return Mock()
+
+    @classmethod
+    def __getattr__(cls, name):
+        if name in ('__file__', '__path__'):
+            return '/dev/null'
+        elif name[0] == name[0].upper():
+            mockType = type(name, (), {})
+            mockType.__module__ = __name__
+            return mockType
+        else:
+            return Mock()
+
+if on_rtd:
+  MOCK_MODULES = ['petsc4py']
+  for mod_name in MOCK_MODULES:
+      sys.modules[mod_name] = Mock()
+    
+
 
 # autodoc_member_order = 'bysource'
 
