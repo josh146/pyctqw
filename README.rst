@@ -3,7 +3,7 @@ Fortran library and Python module to calculate continuous-time quantum walks
 This is intended to provide a framework to quickly and easily work with quantum
 walkers, take advantage of high performance computing, and allow easy visualisation.
 
-Features:
+Features
 ============
 * Fortran and Python bindings (in the form of a library and module respectively)
 * Supports MPI through the use of the PETSc and SLEPc high-performance sparse
@@ -18,7 +18,7 @@ Features:
 * Ability to place diagonal defects/barriers on graph vertices
 * MPI graph isomorphism methods, for both 2 and 3 interacting particles
 
-TODO:
+TODO
 ============
 * CUDA support
 * Calculation of transmission
@@ -27,7 +27,7 @@ TODO:
 Dependencies
 ============
 
-In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the python :py:mod:`pyCTQW.MPI` module depends on the following components:
+In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the python ``pyCTQW.MPI`` module depends on the following components:
 
 	- `Python <http://www.python.org/>`_ >= 2.7
 	- `NumPy <http://www.numpy.org/>`_ >= 1.6.0
@@ -45,7 +45,7 @@ Installation
 
 1) Ensure all dependencies required above are installed
 
-2) Extract the :mod:`pyCTQW` tarball, and ``cd`` into the extracted directory:
+2) Extract the ``pyCTQW`` tarball, and ``cd`` into the extracted directory:
 
 	.. code-block:: bash
 		
@@ -63,9 +63,9 @@ Installation
 	If you are unsure what your PETSc or SLEPc variables should be, please refer to their documentation.
 
 	.. important::
-		If you plan to install :py:mod:`pyCTQW.MPI` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
+		If you plan to install ``pyCTQW.MPI`` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
 
-4) Compile the Python module :py:mod:`pyCTQW.MPI` by running
+4) Compile the Python module ``pyCTQW.MPI`` by running
 
 	.. code-block:: bash
 		
@@ -86,16 +86,16 @@ Installation
 				
 				$ python setup.py install --user
 
-	Now, have a go running some of the :doc:`examples`!
+	Now, have a go running some of the examples!
 
-*Optional*: compiling :mod:`libctqwMPI`
+*Optional*: compiling ``libctqwMPI``
 ===========================================================
 
-In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the Fortran library :mod:`libctqwMPI` depends on the following components:
+In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the Fortran library ``libctqwMPI`` depends on the following components:
     - `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2   
     - `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1
 
-Once these dependencies are installed, simply open a terminal in the root directory of :file:`pyCTQW-X.Y` and run
+Once these dependencies are installed, simply open a terminal in the root directory of ``pyCTQW-X.Y`` and run
      
     .. code-block:: bash    
         
@@ -111,13 +111,13 @@ where available options include
       - Values
       - Description
 
-    * - :attr:`shared_lib`
+    * - ``shared_lib``
       - 0 (default), 1
-      - whether to build :f:mod:`libctqwMPI` as a shared library (:attr:`shared_lib=1`, producing :file:`libctqwMPI.so`) or a static library (:attr:`shared_lib=0` (default), producing :file:`libctqwMPI.a`).
+      - whether to build ``libctqwMPI`` as a shared library (``shared_lib=1``, producing ``libctqwMPI.so``) or a static library (``shared_lib=0`` (default), producing ``libctqwMPI.a``).
 
-        If built as a shared library, compiled programs will be smaller, but :file:`libctqwMPI.so` will need to be added to a directory used by ``ld`` (either by setting the environment variable ``LD_LIBRARY_PATH`` or by placing :file:`libctqwMPI.so` in :file:`/usr/local/lib` etc).
+        If built as a shared library, compiled programs will be smaller, but ``libctqwMPI.so`` will need to be added to a directory used by ``ld`` (either by setting the environment variable ``LD_LIBRARY_PATH`` or by placing ``libctqwMPI.so`` in ``/usr/local/lib`` etc).
         
-The fortran library (:file:`libctqwMPI.so` or :file:`libctqwMPI.a`) can be found in the :file:`pyCTQW-X.Y/lib` directory, with required module files found in the :file:`pyCTQW-X.Y/include` directory.
+The fortran library (``libctqwMPI.so`` or ``libctqwMPI.a``) can be found in the ``pyCTQW-X.Y/lib`` directory, with required module files found in the ``pyCTQW-X.Y/include`` directory.
 
 
 **Optional:** build documentation 
@@ -132,5 +132,4 @@ If `Sphinx <http://sphinx-doc.org/>`_ is installed, the documentation can be com
 Documentation
 ===============
 
-.. seealso::
-	For more information on how to use this package, please see the `online documentation <http://pyctqw.readthedocs.org>`_
+For more information on how to use this package, please see the `online documentation <http://pyctqw.readthedocs.org>`_
