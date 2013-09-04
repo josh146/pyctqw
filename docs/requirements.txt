@@ -1,11 +1,5 @@
 https://github.com/paulromano/sphinx-fortran-extension/archive/master.zip
 sphinxcontrib-napoleon
 sphinxcontrib-fulltoc
-numpy
-scipy
-matplotlib
-networkx
 mpi4py
-petsc
 petsc4py
-slepc
