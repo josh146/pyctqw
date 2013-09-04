@@ -65,7 +65,6 @@ if on_rtd:
       sys.modules[mod_name] = Mock()
     
 
-
 # autodoc_member_order = 'bysource'
 
 # Add any paths that contain templates here, relative to this directory.
@@ -145,9 +144,13 @@ pygments_style = 'sphinx'
 # html_theme = "nature"
 # html_theme_options = {"stickysidebar" : True}
 
-# solar theme
-html_theme = "solar"
-html_theme_path = ['_themes']
+if on_rtd:
+  html_theme = "default"
+else:
+  # solar theme
+  html_theme = "solar"
+  html_theme_path = ['_themes']
+
 
 # readable theme
 # import sphinx_readable_theme
