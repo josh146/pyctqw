@@ -9,7 +9,7 @@ info={
 	'url' 			: 'http://pypi.python.org/pypi/pyCTQW/',
 	'license' 		: 'LICENSE',
 	'description' 	: 'An MPI enabled CTQW simulator',
-	'long_description' : open('README').read(),
+	'long_description' : open('README.rst').read(),
 	'provides' 		: ["pyCTQW"]
   }
 
