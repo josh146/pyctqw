@@ -229,3 +229,8 @@ where ``X`` is the number of MPI nodes you would like to run it on.
 
         * setting the environment variable ``LD_LIBRARY_PATH`` to include the directory containing :file:`libctqwMPI.so`,
         * or by placing :file:`libctqwMPI.so` in a directory used by ``ld`` (e.g. :file:`/usr/local/lib` etc).
+
+Acknowledgements
+===========================
+
+The graph isomorphism subroutine :f:func:`graphiscert` uses the external subroutine :f:func:`d_refsor`, a highly optimised Fortran sorting implementation written by Michel Olagnon and part of the `ORDERPACK 2.0 <http://www.fortran-2000.com/rank/>`_ suite of ranking and sorting algorithms for Fortran 90.

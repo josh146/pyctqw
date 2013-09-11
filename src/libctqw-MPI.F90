@@ -55,9 +55,9 @@ module ctqwMPI
     end subroutine exportVec
     
     subroutine importVec(vec,filename,filetype)
-        ! export a PETSc vector to a file
+        ! import a PETSc vector from a file
         character(len=50), intent(in)  :: filename ! filename *only*, no path, of the input file
-        character(len=3), intent(in)   :: filetype ! filetype to export ('txt' or 'bin')        
+        character(len=3), intent(in)   :: filetype ! filetype to export ('txt' or 'bin')
         
         Vec, intent(out)                :: vec ! the PETSc vector to import the file into
         
@@ -115,9 +115,10 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     subroutine exportMat(mat,filename,filetype)
-        Mat, intent(in)                :: mat
-        character(len=50), intent(in)  :: filename
-        character(len=3), intent(in)   :: filetype
+        ! export a PETSc matrix to a file
+        Mat, intent(in)                :: mat ! the input PETSc matrix
+        character(len=50), intent(in)  :: filename ! the filename of the exported file
+        character(len=3), intent(in)   :: filetype ! filetype to export ('txt' or 'bin')      
         
         ! local variables
         PetscErrorCode :: ierr
@@ -151,10 +152,11 @@ module ctqwMPI
     end subroutine exportMat
     
     subroutine importMat(mat,filename,filetype)
-        character(len=50), intent(in)  :: filename
-        character(len=3), intent(in)   :: filetype
+        ! import a PETSc matrix from a file
+        character(len=50), intent(in)  :: filename ! filename *only*, no path, of the input file
+        character(len=3), intent(in)   :: filetype ! filetype to export ('txt' or 'bin')
         
-        Mat, intent(out)                :: mat
+        Mat, intent(out)                :: mat ! the PETSc matrix to import the file into
         
         ! local variables
         PetscMPIInt          :: rank
@@ -221,8 +223,11 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     subroutine identity(mat,n)
-        PetscInt, intent(in) :: n
-        PetscScalar, intent(out) :: mat(n,n)
+        ! creates a :math:`n\times n` identity matrix
+
+        PetscInt, intent(in) :: n ! dimension of the identity matrix
+        
+        PetscScalar, intent(out) :: mat(n,n) ! the :math:`n\times n` identity matrix output
         
         PetscInt :: i
 
@@ -233,9 +238,14 @@ module ctqwMPI
     end subroutine identity
     
     subroutine kron(M1,r1,c1, M2,r2,c2, kronProd)
-        PetscInt, intent(in)    :: r1, c1, r2, c2
-        PetscScalar, intent(in)    :: M1(r1,c1), M2(r2,c2)
-        PetscScalar, intent(out)    :: kronProd(r1*r2,c1*c2)
+        ! compute the Kronecker product of two arrays
+        PetscInt, intent(in)    :: r1 ! number of rows in matrix 1
+        PetscInt, intent(in)    :: c1 ! number of columns in matrix 1
+        PetscInt, intent(in)    :: r2 ! number of rows in matrix 2
+        PetscInt, intent(in)    :: c2 ! number of columns in matrix 2
+        PetscScalar, intent(in) :: M1(r1,c1) ! matrix 1
+        PetscScalar, intent(in) :: M2(r2,c2) ! matrix 2
+        PetscScalar, intent(out):: kronProd(r1*r2,c1*c2) ! kronecker product output
 
         ! local variables
         PetscInt :: i, j
@@ -250,13 +260,16 @@ module ctqwMPI
 !~~~~~~~~~~~~~Import and convert Adjacency matrix to Hamiltonian ~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    subroutine importAdjToH(mat,filename,p,d,amp,interaction,nd)            
-        character, intent(in)          :: p            
-        character(len=50), intent(in)  :: filename
-        PetscInt, intent(in)           :: nd, d(nd)
-        PetscScalar, intent(in)        :: amp(nd), interaction
+    subroutine importAdjToH(mat,filename,p,d,amp,interaction,nd)
+        ! Import an adjacency matrix from a file, and create a PETSc Hamiltonian matrix.
+        character, intent(in)          :: p ! number of particles in the system ('1', '2', or '3')
+        character(len=50), intent(in)  :: filename ! dense adjacency matrix file in text format
+        PetscInt, intent(in)           :: nd ! number of defects
+        PetscInt, intent(in)           :: d(nd) ! nodes to place defects on
+        PetscScalar, intent(in)        :: amp(nd) ! amplitude of defects
+        PetscScalar, intent(in)        :: interaction ! interaction amplitude
         
-        Mat, intent(out)                :: mat
+        Mat, intent(out)                :: mat ! output Hamiltonian matrix
         
         ! local variables
         PetscMPIInt              :: rank
@@ -298,12 +311,17 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~ Convert Adjacency array to Hamiltonian ~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    subroutine adjToH(mat,adjArray,p,d,amp,interaction,nd,N)            
-        character, intent(in)          :: p
-        PetscInt, intent(in)           :: nd, d(nd), N, adjArray(N,N)
-        PetscScalar, intent(in)        :: amp(nd), interaction
+    subroutine adjToH(mat,adjArray,p,d,amp,interaction,nd,N)
+        ! convert an adjacency array to a PETSc Hamiltonian matrix
+        character, intent(in)          :: p ! number of particles in the system ('1', '2', or '3')
+        PetscInt, intent(in)           :: nd ! number of defects
+        PetscInt, intent(in)           :: d(nd) ! nodes to place defects on
+        PetscInt, intent(in)           :: N ! number of vertices in the graph
+        PetscInt, intent(in)           :: adjArray(N,N) ! nxn array containing adjacency matrix
+        PetscScalar, intent(in)        :: amp(nd) ! amplitude of defects
+        PetscScalar, intent(in)        :: interaction ! interaction amplitude
         
-        Mat, intent(out)                :: mat
+        Mat, intent(out)                :: mat ! output Hamiltonian matrix
         
         ! local variables
         PetscMPIInt              :: rank
@@ -464,7 +482,7 @@ module ctqwMPI
 
     function coord(x,y,n)
         ! convert from a 2D to 1D statespace for 2 particles, using
-        ! :math:`coord = n*(x + n/2 - 1) + y + n/2 - 1`
+        ! :math:`coord = n(x + n/2 - 1) + y + n/2 - 1`
         integer, intent(in)    :: n ! number of nodes in the system
         integer, intent(in)    :: x ! vertex location of particle 1
         integer, intent(in)    :: y ! vertex location of particle 2
@@ -479,8 +497,13 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     function coord3P(x,y,z,n)
-        integer, intent(in)    :: n, x, y, z
-        integer                :: coord3P
+        ! convert from a 2D to 1D statespace for 2 particles, using
+        ! :math:`coord2P = xn^2 + ny + z`
+        integer, intent(in)    :: n ! number of nodes in the system
+        integer, intent(in)    :: x ! vertex location of particle 1
+        integer, intent(in)    :: y ! vertex location of particle 2
+        integer, intent(in)    :: z ! vertex location of particle 3
+        integer                :: coord3P ! output 3P statepace coordinate
     
         coord3P = (n**2)*x + n*y + z
     end function coord3P
@@ -489,10 +512,12 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~ 1P  probabilities ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     subroutine p1prob(psi,prob,n)
-        PetscInt, intent(in)      :: n
-        Vec, intent(in)           :: psi
+        ! Calculates the marginal probability of 1 particle state psi; i.e. 
+        ! :math:`|\psi|^2`
+        PetscInt, intent(in)      :: n ! length of vector psi
+        Vec, intent(in)           :: psi ! input statespace PETSc vector
         
-        Vec, intent(out)          :: prob
+        Vec, intent(out)          :: prob ! output PETSc vector containing the probabilities
         
         ! local variables
         PetscErrorCode :: ierr
@@ -512,11 +537,12 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     subroutine marginal(psi,psiM,p,n)
-        character, intent(in)     :: p
-        PetscInt, intent(in)      :: n
-        Vec, intent(in)           :: psi
+        ! Calculates the marginal probability of particle number :f:var:`p`
+        character, intent(in)     :: p ! the particle to calculate the marginal probability ('1', '2', '3')
+        PetscInt, intent(in)      :: n ! number of vertices in the graph
+        Vec, intent(in)           :: psi ! input PETSc statespace vector of length :math:`n^p`
         
-        Vec, intent(out)          :: psiM
+        Vec, intent(out)          :: psiM ! output PETSc vector containing the probabilities
         
         ! local variables
         PetscErrorCode :: ierr
