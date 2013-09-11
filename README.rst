@@ -137,4 +137,4 @@ For more information on how to use this package, please see the `online document
 Acknowledgements
 ===========================
 
-The graph isomorphism subroutine :f:func:`graphiscert` uses the external subroutine :f:func:`d_refsor`, a highly optimised Fortran sorting implementation written by Michel Olagnon and part of the `ORDERPACK 2.0 <http://www.fortran-2000.com/rank/>`_ suite of ranking and sorting algorithms for Fortran 90.
+The graph isomorphism subroutine ``GraphISCert`` uses the external subroutine ``d_refsor``, a highly optimised Fortran sorting implementation written by Michel Olagnon and part of the `ORDERPACK 2.0 <http://www.fortran-2000.com/rank/>`_ suite of ranking and sorting algorithms for Fortran 90.
