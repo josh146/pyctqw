@@ -1477,13 +1477,6 @@ module ctqwMPI
             enddo
         endif
 
-        if ((vNE < 0. .and. rank==0) .or. error==1) then
-            do i=1, n
-                write(*,*)i,lambda(i)
-            enddo
-            write(*,*)vNE
-        endif
-
         ! clean up
         call EPSDestroy(eps,ierr)
         call MatDestroy(rhoX,ierr)
