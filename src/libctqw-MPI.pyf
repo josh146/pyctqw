@@ -175,7 +175,7 @@ python module libpyctqw_MPI ! in
                 character*(*) intent(in) :: eig_solver
                 character*3, intent(in)  :: worktype
                 integer, intent(in)      :: worktypeint
-                real, intent(in)      :: tolin
+                real(8), intent(in)      :: tolIn
                 integer, intent(in)      :: max_it
                 logical, intent(in)      :: verbose
                 integer, intent(out)     :: error
