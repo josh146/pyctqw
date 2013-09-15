@@ -1370,6 +1370,7 @@ module ctqwMPI
         character(len=12)        :: arg
 
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
+        write(*,*)tolIn
 
         ! check if vector is sequential or MPI
         call VecGetType(psi,vecType,ierr)

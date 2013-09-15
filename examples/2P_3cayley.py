@@ -40,7 +40,7 @@ walk.EigSolver.setEigSolver(tol=1.e-2,verbose=False,emin_estimate=0.)
 # create a handle to watch the probability at nodes 0-4,9:
 walk.watch([0,1,2,3,4,9])
 # create a handle to watch the entanglement
-walk.watch(None,watchtype='entanglement',verbose=False,esolver='lapack')
+walk.watch(None,watchtype='entanglement',verbose=True,esolver='lapack')
 
 # Propagate the CTQW using the Chebyshev method
 # for t=5s in timesteps of dt=0.01
