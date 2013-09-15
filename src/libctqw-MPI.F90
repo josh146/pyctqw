@@ -384,8 +384,12 @@ module ctqwMPI
                 enddo
             enddo
         
+            call PetscBarrier(mat,ierr)
+
             call MatAssemblyBegin(mat,ierr)
+            CHKERRQ(ierr)
             call MatAssemblyEnd(mat,ierr)
+            CHKERRQ(ierr)
         
             deallocate(H2Array)
 
@@ -469,6 +473,7 @@ module ctqwMPI
                 enddo
             enddo
         
+            call PetscBarrier(mat,ierr)
             call MatAssemblyBegin(mat,ierr)
             call MatAssemblyEnd(mat,ierr)
         endif
