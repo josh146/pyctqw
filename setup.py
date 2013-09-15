@@ -56,7 +56,7 @@ def MPIpackage(config):
 		PETSC_DIR  = os.environ['PETSC_DIR']
 		if PETSC_DIR == '':
 			raise KeyError
-		elif not os.path.isfile(PETSC_DIR+'/'+PETSC_ARCH+'/lib/libpetsc.so'):
+		elif not (os.path.isfile(PETSC_DIR+'/'+PETSC_ARCH+'/lib/libpetsc.so') or os.path.isfile(PETSC_DIR+'/'+PETSC_ARCH+'/lib/libpetsc.a')):
 			raise dirError
 	except KeyError:
 		raise noMPI("ERROR: PETSC_DIR environment variable not set")
@@ -87,7 +87,7 @@ def MPIpackage(config):
 		SLEPC_DIR  = os.environ['SLEPC_DIR']
 		if SLEPC_DIR == '':
 			raise KeyError
-		elif not os.path.isfile(SLEPC_DIR+'/'+PETSC_ARCH+'/lib/libslepc.so'):
+		elif not (os.path.isfile(SLEPC_DIR+'/'+PETSC_ARCH+'/lib/libslepc.so') or os.path.isfile(SLEPC_DIR+'/'+PETSC_ARCH+'/lib/libslepc.a')):
 			raise dirError
 	except KeyError:
 		raise noMPI("ERROR: SLEPC_DIR environment variable not set")
