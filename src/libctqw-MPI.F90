@@ -1329,7 +1329,7 @@ module ctqwMPI
         enddo
 
         if (vecType == "seq") then
-            call PetscBarrier(MPI_COMM_SELF,ierr)
+            call PetscBarrier(PETSC_COMM_SELF,ierr)
         else
             call PetscBarrier(PETSC_COMM_WORLD,ierr)
         endif
@@ -1451,6 +1451,7 @@ module ctqwMPI
         endif
 
         lambda = 0.
+
 
         ! determine if convergence occurs
         call EPSGetConverged(eps,nconv,ierr)
