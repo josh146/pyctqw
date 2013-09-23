@@ -8,7 +8,7 @@
 :f:mod:`libctqwMPI` API
 ===================================
 
-(source: :file:`libctqw-MPI.F90`)
+(source: :file:`ctqwMPI.F90`)
 
 .. f:automodule: ctqwmpi
 

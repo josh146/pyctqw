@@ -70,7 +70,7 @@ if on_rtd:
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
-fortran_src = ['../src/libctqw-MPI.F90']
+fortran_src = ['../src/ctqwMPI.F90']
 
 # The suffix of source filenames.
 source_suffix = '.rst'

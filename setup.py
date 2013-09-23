@@ -112,7 +112,7 @@ def MPIpackage(config):
 	
 	# create the extension	
 	config.add_extension('libpyctqw_MPI',
-				 sources = ['src/libctqw-MPI.F90','src/libctqw-MPI.pyf'],
+				 sources = ['src/ctqwMPI.F90','src/ctqwMPI.pyf'],
 				 f2py_options=['--quiet'],
 				 extra_f90_compile_args=['-Wno-unused-variable','-Wno-conversion','-Wno-unused-dummy-argument'],
 				 #define_macros=[('F2PY_REPORT_ON_ARRAY_COPY',1)],

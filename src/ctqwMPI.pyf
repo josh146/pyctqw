@@ -3,33 +3,33 @@
 
 python module libpyctqw_MPI ! in 
     interface  ! in :libpyctqw_MPI
-        module ctqwmpi ! in :libpyctqw_MPI:libctqw-MPI.F90
+        module ctqwmpi ! in :libpyctqw_MPI:ctqwMPI.F90
             use ifport
-            subroutine exportvec(vec,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine exportvec(vec,filename,filetype) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer(8)               :: vec
                 character*50, intent(in) :: filename
                 character*3, intent(in)  :: filetype
             end subroutine exportvec
-            subroutine importvec(vec,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine importvec(vec,filename,filetype) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer(8)               :: vec
                 character*50, intent(in) :: filename
                 character*3, intent(in)  :: filetype
             end subroutine importvec
-            subroutine exportmat(mat,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine exportmat(mat,filename,filetype) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer(8)               :: mat
                 character*50, intent(in) :: filename
                 character*3, intent(in)  :: filetype
             end subroutine exportmat
-            subroutine importmat(mat,filename,filetype) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine importmat(mat,filename,filetype) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer(8)               :: mat
                 character*50, intent(in) :: filename
                 character*3, intent(in)  :: filetype
             end subroutine importmat
-            subroutine identity(mat,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine identity(mat,n) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer, intent(in)     :: n
                 complex(8), intent(out) :: mat(n,n)
             end subroutine identity
-            subroutine kron(m1,r1,c1,m2,r2,c2,kronprod) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine kron(m1,r1,c1,m2,r2,c2,kronprod) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 complex(8),intent(in)   :: m1(r1,c1)
                 integer, intent(in)     :: r1
                 integer, intent(in)     :: c1
@@ -38,7 +38,7 @@ python module libpyctqw_MPI ! in
                 integer, intent(in)     :: c2
                 complex(8), intent(out) :: kronprod(r1*r2,c1*c2)
             end subroutine kron
-            subroutine importadjtoh(mat,filename,p,d,amp,interaction,nd) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine importadjtoh(mat,filename,p,d,amp,interaction,nd) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer(8)              :: mat
                 character*50, intent(in):: filename
                 character, intent(in)   :: p
@@ -47,7 +47,7 @@ python module libpyctqw_MPI ! in
                 complex(8), intent(in)  :: interaction
                 integer, intent(in)     :: nd
             end subroutine importadjtoh
-            subroutine adjtoh(mat,adjArray,p,d,amp,interaction,nd,N) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine adjtoh(mat,adjArray,p,d,amp,interaction,nd,N) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer(8)              :: mat
                 character, intent(in)   :: p
                 integer, intent(in)     :: adjArray(N,N)
@@ -63,14 +63,14 @@ python module libpyctqw_MPI ! in
                 integer intent(in)     :: n
                 integer                :: coord
             end function coord
-            function coord3p(x,y,z,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            function coord3p(x,y,z,n) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer intent(in)     :: x
                 integer intent(in)     :: y
                 integer intent(in)     :: z
                 integer intent(in)     :: n
                 integer                :: coord3p
             end function coord3p
-            subroutine p1prob(psi,prob,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine p1prob(psi,prob,n) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer(8), intent(in) :: psi
                 integer(8)             :: prob
                 integer, intent(in)    :: n
@@ -87,7 +87,7 @@ python module libpyctqw_MPI ! in
                 character, intent(in)  :: p
                 integer, intent(in)    :: n
             end subroutine marginal3
-            subroutine p1_init(psi0,init_state,num,n) ! in :libpyctqw_MPI:libctqw-MPI.F90:ctqwmpi
+            subroutine p1_init(psi0,init_state,num,n) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer(8)             :: psi0
                 complex(8), intent(in) :: init_state(num,2)
                 integer, intent(in)    :: num

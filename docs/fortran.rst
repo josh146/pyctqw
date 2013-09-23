@@ -180,7 +180,7 @@ the produced code profile will include a summary of performance within the 'Cheb
 Linking :f:mod:`libctqwMPI`
 ================================
 
-To compile your program and link it against :f:mod:`libctqwMPI`, you will need to include the :file:`ctqw_common` file (present in the root directory of the :file:`pyCTQW-X.Y` folder) in your makefile - this helps set up the required preprocessing directives.
+To compile your program and link it against :f:mod:`libctqwMPI`, you will need to include the :file:`ctqw_common` file (present in the root directory of the :file:`pyCTQW-X.Y` folder) in your makefile - this helps set up the required library/include variables.
 
 For example, consider the makefile below (used to compile :ref:`exampleMPI.F90 <example-MPI>`):
 
@@ -192,24 +192,21 @@ For example, consider the makefile below (used to compile :ref:`exampleMPI.F90 <
     :linenos:
     :language: makefile
 
-A brief summary of the required variables:
+A brief summary of the variables:
 
 .. list-table::
     :widths: 3 30
 
     * - ``CTQW_DIR``
-      - the path to the :file:`pyCTQW-X.Y` directory (optional; used to set up ``CTQW_LIB`` and ``CTQW_INCLUDE``).
-    * - ``CTQW_LIB``
-      - the location of the :file:`libctqwMPI.so` library - by default, this is compiled to ``CTQW_DIR/lib``
-        These are required when linking your object files.
-    * - ``CTQW_INCLUDE``
-      - the location of the header/module files - by default, these are compiled to ``CTQW_DIR/include``. \
-        These are required when compiling your code to an object file.
-    * - ``CTQW_DIRECTIVES``
-      - the preprocessing directives, imported via the line ``include $(CTQW_DIR)/ctqw_common``. \
-        These are required when compiling your code to an object file.
+      - the path to the :file:`pyCTQW-X.Y` directory (used to correctly set up ``CTQW_LIBS`` and ``CTQW_INCLUDE_DIRS``).
+    * - ``CTQW_LIBS``
+      - the libraries required to link against :f:mod:`libctqwMPI`; these include :file:`libctqwMPI.so` (by default, this is compiled to ``CTQW_DIR/lib``) as well as the PETSc and SLEPc libraries.
 
-        Note the location of this variable in line 31 of the makefile above -- this is **important**.
+        These are required when linking your object files.
+    * - ``CTQW_INCLUDE_DIRS``
+      - the location of the header/module files required - by default, these are compiled to ``CTQW_DIR/include``. Note that this also contains required PETSc/SLEPc include directories.
+        
+        These are required when compiling your code to an object file.
 
 |
 

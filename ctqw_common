@@ -2,6 +2,8 @@ include $(SLEPC_DIR)/conf/slepc_common
 PETSC_INCLUDE = -I$(PETSC_DIR)/include
 PETSC_ARCH_INCLUDE = -I$(PETSC_DIR)/$(PETSC_ARCH)/include
 
-CTQW_DIRECTIVES = -E $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) \
-		| sed '/implicit none/,/! declare variables/d' \
-		| $(FLINKER) -x f95-cpp-input -
+CTQW_LIB = $(CTQW_DIR)/lib
+CTQW_INCLUDE = $(CTQW_DIR)/include
+
+CTQW_LIBS = -L$(CTQW_LIB) -lctqwMPI $(SLEPC_LIB)
+CTQW_INCLUDE_DIRS = $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) -I$(CTQW_INCLUDE)

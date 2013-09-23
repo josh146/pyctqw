@@ -1,24 +1,9 @@
 #!/usr/bin/make -f
-
-# ifneq (${use_mpi},'False')
-# 	include $(SLEPC_DIR)/conf/slepc_common
-# 	PETSC_INCLUDE = -I$(PETSC_DIR)/include
-# 	PETSC_ARCH_INCLUDE = -I$(PETSC_DIR)/$(PETSC_ARCH)/include
-# 	use_mpi = True
-
-# 	ex = fexampleMPI
-# 	F90library = libctqwMPI
-# else
-# 	ex = fexample
-# 	F90library = libctqw
-# endif
-
 #Makefile
 
 CTQW_DIR = .
 
-CTQW_LIB = $(CTQW_DIR)/lib
-CTQW_INCLUDE = $(CTQW_DIR)/include
+include $(CTQW_DIR)/ctqw_common
 
 F90library = libctqwMPI
 
@@ -30,8 +15,6 @@ endif
 
 # include
 all: fortran examples
- 
-include $(CTQW_DIR)/ctqw_common
 
 fortran: $(F90library)
 examples: fexampleMPI
@@ -45,15 +28,15 @@ clean-fexampleMPI:
 # Fortran MPI library and interface
 libctqwMPI: $(CTQW_LIB)/libctqwMPI.$(EXT)
 	
-lib/libctqwMPI.so: $(CTQW_DIR)/src/libctqw-MPI.F90 
+lib/libctqwMPI.so: $(CTQW_DIR)/src/ctqwMPI.F90 
 	mkdir -p $(CTQW_INCLUDE)
 	mkdir -p $(CTQW_LIB)
-	cd $(CTQW_DIR)/src && $(FLINKER) -shared -fPIC -Wno-conversion -J../$(CTQW_INCLUDE) libctqw-MPI.F90 -o ../$(CTQW_LIB)/libctqwMPI.so $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
+	cd $(CTQW_DIR)/src && $(FLINKER) -shared -fPIC -Wno-conversion -J../$(CTQW_INCLUDE) ctqwMPI.F90 -o ../$(CTQW_LIB)/libctqwMPI.so $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
 
-lib/libctqwMPI.a: $(CTQW_DIR)/src/libctqw-MPI.F90 
+lib/libctqwMPI.a: $(CTQW_DIR)/src/ctqwMPI.F90 
 	mkdir -p $(CTQW_INCLUDE)
 	mkdir -p $(CTQW_LIB)
-	cd $(CTQW_DIR)/src && $(FLINKER) -Wno-conversion -J../$(CTQW_INCLUDE) -c libctqw-MPI.F90 -o libctqw-MPI.o $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
+	cd $(CTQW_DIR)/src && $(FLINKER) -Wno-conversion -J../$(CTQW_INCLUDE) -c ctqwMPI.F90 -o libctqw-MPI.o $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
 	ar cr $(CTQW_DIR)/lib/libctqwMPI.a $(CTQW_DIR)/src/libctqw-MPI.o
 
 # documentation
@@ -64,7 +47,7 @@ docs-pdf:
 	make -C docs/ latex
 	make -C docs/_build/latex
 	mv docs/_build/latex/pyCTQW.pdf ./
-clean-docs: clean
+docs-clean:
 	make -C docs/ clean
 	rm -f docs/stub/*
 
@@ -75,3 +58,5 @@ clean:: clean-fexampleMPI
 	rm -rf examples/fortran/exampleMPI
 	rm -rf docs/_build/*
 	rm -rf index.html
+
+.DEFAULT_GOAL := all

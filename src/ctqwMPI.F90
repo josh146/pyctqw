@@ -6,6 +6,28 @@ module ctqwMPI
 
     implicit none
 
+    private
+
+    public    :: exportVec, importVec, exportMat, importMat
+    public    :: importAdjToH, adjToH
+
+    public    :: identity, kron
+    public    :: coord, coord3P
+
+    public    :: p1prob, marginal, marginal3
+    public    :: p1_init, p2_init, p3_init
+    public    :: hamiltonian_1p_line, hamiltonian_2p_line, hamiltonian_3p_line
+    public    :: min_max_eigs, expm, qw_cheby
+
+    public    :: partial_trace_array, partial_trace_mat
+    public    :: entanglement
+
+    public    :: number_of_edges, getEdgeState
+    public    :: getAllEdgeStates, getAllEdgeStates3P
+    public    :: GraphISCert
+    public    :: refsor
+
+#define PETSC_AVOID_DECLARATIONS
 #include <finclude/petsc.h>
 #include <finclude/petscvec.h90>
 #include <finclude/petscviewer.h90>
@@ -13,8 +35,9 @@ module ctqwMPI
 #include <finclude/slepcsys.h>
 #include <finclude/slepceps.h>
 #include <finclude/slepcmfn.h>
+#undef PETSC_AVOID_DECLARATIONS
 
-    Integer,parameter    :: kdp = selected_real_kind(15)
+    Integer, parameter   :: kdp = selected_real_kind(15)
     private              :: kdp
 
     interface refsor
@@ -224,12 +247,9 @@ module ctqwMPI
 
     subroutine identity(mat,n)
         ! creates a :math:`n\times n` identity matrix
-
-        PetscInt, intent(in) :: n ! dimension of the identity matrix
-        
+        PetscInt, intent(in)     :: n ! dimension of the identity matrix
         PetscScalar, intent(out) :: mat(n,n) ! the :math:`n\times n` identity matrix output
-        
-        PetscInt :: i
+        PetscInt                 :: i
 
         mat = 0.d0
         do i = 1, n
@@ -333,7 +353,7 @@ module ctqwMPI
         
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
         
-        HArray = 0.
+        HArray = 0.d0
         do i=1, N            
             do j=1,N
                if (i==j) then
@@ -375,7 +395,7 @@ module ctqwMPI
                     if (i==j-1 .and. mod(j,n+1)==1) then
                         alpha = interaction
                     else
-                        alpha = 0.
+                        alpha = 0.d0
                     endif
 
                     if (H2Array(i+1,j) .ne. 0) then
@@ -436,11 +456,11 @@ module ctqwMPI
                             alpha = interaction
 
                         else
-                            alpha = 0.
+                            alpha = 0.d0
                         endif
 
                     else
-                        alpha = 0.
+                        alpha = 0.d0
                     endif
 
                     if (H2Array(i+1,j) .ne. 0) then
@@ -753,11 +773,11 @@ module ctqwMPI
         
         if (Istart == 0) then
             col(1:2) = [0,1]
-            value(1:2) = [2.0,-1.0]
+            value(1:2) = [2.d0,-1.d0]
             
             do j = 1, nd
                 if (int(d(j)+n/2.0) == 1) then
-                    value(1) = 2.0+amp(j)
+                    value(1) = 2.d0+amp(j)
                     exit
                 endif
             end do
@@ -768,11 +788,11 @@ module ctqwMPI
         
         if (Iend == n) then
             col(1:2) = [n-2,n-1]
-            value(1:2) = [-1.0,2.0]
+            value(1:2) = [-1.d0,2.d0]
             
             do j = 1, nd
                 if (int(d(j)+n/2.0) == n) then
-                    value(2) = 2.0+amp(j)
+                    value(2) = 2.d0+amp(j)
                     exit
                 endif
             end do
@@ -781,14 +801,14 @@ module ctqwMPI
             Iend = Iend - 1
         endif
         
-        value(1:3) = [-1.0,2.0,-1.0]
+        value(1:3) = [-1.d0,2.d0,-1.d0]
         do i=Istart, Iend-1
             col = [i-1,i,i+1]
             
-            value = [-1.0,2.0,-1.0]
+            value = [-1.d0,2.d0,-1.d0]
             do j = 1, nd
                 if (int(d(j)+n/2.0) == i+1) then
-                    value(2) = 2.0+amp(j)
+                    value(2) = 2.d0+amp(j)
                     exit
                 endif
             end do
@@ -820,11 +840,11 @@ module ctqwMPI
         NN = n**2
         
         ! create array of 1D diagonal entries
-        diagArray = 2.0
+        diagArray = 2.d0
         do i = 1, n
             do j = 1, nd
                 if (int(d(j)+n/2.0) == i) then
-                    diagArray(i) = 2.0+amp(j)
+                    diagArray(i) = 2.d0+amp(j)
                     exit
                 endif
             end do
@@ -858,7 +878,7 @@ module ctqwMPI
                 if (mod(i,n+1)==0) then
                     alpha = interaction
                 else
-                    alpha = 0.
+                    alpha = 0.d0
                 endif
             
                 col(1:2) = [i,i+1]
@@ -870,7 +890,7 @@ module ctqwMPI
                 if (mod(i,n+1)==0) then
                     alpha = interaction
                 else
-                    alpha = 0.
+                    alpha = 0.d0
                 endif
             
                 col(1:2) = [i-1,i]
@@ -882,7 +902,7 @@ module ctqwMPI
                 if (mod(i,n+1)==0) then
                     alpha = interaction
                 else
-                    alpha = 0.
+                    alpha = 0.d0
                 endif
 
                 col = [i-1,i,i+1]
@@ -938,12 +958,12 @@ module ctqwMPI
         PetscInt       :: i, adjArray(n,n)
         
         ! create adjacency matrix
-        adjArray = 0.
-        adjArray(1,2) = 1.
-        adjArray(n,n-1) = 1.
+        adjArray = 0
+        adjArray(1,2) = 1
+        adjArray(n,n-1) = 1
         do i = 2, n-1
-            adjArray(i,i-1) = 1.
-            adjArray(i,i+1) = 1.
+            adjArray(i,i-1) = 1
+            adjArray(i,i+1) = 1
         enddo
                 
         call adjToH(H3,adjArray,'3',d,amp,interaction,nd,N) 
@@ -986,7 +1006,7 @@ module ctqwMPI
         call MatScale(A,alpha,ierr)
         !call MFNSetScaleFactor(mfn, alpha,ierr)
         call MFNSolve(mfn,v,y,ierr)
-        call MatScale(A,1.0/alpha,ierr)
+        call MatScale(A,1.d0/alpha,ierr)
         
         call MFNDestroy(mfn,ierr)
         call SlepcFinalize(ierr)
@@ -1161,18 +1181,18 @@ module ctqwMPI
         PetscScalar   :: bessj0, bessj1, bessjn
         Vec, pointer  :: work(:)
         
-        alpha = PetscRealPart((Emax-Emin)*dt/2.0)
+        alpha = PetscRealPart((Emax-Emin)*dt/2.d0)
         
         call VecDuplicateVecsF90(psi0,4,work,ierr)
         
         call VecCopy(psi0,work(1),ierr)
         call MatMult(H,work(1),work(2),ierr)
-        call VecAXPBY(work(2), (Emax+Emin)/(Emax-Emin),-2.0/(Emax-Emin), work(1),ierr)
+        call VecAXPBY(work(2), (Emax+Emin)/(Emax-Emin),-2.d0/(Emax-Emin), work(1),ierr)
         
         bessj0 = dbesjn(0,alpha)
         bessj1 = dbesjn(1,alpha)
         call VecCopy(psi0,work(4),ierr)
-        call VecAXPBY(work(4), 2.0*PETSC_i*bessj1,bessj0, work(2),ierr)
+        call VecAXPBY(work(4), 2.d0*PETSC_i*bessj1,bessj0, work(2),ierr)
         
         terms = 0
         do while (abs(2.d0*dbesjn(terms,alpha)) > 1.d-18)
@@ -1181,17 +1201,17 @@ module ctqwMPI
         
         do m = 2, terms
             call MatMult(H,work(2),work(3),ierr)
-            call VecAXPBY(work(3), 2.0*(Emax+Emin)/(Emax-Emin),-4.0/(Emax-Emin), work(2),ierr)
-            call VecAXPY(work(3),-1.0+0.*PETSC_i,work(1),ierr)
+            call VecAXPBY(work(3), 2.d0*(Emax+Emin)/(Emax-Emin),-4.d0/(Emax-Emin), work(2),ierr)
+            call VecAXPY(work(3),-1.d0+0.d0*PETSC_i,work(1),ierr)
             
             bessjn = dbesjn(m,alpha)
-            call VecAXPY(work(4),2.0*(PETSC_i**m)*bessjn,work(3),ierr)
+            call VecAXPY(work(4),2.d0*(PETSC_i**m)*bessjn,work(3),ierr)
 
             call VecCopy(work(2),work(1),ierr)
             call VecCopy(work(3),work(2),ierr)
         end do
         
-        call VecScale(work(4),exp(-PETSC_i*(Emax+Emin)*dt/2.0),ierr)
+        call VecScale(work(4),exp(-PETSC_i*(Emax+Emin)*dt/2.d0),ierr)
         call VecCopy(work(4),psi,ierr)
         
         call VecDestroyVecsF90(4,work,ierr)
@@ -1242,7 +1262,7 @@ module ctqwMPI
         endif
 
         ! calculate the partial trace of *last* particle
-        rhoX = 0.
+        rhoX = 0.d0
         do v=0, n-1
             do k=v, n-1
                 do i=0, rhoLength-1-k+v
@@ -1314,7 +1334,7 @@ module ctqwMPI
 
         ! calculate the partial trace of the *last* particle
         do v=Istart, Iend-1
-            temp = 0.
+            temp = 0.d0
 
             do k=v, n-1
                 do i=0, rhoLength-1-k+v
@@ -1450,7 +1470,7 @@ module ctqwMPI
             endif
         endif
 
-        lambda = 0.
+        lambda = 0.d0
 
 
         ! determine if convergence occurs
@@ -1468,11 +1488,11 @@ module ctqwMPI
         endif
 
         ! calculate the von Neumann Entropy
-        vNE = 0.
+        vNE = 0.d0
         if (error == 0) then
             do i=1, n
-                if (lambda(i) .ne. 0.) then
-                    vNE = vNE - lambda(i)*log(lambda(i))/log(2.)
+                if (lambda(i) .ne. 0.d0) then
+                    vNE = vNE - lambda(i)*log(lambda(i))/log(2.d0)
                 endif
             enddo
         endif
@@ -1519,8 +1539,8 @@ module ctqwMPI
                 if (adjArray(i,j) == 1) number_of_edges = number_of_edges + 1
 
                 if (number_of_edges == edgeNum) then
-                    getEdgeState(1,:) = [real(i-1,8),real(i-1,8),1.d0/sqrt(2.0)]
-                    getEdgeState(2,:) = [real(j-1,8),real(j-1,8),1.d0/sqrt(2.0)]
+                    getEdgeState(1,:) = [real(i-1,8),real(i-1,8),1.d0/sqrt(2.d0)]
+                    getEdgeState(2,:) = [real(j-1,8),real(j-1,8),1.d0/sqrt(2.d0)]
                     return
                 endif
             enddo
@@ -1590,15 +1610,15 @@ module ctqwMPI
                 do i=1, localStateNum
                     edgeStates = getEdgeState(localStateNum*rank+i,adjArray,n)
                     vertex = edgeStates(:,1)
-                    init_states(i,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.0)]
-                    init_states(i,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.0)]
+                    init_states(i,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.d0)]
+                    init_states(i,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.d0)]
                 end do
             else
                 do i=1, localStateNum
                     edgeStates = getEdgeState(localStateNum*rank+mod(edgeNum,size)+i,adjArray,n)
                     vertex = edgeStates(:,1)
-                    init_states(i,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.0)]
-                    init_states(i,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.0)]
+                    init_states(i,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.d0)]
+                    init_states(i,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.d0)]
                 end do
             endif
 
@@ -1607,8 +1627,8 @@ module ctqwMPI
                 localStateNum = 1
                 edgeStates = getEdgeState(rank+1,adjArray,n)
                 vertex = edgeStates(:,1)
-                init_states(1,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.0)]
-                init_states(1,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.0)]
+                init_states(1,1,:) = [vertex(1),vertex(1),vertex(1),1.d0/sqrt(2.d0)]
+                init_states(1,2,:) = [vertex(2),vertex(2),vertex(2),1.d0/sqrt(2.d0)]
             else
                 localStateNum = 0
             endif
@@ -1652,9 +1672,9 @@ module ctqwMPI
         call MatCreate(MPI_COMM_SELF,H,ierr)
         call MatSetType(H, MATSEQAIJ,ierr)
         if (p==3) then
-            call adjToH(H,adjArray,'3',[0],[0.*PETSC_i],1.0+0.*PETSC_i,1,N)
+            call adjToH(H,adjArray,'3',[0],[0.d0*PETSC_i],1.d0+0.d0*PETSC_i,1,N)
         else
-            call adjToH(H,adjArray,'2',[0],[0.*PETSC_i],1.0+0.*PETSC_i,1,N)
+            call adjToH(H,adjArray,'2',[0],[0.d0*PETSC_i],1.d0+0.d0*PETSC_i,1,N)
         endif
 
         NN = N**p
@@ -1714,7 +1734,7 @@ module ctqwMPI
             call VecGetValues(psi,NN,[(j,j=0,NN-1)],localCert((i-1)*NN+1:i*NN),ierr)
 
             ! reset initial state vector
-            call VecSet(psi0,0.*PETSc_i,ierr)
+            call VecSet(psi0,0.d0*PETSc_i,ierr)
         enddo
 
         if (comm_size>1) then
