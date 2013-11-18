@@ -14,10 +14,10 @@ module ctqwMPI
     public    :: identity, kron
     public    :: coord, coord3P
 
-    public    :: p1prob, marginal, marginal3
+    public    :: marginal1, marginal2, marginal3
     public    :: p1_init, p2_init, p3_init
     public    :: hamiltonian_1p_line, hamiltonian_2p_line, hamiltonian_3p_line
-    public    :: min_max_eigs, expm, qw_cheby
+    public    :: min_max_eigs, qw_krylov, qw_cheby
 
     public    :: partial_trace_array, partial_trace_mat
     public    :: entanglement
@@ -536,7 +536,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~ 1P  probabilities ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    subroutine p1prob(psi,prob,n)
+    subroutine marginal1(psi,prob,n)
         ! Calculates the marginal probability of 1 particle state psi; i.e. 
         ! :math:`|\psi|^2`
         PetscInt, intent(in)      :: n ! length of vector psi
@@ -555,13 +555,13 @@ module ctqwMPI
         call VecGetArrayF90(prob,probArray,ierr)
         probArray = probArray**2.d0
         call VecRestoreArrayF90(prob,probArray,ierr)
-    end subroutine p1prob
+    end subroutine marginal1
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~ marginal probabilities~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    subroutine marginal(psi,psiM,p,n)
+    subroutine marginal2(psi,psiM,p,n)
         ! Calculates the marginal probability of particle number :f:var:`p`
         character, intent(in)     :: p ! the particle to calculate the marginal probability ('1', '2', '3')
         PetscInt, intent(in)      :: n ! number of vertices in the graph
@@ -616,7 +616,7 @@ module ctqwMPI
         call VecAssemblyBegin(psiM,ierr)
         call VecAssemblyEnd(psiM,ierr)
         deallocate(ind,temp)
-    end subroutine marginal
+    end subroutine marginal2
 
     subroutine marginal3(psi,psiM,p,n)
         character, intent(in)     :: p
@@ -973,7 +973,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 !~~~~~~~~~~~~~~~~~~~~~ calculate y=e^(-iHt).v using SLEPc ~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    subroutine expm(A,t,v,y)
+    subroutine qw_krylov(A,t,v,y)
         Vec, intent(in)         :: v
         Mat, intent(in)         :: A
         PetscScalar, intent(in) :: t
@@ -1011,7 +1011,7 @@ module ctqwMPI
         call MFNDestroy(mfn,ierr)
         call SlepcFinalize(ierr)
     
-    end subroutine expm
+    end subroutine qw_krylov
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 !~~~~~~~~~~~~ calculate the min or max eiganvalue using SLEPc ~~~~~~~~~~~~
@@ -1724,7 +1724,7 @@ module ctqwMPI
             if (expArg == 'chebyshev') then
                 call qw_cheby(psi0,psi,t,H,Emin,Emax,rank,N)
             else
-                call expm(H,t,psi0,psi)
+                call qw_krylov(H,t,psi0,psi)
             endif
 
             ! find the sqrt(|psi|) of the vector

@@ -40,6 +40,8 @@ Hamiltonian subroutines
 
 .. f:autofunction:: hamiltonian_1p_line
 
+.. f:autofunction:: hamiltonian_2p_line
+
 .. f:autofunction:: hamiltonian_3p_line
 
  
@@ -50,9 +52,9 @@ Statespace subroutines
 
 .. f:autofunction:: coord3P
 
-.. f:autofunction:: p1prob
+.. f:autofunction:: marginal1
 
-.. f:autofunction:: marginal
+.. f:autofunction:: marginal2
 
 .. f:autofunction:: marginal3
 
@@ -67,7 +69,7 @@ MatrixExp and Eigenvalues
 -------------------------------------
 
 
-.. f:autofunction:: expm
+.. f:autofunction:: qw_krylov
 
 .. f:autofunction:: min_max_eigs
 

@@ -825,7 +825,7 @@ class QuantumWalkP1(object):
 	def marginal(self,vec):
 		# calculate marginal probabilities
 		Marginal = _PETSc.Log.Stage('Marginal'); Marginal.push()
-		_ctqwmpi.p1prob(vec.fortran,self.prob.fortran,self.N)
+		_ctqwmpi.marginal1(vec.fortran,self.prob.fortran,self.N)
 		Marginal.pop()
 
 	def watch(self,nodes):
@@ -939,7 +939,7 @@ class QuantumWalkP1(object):
 		if method=='krylov':
 			# SLEPc matrix exponential
 			expmS = _PETSc.Log.Stage('SLEPc expm'); expmS.push()
-			_ctqwmpi.expm(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
+			_ctqwmpi.qw_krylov(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
 			expmS.pop()
 			
 		elif method=='chebyshev':
@@ -1106,8 +1106,8 @@ class QuantumWalkP2(object):
 	def marginal(self,vec):
 		# calculate marginal probabilities
 		Marginal = _PETSc.Log.Stage('Marginal'); Marginal.push()
-		_ctqwmpi.marginal(vec.fortran,self.psiX.fortran,'x',self.N)
-		_ctqwmpi.marginal(vec.fortran,self.psiY.fortran,'y',self.N)
+		_ctqwmpi.marginal2(vec.fortran,self.psiX.fortran,'x',self.N)
+		_ctqwmpi.marginal2(vec.fortran,self.psiY.fortran,'y',self.N)
 		Marginal.pop()
 
 	def watch(self,nodes,watchtype='prob',**kwargs):
@@ -1253,7 +1253,7 @@ class QuantumWalkP2(object):
 		if method=='krylov':
 			# SLEPc matrix exponential
 			krylov = _PETSc.Log.Stage('SLEPc krylov'); krylov.push()
-			_ctqwmpi.expm(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
+			_ctqwmpi.qw_krylov(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
 			krylov.pop()
 			
 		elif method=='chebyshev':
@@ -1675,7 +1675,7 @@ class QuantumWalkP3(object):
 		if method=='krylov':
 			# SLEPc matrix exponential
 			krylov = _PETSc.Log.Stage('SLEPc krylov'); krylov.push()
-			_ctqwmpi.expm(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
+			_ctqwmpi.qw_krylov(self.H.mat.fortran,t,self.psi0.fortran,self.psi.fortran)
 			krylov.pop()
 			
 		elif method=='chebyshev':
