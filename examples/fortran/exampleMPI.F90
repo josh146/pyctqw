@@ -78,7 +78,7 @@ program exampleMPI
     call PetscTime(ts0,ierr)
     call PetscLogStageRegister('SLEPc expm',stage,ierr)
     call PetscLogStagePush(stage,ierr)
-    call expm(H,t,psi0,psi)
+    call qw_krylov(H,t,psi0,psi)
     !call VecView(psi,PETSC_VIEWER_STDOUT_WORLD,ierr)
     call PetscBarrier(psi,ierr)
     call PetscLogStagePop(ierr)

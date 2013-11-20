@@ -154,6 +154,6 @@ Source Code
 --------------------------------------------------------
 [:download:`Download source code </../examples/fortran/exampleMPI.F90>`]
 
-.. literalinclude:: /../examples/1P_line.py
+.. literalinclude:: /../examples/fortran/exampleMPI.F90
     :linenos:
 
