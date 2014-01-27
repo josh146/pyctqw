@@ -38,11 +38,11 @@ Hamiltonian subroutines
 
 .. f:autofunction:: adjToH
 
-.. f:autofunction:: hamiltonian_1p_line
+.. f:autofunction:: hamiltonian_p1_line
 
-.. f:autofunction:: hamiltonian_2p_line
+.. f:autofunction:: hamiltonian_p2_line
 
-.. f:autofunction:: hamiltonian_3p_line
+.. f:autofunction:: hamiltonian_p3_line
 
  
 Statespace subroutines

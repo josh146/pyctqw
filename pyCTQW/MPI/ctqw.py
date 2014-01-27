@@ -401,7 +401,7 @@ class Hamiltonian(object):
 
 			.. admonition:: Fortran interface
 
-				This function calls the Fortran function :f:func:`hamiltonian_2p_line`.
+				This function calls the Fortran function :f:func:`hamiltonian_p2_line`.
 			"""
 		try:
 			if self.mat.isAssembled():
@@ -412,7 +412,7 @@ class Hamiltonian(object):
 		# create the Hamiltonian
 		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
-		_ctqwmpi.hamiltonian_2p_line(self.mat.fortran,self.defectNodes,self.defectAmp,interaction,self.N)
+		_ctqwmpi.hamiltonian_p2_line(self.mat.fortran,self.defectNodes,self.defectAmp,interaction,self.N)
 		Hamiltonian.pop()
 
 	def createLine3P(self,d=[0],amp=[0.],interaction=0.):
@@ -437,7 +437,7 @@ class Hamiltonian(object):
 
 			.. admonition:: Fortran interface
 				
-				This function calls the Fortran function :f:func:`hamiltonian_3p_line`.
+				This function calls the Fortran function :f:func:`hamiltonian_p3_line`.
 			"""
 		try:
 			if self.mat.isAssembled():
@@ -448,7 +448,7 @@ class Hamiltonian(object):
 		# create the Hamiltonian
 		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
-		_ctqwmpi.hamiltonian_3p_line(self.mat.fortran,self.defectNodes,self.defectAmp,interaction,self.N)
+		_ctqwmpi.hamiltonian_p3_line(self.mat.fortran,self.defectNodes,self.defectAmp,interaction,self.N)
 		Hamiltonian.pop()
 	
 	def createLine(self,d=[0],amp=[0.]):
@@ -473,7 +473,7 @@ class Hamiltonian(object):
 
 			.. admonition:: Fortran interface
 
-				This function calls the Fortran function :f:func:`hamiltonian_1p_line`.
+				This function calls the Fortran function :f:func:`hamiltonian_p1_line`.
 			"""
 		try:
 			if self.mat.isAssembled():
@@ -484,7 +484,7 @@ class Hamiltonian(object):
 		# create the Hamiltonian
 		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
-		_ctqwmpi.hamiltonian_1p_line(self.mat.fortran,self.defectNodes,self.defectAmp,self.N)
+		_ctqwmpi.hamiltonian_p1_line(self.mat.fortran,self.defectNodes,self.defectAmp,self.N)
 		Hamiltonian.pop()
 	
 	def Emax(self,**kwargs):

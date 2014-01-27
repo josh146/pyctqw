@@ -34,7 +34,7 @@ program exampleMPI
     call PetscLogStageRegister('Hamiltonian',stage,ierr)
     call PetscLogStagePush(stage,ierr)
     call MatCreate(PETSC_COMM_WORLD,H,ierr)
-    call hamiltonian_1p_line(H,d,amp,size(d),n)
+    call hamiltonian_p1_line(H,d,amp,size(d),n)
     call PetscBarrier(H,ierr)
     call PetscLogStagePop(ierr)
     ! call MatView(H,PETSC_VIEWER_STDOUT_WORLD,ierr)

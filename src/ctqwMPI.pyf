@@ -105,29 +105,29 @@ python module libpyctqw_MPI ! in
                 integer, intent(in)    :: num
                 integer, intent(in)    :: n
             end subroutine p3_init
-            subroutine hamiltonian_1p_line(a,d,amp,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+            subroutine hamiltonian_p1_line(a,d,amp,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8)             :: a
                 integer, intent(in)    :: nd
                 integer, intent(in)    :: d(nd)
                 complex(8), intent(in) :: amp(nd)
                 integer, intent(in)    :: n
-            end subroutine hamiltonian_1p_line
-            subroutine hamiltonian_2p_line(h2,d,amp,interaction,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+            end subroutine hamiltonian_p1_line
+            subroutine hamiltonian_p2_line(h2,d,amp,interaction,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8)             :: h2
                 integer, intent(in)    :: nd
                 integer, intent(in)    :: d(nd)
                 complex(8), intent(in) :: amp(nd)
                 complex(8), intent(in) :: interaction
                 integer, intent(in)    :: n
-            end subroutine hamiltonian_2p_line
-            subroutine hamiltonian_3p_line(h3,d,amp,interaction,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
+            end subroutine hamiltonian_p2_line
+            subroutine hamiltonian_p3_line(h3,d,amp,interaction,nd,n) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8)             :: h3
                 integer, intent(in)    :: nd
                 integer, intent(in)    :: d(nd)
                 complex(8), intent(in) :: amp(nd)
                 complex(8), intent(in) :: interaction
                 integer, intent(in)    :: n
-            end subroutine hamiltonian_3p_line
+            end subroutine hamiltonian_p3_line
             subroutine qw_krylov(a,t,v,y) ! in :libctqwMPI:libctqwMPI.F90:ctqwmpi
                 integer(8), intent(in) :: a
                 complex(8), intent(in) :: t

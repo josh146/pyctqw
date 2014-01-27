@@ -16,7 +16,7 @@ module ctqwMPI
 
     public    :: marginal1, marginal2, marginal3
     public    :: p1_init, p2_init, p3_init
-    public    :: hamiltonian_1p_line, hamiltonian_2p_line, hamiltonian_3p_line
+    public    :: hamiltonian_p1_line, hamiltonian_p2_line, hamiltonian_p3_line
     public    :: min_max_eigs, qw_krylov, qw_cheby
 
     public    :: partial_trace_array, partial_trace_mat
@@ -754,7 +754,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~~ create a sparse hamiltonian matrix of size n ~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~ using PETSc's sparse matrix routines ~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    subroutine hamiltonian_1p_line(A,d,amp,nd,n)
+    subroutine hamiltonian_p1_line(A,d,amp,nd,n)
         PetscInt, intent(in)    :: nd, n, d(nd)
         PetscScalar, intent(in) :: amp(nd)
         
@@ -819,13 +819,13 @@ module ctqwMPI
         call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
         call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
     
-    end subroutine hamiltonian_1p_line
+    end subroutine hamiltonian_p1_line
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
 !~~~~~~~~~ create a sparse 2P hamiltonian matrix of size n^2 x n^2 ~~~~~~~
 !~~~~~~~~~~~~~~~~~~ using PETSc's sparse matrix routines ~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    subroutine hamiltonian_2p_line(H2,d,amp,interaction,nd,n)
+    subroutine hamiltonian_p2_line(H2,d,amp,interaction,nd,n)
         PetscInt, intent(in)    :: n, nd, d(nd)
         PetscScalar, intent(in) :: amp(nd), interaction
         
@@ -940,14 +940,14 @@ module ctqwMPI
         call MatAssemblyBegin(H2,MAT_FINAL_ASSEMBLY,ierr)
         call MatAssemblyEnd(H2,MAT_FINAL_ASSEMBLY,ierr)
     
-    end subroutine hamiltonian_2p_line
+    end subroutine hamiltonian_p2_line
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
 !~~~~~~~~~ create a sparse 3P hamiltonian matrix of size n^3 x n^3 ~~~~~~~
 !~~~~~~~~~~~~~~~~~~ using PETSc's sparse matrix routines ~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    subroutine hamiltonian_3p_line(H3,d,amp,interaction,nd,n)
+    subroutine hamiltonian_p3_line(H3,d,amp,interaction,nd,n)
         PetscInt, intent(in)    :: n, nd, d(nd)
         PetscScalar, intent(in) :: amp(nd), interaction
         
@@ -968,7 +968,7 @@ module ctqwMPI
                 
         call adjToH(H3,adjArray,'3',d,amp,interaction,nd,N) 
     
-    end subroutine hamiltonian_3p_line
+    end subroutine hamiltonian_p3_line
     
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 !~~~~~~~~~~~~~~~~~~~~~ calculate y=e^(-iHt).v using SLEPc ~~~~~~~~~~~~~~~~
