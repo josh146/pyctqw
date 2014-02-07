@@ -13,6 +13,13 @@ else
 	EXT = a
 endif
 
+ifeq ($(COMPILER),intel)
+    MOD = -module
+else
+	MOD = -J
+	echo $(COMPILER)
+endif
+
 # include
 all: fortran examples
 
@@ -31,12 +38,12 @@ libctqwMPI: $(CTQW_LIB)/libctqwMPI.$(EXT)
 lib/libctqwMPI.so: $(CTQW_DIR)/src/ctqwMPI.F90 
 	mkdir -p $(CTQW_INCLUDE)
 	mkdir -p $(CTQW_LIB)
-	cd $(CTQW_DIR)/src && $(FLINKER) -shared -fPIC -Wno-conversion -J../$(CTQW_INCLUDE) ctqwMPI.F90 -o ../$(CTQW_LIB)/libctqwMPI.so $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
+	cd $(CTQW_DIR)/src && $(FLINKER) -shared -fPIC -Wno-conversion $(MOD)../$(CTQW_INCLUDE) ctqwMPI.F90 -o ../$(CTQW_LIB)/libctqwMPI.so $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
 
 lib/libctqwMPI.a: $(CTQW_DIR)/src/ctqwMPI.F90 
 	mkdir -p $(CTQW_INCLUDE)
 	mkdir -p $(CTQW_LIB)
-	cd $(CTQW_DIR)/src && $(FLINKER) -Wno-conversion -J../$(CTQW_INCLUDE) -c ctqwMPI.F90 -o libctqw-MPI.o $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
+	cd $(CTQW_DIR)/src && $(FLINKER) -Wno-conversion $(MOD)../$(CTQW_INCLUDE) -c ctqwMPI.F90 -o libctqw-MPI.o $(PETSC_INCLUDE) $(PETSC_ARCH_INCLUDE) $(SLEPC_INCLUDE)
 	ar cr $(CTQW_DIR)/lib/libctqwMPI.a $(CTQW_DIR)/src/libctqw-MPI.o
 
 # documentation
