@@ -234,8 +234,8 @@ module ctqwMPI
                 enddo
             enddo
             
-            call MatAssemblyBegin(mat,ierr)
-            call MatAssemblyEnd(mat,ierr)
+            call MatAssemblyBegin(mat,MAT_FINAL_ASSEMBLY,ierr)
+            call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
             
             deallocate(matArray)
         endif
@@ -406,9 +406,9 @@ module ctqwMPI
         
             call PetscBarrier(mat,ierr)
 
-            call MatAssemblyBegin(mat,ierr)
+            call MatAssemblyBegin(mat,MAT_FINAL_ASSEMBLY,ierr)
             CHKERRQ(ierr)
-            call MatAssemblyEnd(mat,ierr)
+            call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
             CHKERRQ(ierr)
         
             deallocate(H2Array)
@@ -471,9 +471,9 @@ module ctqwMPI
 
             call PetscBarrier(mat,ierr)
         
-            call MatAssemblyBegin(mat,ierr)
+            call MatAssemblyBegin(mat,MAT_FINAL_ASSEMBLY,ierr)
             CHKERRQ(ierr)
-            call MatAssemblyEnd(mat,ierr)
+            call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
         
             deallocate(H2Array,intTestArray)
         
@@ -494,8 +494,8 @@ module ctqwMPI
             enddo
         
             call PetscBarrier(mat,ierr)
-            call MatAssemblyBegin(mat,ierr)
-            call MatAssemblyEnd(mat,ierr)
+            call MatAssemblyBegin(mat,MAT_FINAL_ASSEMBLY,ierr)
+            call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
         endif
 
     end subroutine adjToH 
@@ -1354,8 +1354,8 @@ module ctqwMPI
             call PetscBarrier(PETSC_COMM_WORLD,ierr)
         endif
 
-        call MatAssemblyBegin(rhoX,ierr)
-        call MatAssemblyEnd(rhoX,ierr)
+        call MatAssemblyBegin(rhoX,MAT_FINAL_ASSEMBLY,ierr)
+        call MatAssemblyEnd(rhoX,MAT_FINAL_ASSEMBLY,ierr)
         
         if (vecType == "seq") then
             call VecRestoreArrayF90(psi,workArray,ierr)
