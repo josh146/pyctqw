@@ -1172,18 +1172,18 @@ module ctqwMPI
         PetscInt      :: m, terms, i, j
         PetscReal     :: alpha
         PetscScalar   :: bessj0, bessj1, bessjn, &
-                            EmEm, 2dEmEm, imagM, neg1
+                            EmEm, d2EmEm, imagM, neg1
         Vec, pointer  :: work(:)
 
         EmEm = (Emax+Emin)/(Emax-Emin)
-        2dEmEm = -2.d0/(Emax-Emin)
+        d2EmEm = -2.d0/(Emax-Emin)
         alpha = PetscRealPart((Emax-Emin)*dt/2.d0)
         
         call VecDuplicateVecsF90(psi0,4,work,ierr)
         
         call VecCopy(psi0,work(1),ierr)
         call MatMult(H,work(1),work(2),ierr)
-        call VecAXPBY(work(2), EmEm,2dEmEm, work(1),ierr)
+        call VecAXPBY(work(2), EmEm,d2EmEm, work(1),ierr)
         
         bessj0 = dbesjn(0,alpha)
         bessj1 = dbesjn(1,alpha)
@@ -1196,13 +1196,13 @@ module ctqwMPI
         end do
         
         EmEm = 2.d0*EmEm
-        2dEmEm = 2.d0*2dEmEm
+        d2EmEm = 2.d0*d2EmEm
         imagM = 2.d0*(PETSC_i*PETSC_i)
         neg1 = -1.d0
 
         do m = 2, terms
             call MatMult(H,work(2),work(3),ierr)
-            call VecAXPBY(work(3), EmEm, 2dEmEm, work(2),ierr)
+            call VecAXPBY(work(3), EmEm, d2EmEm, work(2),ierr)
             call VecAXPY(work(3),neg1,work(1),ierr)
             
             bessjn = dbesjn(m,alpha)
