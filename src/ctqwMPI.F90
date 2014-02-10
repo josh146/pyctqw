@@ -346,7 +346,7 @@ module ctqwMPI
         ! local variables
         PetscMPIInt              :: rank
         PetscErrorCode           :: ierr
-        PetscInt                 :: stat, i, Istart, Iend, j, k
+        PetscInt                 :: stat, i, Istart, Iend, j, k, Nsq, Ncb
         PetscScalar              :: alpha, HArray(N,N)
         PetscInt, allocatable    :: intTestArray(:)
         PetscScalar, allocatable :: ident(:,:),ident2(:,:), temp(:,:),temp3(:,:), H2Array(:,:)
@@ -372,7 +372,8 @@ module ctqwMPI
         enddo
         
         if (p == '2') then
-            allocate(H2Array(N**2,N**2), ident(N,N), temp(N**2,N**2))
+            Nsq = N*N
+            allocate(H2Array(Nsq,Nsq), ident(N,N), temp(Nsq,Nsq))
         
             call identity(ident,N)
             call kron(HArray,N,N,ident,N,N,H2Array)
@@ -384,13 +385,13 @@ module ctqwMPI
             
             call PetscBarrier(mat,ierr)
         
-            call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,N**2,N**2,ierr)
+            call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,Nsq,Nsq,ierr)
             call MatSetFromOptions(mat,ierr)
             call MatSetUp(mat,ierr)
             call MatGetOwnershipRange(mat,Istart,Iend,ierr)
         
             do i=Istart, Iend-1            
-                do j=1,N**2
+                do j=1,Nsq
 
                     if (i==j-1 .and. mod(j,n+1)==1) then
                         alpha = interaction
@@ -414,45 +415,48 @@ module ctqwMPI
             deallocate(H2Array)
 
         elseif (p == '3') then
-            allocate(H2Array(N**3,N**3), ident(N,N), ident2(N**2,N**2), &
-                       & intTestArray(N),temp(N**3,N**3),temp3(N**3,N**3))
+            Nsq = N*N
+            Ncb = N*Nsq
+
+            allocate(H2Array(Ncb,Ncb), ident(N,N), ident2(Nsq,Nsq), &
+                       & intTestArray(N),temp(Ncb,Ncb),temp3(Ncb,Ncb))
         
             call identity(ident,N)
-            call identity(ident2,N**2)
+            call identity(ident2,Nsq)
 
-            call kron(ident2,N**2,N**2,HArray,N,N,temp)
-            call kron(HArray,N,N,ident2,N**2,N**2,temp3)
+            call kron(ident2,Nsq,Nsq,HArray,N,N,temp)
+            call kron(HArray,N,N,ident2,Nsq,Nsq,temp3)
 
             call kron(ident,N,N,HArray,N,N,ident2)
-            call kron(ident2,N**2,N**2,ident,N,N,H2Array)
+            call kron(ident2,Nsq,Nsq,ident,N,N,H2Array)
 
             H2Array = temp + H2Array + temp3
             deallocate(ident,ident2,temp,temp3)
             
             call PetscBarrier(mat,ierr)
         
-            call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,N**3,N**3,ierr)
+            call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,Ncb,Ncb,ierr)
             call MatSetFromOptions(mat,ierr)
             call MatSetUp(mat,ierr)
             call MatGetOwnershipRange(mat,Istart,Iend,ierr)
 
-            intTestArray = [(i, i=1, n**2, n)]
+            intTestArray = [(i, i=1, Nsq, n)]
 
             do i=Istart, Iend-1
-                do j=1,N**3
+                do j=1,Ncb
                     
                     if (i==j-1) then
 
-                        if ( mod(j,n**2+n+1) == 1 ) then
+                        if ( mod(j,Nsq+n+1) == 1 ) then
                             alpha = 2*interaction
 
-                        elseif ((mod(j,n**2+n) .le. n) .and. (mod(j,n**2+1) .ge. 1)) then
+                        elseif ((mod(j,Nsq+n) .le. n) .and. (mod(j,Nsq+1) .ge. 1)) then
                             alpha = interaction
 
-                        elseif ( mod(j,n+1) == int(ceiling(real(j)/real(n**2))) ) then
+                        elseif ( mod(j,n+1) == int(ceiling(real(j)/real(Nsq))) ) then
                             alpha = interaction
 
-                        elseif ( any(intTestArray .eq. mod(j,n**2+1)) ) then
+                        elseif ( any(intTestArray .eq. mod(j,Nsq+1)) ) then
                             alpha = interaction
 
                         else
@@ -487,9 +491,9 @@ module ctqwMPI
         
             do i=Istart, Iend-1            
                 do j=1,N
-                if (HArray(i+1,j) .ne. 0) then
-                    call MatSetValue(mat,i,j-1,HArray(i+1,j),INSERT_VALUES,ierr)
-                endif
+                    if (HArray(i+1,j) .ne. 0) then
+                        call MatSetValue(mat,i,j-1,HArray(i+1,j),INSERT_VALUES,ierr)
+                    endif
                 enddo
             enddo
         
@@ -530,7 +534,7 @@ module ctqwMPI
         integer, intent(in)    :: z ! vertex location of particle 3
         integer                :: coord3P ! output 3P statepace coordinate
     
-        coord3P = (n**2)*x + n*y + z
+        coord3P = (n*n)*x + n*y + z
     end function coord3P
     
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -579,7 +583,7 @@ module ctqwMPI
         Vec         :: work
         VecScatter  :: ctx
         
-        NN = n**2
+        NN = N*N
         
         ! create work vector
         call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,NN,work,ierr)
@@ -628,14 +632,15 @@ module ctqwMPI
         ! local variables
         PetscErrorCode           :: ierr
         PetscMPIInt              :: rank
-        PetscInt                 :: i, j, NN, Istart, Iend
+        PetscInt                 :: i, j, NN, Nsq, Istart, Iend
         PetscInt, allocatable    :: ind(:)
         PetscScalar, allocatable :: temp(:)
         PetscScalar, pointer     :: workArray(:)
         Vec                      :: work
         VecScatter               :: ctx
         
-        NN = n**3
+        Nsq = N*N
+        NN = N*Nsq
         
         ! create work vector
         call VecCreateMPI(PETSC_COMM_WORLD,PETSC_DECIDE,NN,work,ierr)
@@ -657,11 +662,11 @@ module ctqwMPI
         
         if (p=='x') then
             do i=Istart,Iend-1
-                temp(i+1-Istart) = sum(abs(workArray(1+i*(n**2):(n**2)*(1+i)))**2.d0)
+                temp(i+1-Istart) = sum(abs(workArray(1+i*(Nsq):(Nsq)*(1+i)))**2.d0)
             end do
         elseif (p=='y') then
             do i=Istart,Iend-1
-                temp(i+1-Istart) = sum(abs([(workArray(1+i*n+j*(n**2):n+i*n+j*(n**2)), j=0, n-1)])**2.d0)
+                temp(i+1-Istart) = sum(abs([(workArray(1+i*n+j*(Nsq):n+i*n+j*(Nsq)), j=0, n-1)])**2.d0)
             end do
         elseif (p=='z') then
             do i=Istart,Iend-1
@@ -837,7 +842,7 @@ module ctqwMPI
         PetscScalar    :: value(3), alpha
         PetscScalar    :: diagArray(n)
         
-        NN = n**2
+        NN = N*N
         
         ! create array of 1D diagonal entries
         diagArray = 2.d0
