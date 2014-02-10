@@ -347,7 +347,7 @@ module ctqwMPI
         PetscMPIInt              :: rank
         PetscErrorCode           :: ierr
         PetscInt                 :: stat, i, Istart, Iend, j, k, Nsq, Ncb
-        PetscScalar              :: alpha, HArray(N,N)
+        PetscScalar              :: HArray(N,N)
         PetscInt, allocatable    :: intTestArray(:)
         PetscScalar, allocatable :: ident(:,:),ident2(:,:), temp(:,:),temp3(:,:), H2Array(:,:)
         
@@ -392,15 +392,12 @@ module ctqwMPI
         
             do i=Istart, Iend-1            
                 do j=1,Nsq
-
-                    if (i==j-1 .and. mod(j,n+1)==1) then
-                        alpha = interaction
-                    else
-                        alpha = 0.d0
-                    endif
-
                     if (H2Array(i+1,j) .ne. 0) then
-                        call MatSetValue(mat,i,j-1,H2Array(i+1,j)+alpha,INSERT_VALUES,ierr)
+                        if (i==j-1 .and. mod(j,n+1)==1) then
+                            call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
+                        else
+                            call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
+                        endif
                     endif
                 enddo
             enddo
@@ -444,31 +441,22 @@ module ctqwMPI
 
             do i=Istart, Iend-1
                 do j=1,Ncb
-                    
-                    if (i==j-1) then
-
-                        if ( mod(j,Nsq+n+1) == 1 ) then
-                            alpha = 2*interaction
-
-                        elseif ((mod(j,Nsq+n) .le. n) .and. (mod(j,Nsq+1) .ge. 1)) then
-                            alpha = interaction
-
-                        elseif ( mod(j,n+1) == int(ceiling(real(j)/real(Nsq))) ) then
-                            alpha = interaction
-
-                        elseif ( any(intTestArray .eq. mod(j,Nsq+1)) ) then
-                            alpha = interaction
-
+                    if (H2Array(i+1,j) .ne. 0) then 
+                        if (i==j-1) then
+                            if ( mod(j,Nsq+n+1) == 1 ) then
+                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j)+2*interaction,INSERT_VALUES,ierr)
+                            elseif ((mod(j,Nsq+n) .le. n) .and. (mod(j,Nsq+1) .ge. 1)) then
+                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
+                            elseif ( mod(j,n+1) == int(ceiling(real(j)/real(Nsq))) ) then
+                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
+                            elseif ( any(intTestArray .eq. mod(j,Nsq+1)) ) then
+                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
+                            else
+                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
+                            endif
                         else
-                            alpha = 0.d0
+                             call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
                         endif
-
-                    else
-                        alpha = 0.d0
-                    endif
-
-                    if (H2Array(i+1,j) .ne. 0) then
-                        call MatSetValue(mat,i,j-1,H2Array(i+1,j)+alpha,INSERT_VALUES,ierr)
                     endif
                 enddo
             enddo
@@ -1183,16 +1171,19 @@ module ctqwMPI
         PetscErrorCode :: ierr
         PetscInt      :: m, terms, i, j
         PetscReal     :: alpha
-        PetscScalar   :: bessj0, bessj1, bessjn
+        PetscScalar   :: bessj0, bessj1, bessjn, &
+                            EmEm, 2dEmEm, imagM, neg1
         Vec, pointer  :: work(:)
-        
+
+        EmEm = (Emax+Emin)/(Emax-Emin)
+        2dEmEm = -2.d0/(Emax-Emin)
         alpha = PetscRealPart((Emax-Emin)*dt/2.d0)
         
         call VecDuplicateVecsF90(psi0,4,work,ierr)
         
         call VecCopy(psi0,work(1),ierr)
         call MatMult(H,work(1),work(2),ierr)
-        call VecAXPBY(work(2), (Emax+Emin)/(Emax-Emin),-2.d0/(Emax-Emin), work(1),ierr)
+        call VecAXPBY(work(2), EmEm,2dEmEm, work(1),ierr)
         
         bessj0 = dbesjn(0,alpha)
         bessj1 = dbesjn(1,alpha)
@@ -1204,13 +1195,19 @@ module ctqwMPI
             terms = terms + 1
         end do
         
+        EmEm = 2.d0*EmEm
+        2dEmEm = 2.d0*2dEmEm
+        imagM = 2.d0*(PETSC_i*PETSC_i)
+        neg1 = -1.d0
+
         do m = 2, terms
             call MatMult(H,work(2),work(3),ierr)
-            call VecAXPBY(work(3), 2.d0*(Emax+Emin)/(Emax-Emin),-4.d0/(Emax-Emin), work(2),ierr)
-            call VecAXPY(work(3),-1.d0+0.d0*PETSC_i,work(1),ierr)
+            call VecAXPBY(work(3), EmEm, 2dEmEm, work(2),ierr)
+            call VecAXPY(work(3),neg1,work(1),ierr)
             
             bessjn = dbesjn(m,alpha)
-            call VecAXPY(work(4),2.d0*(PETSC_i**m)*bessjn,work(3),ierr)
+            call VecAXPY(work(4),imagM*bessjn,work(3),ierr)
+            imagM = imagM*PETSC_i
 
             call VecCopy(work(2),work(1),ierr)
             call VecCopy(work(3),work(2),ierr)
