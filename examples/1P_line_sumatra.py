@@ -18,9 +18,10 @@ import pyCTQW.MPI as qw
 
 class capture(object):
 
-    def __init__(self,np=1,reason=None):
+    def __init__(self,np=1,reason=None,label=None):
         self.np = np
         self.reason = reason
+        self.label = label + '_' + time.strftime("%d%m%y-%H%M%S")
 
         if self.np > 1:
             self.launchmode = DistributedLaunchMode(self.np)
@@ -41,6 +42,7 @@ class capture(object):
                                         main_file=main_file,
                                         executable=self.executable,
                                         launch_mode=self.launchmode,
+                                        label=self.label,
                                         reason=self.reason)
 
             parameters.update({"sumatra_label": record.label})
@@ -53,7 +55,7 @@ class capture(object):
 
         return wrapped_main
 
-@capture(np=4)
+@capture(np=4,label='1P_line')
 def main(parameters):
     # get the MPI rank
     rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
@@ -91,13 +93,13 @@ def main(parameters):
 
     # plot the marginal probabilities
     # after propagation over all nodes
-    walk.plot('out/{}plot.png'.format(parameters["sumatra_label"]))
+    walk.plot('out/{}-plot.png'.format(parameters["sumatra_label"]))
 
     # plot the probability over time for the watched nodes
-    walk.plotNodes('out/{}nodes.png'.format(parameters["sumatra_label"]))
+    walk.plotNodes('out/{}-nodes.png'.format(parameters["sumatra_label"]))
 
     # export final state
-    walk.exportState("out/{}state.txt".format(parameters["sumatra_label"]), "txt")
+    walk.exportState("out/{}-state.txt".format(parameters["sumatra_label"]), "txt")
 
     # destroy the quantum walk
     walk.destroy()
