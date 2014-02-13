@@ -9,6 +9,9 @@ from petsc4py import PETSc
 import numpy as np
 
 import sumatra
+from sumatra.launch import DistributedLaunchMode
+from sumatra.launch import SerialLaunchMode
+from sumatra.parameters import build_parameters
 
 # import pyCTQW as qw
 import pyCTQW.MPI as qw
@@ -20,15 +23,16 @@ class capture(object):
         self.reason = reason
 
         if self.np > 1:
-            self.launchmode = sumatra.launch.DistributedLaunchMode(self.np)
+            self.launchmode = DistributedLaunchMode(self.np)
             self.executable = sumatra.programs.Executable(path="mpirun")
         else:
-            self.launchmode = sumatra.launch.SerialLaunchMode()
+            self.launchmode = SerialLaunchMode()
             self.executable = sumatra.programs.PythonExecutable(path=sys.executable)
 
     def __call__(self,main):
 
         def wrapped_main(parameters, *args, **kwargs):
+            import sumatra.projects
 
             project = sumatra.projects.load_project()
             main_file = os.path.relpath(sys.modules['__main__'].__file__)
@@ -99,5 +103,5 @@ def main(parameters):
     walk.destroy()
 
 parameter_file = sys.argv[1]
-parameters = sumatra.parameters.build_parameters(parameter_file)
+parameters = build_parameters(parameter_file)
 main(parameters)
