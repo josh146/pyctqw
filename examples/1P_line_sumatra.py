@@ -11,6 +11,8 @@ from sumatra.decorators import capture
 # import pyCTQW as qw
 import pyCTQW.MPI as qw
 
+__file__ = "trunk/examples/1P_line_sumatra.py"
+
 @capture
 def main(parameters):
 	# get the MPI rank
