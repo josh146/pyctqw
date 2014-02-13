@@ -6,12 +6,12 @@ from petsc4py import PETSc
 import numpy as np
 
 from sumatra.parameters import build_parameters
-from sumatra.decorators import capture
+from sumatra.decorators import capture, captureMPI
 
 # import pyCTQW as qw
 import pyCTQW.MPI as qw
 
-@capture
+@captureMPI
 def main(parameters):
 	# get the MPI rank
 	rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
