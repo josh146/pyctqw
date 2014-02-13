@@ -51,5 +51,8 @@ walk.plot('out/1p_line_plot.png')
 # plot the probability over time for the watched nodes
 walk.plotNodes('out/1p_line_nodes.png')
 
+# export final state
+walk.exportState("out/1p_final_state.txt", "txt")
+
 # destroy the quantum walk
 walk.destroy()
