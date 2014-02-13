@@ -11,7 +11,7 @@ from sumatra.decorators import capture, captureMPI
 # import pyCTQW as qw
 import pyCTQW.MPI as qw
 
-@captureMPI
+@captureMPI(n=4)
 def main(parameters):
 	# get the MPI rank
 	rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
