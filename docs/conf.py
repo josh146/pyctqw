@@ -18,6 +18,10 @@ import sys, os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('../'))
 
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+    sys.path.insert(0, '/var/build/user_builds/pyctqw/envs/latest/src/sphinxcontrib-fulltoc')
+
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
