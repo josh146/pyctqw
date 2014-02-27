@@ -90,7 +90,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'pyCTQW'
-copyright = u'2013, Josh Izaac'
+copyright = u'2014, Josh Izaac'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -157,15 +157,16 @@ import sphinx_bootstrap_theme
 html_theme = 'bootstrap'
 html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 html_theme_options = {
-		'navbar_fixed_top': "true",
-		'source_link_position': "footer",
+        'navbar_fixed_top': "true",
+        'source_link_position': "footer",
         'globaltoc_depth': -1,
         'bootstrap_version': "3",
-		'bootswatch_theme': "united",
+        'bootswatch_theme': "united",
         # 'bootswatch_theme': "lumen",
         # 'bootswatch_theme': "simplex",
-        'navbar_links': [("Index", "genindex")],
-}
+        'navbar_links': [("Index", "genindex"),
+            ("Source Code","https://github.com/josh146/pyctqw/",True)],
+    }
 
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -199,7 +200,7 @@ html_short_title = 'pyCTQW'
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
-#html_last_updated_fmt = '%b %d, %Y'
+html_last_updated_fmt = '%b %d, %Y'
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
@@ -263,7 +264,7 @@ latex_documents = [
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = 'silly_walk_html.png'
+# latex_logo = 'silly_walk_html.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.

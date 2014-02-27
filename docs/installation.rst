@@ -25,15 +25,21 @@ Compiling and installing :py:mod:`pyCTQW.MPI`
 =============================================
 
 1) Ensure all dependencies required above are installed
+   
+2) Download the latest version of :mod:`pyctqw`:
+   	
+   	.. code-block:: bash
 
-2) Extract the :mod:`pyCTQW` tarball, and ``cd`` into the extracted directory:
+   		$ wget https://github.com/josh146/pyctqw/archive/master.zip -O pyctqw.zip
+
+3) Extract the :mod:`pyCTQW` zip folder, and ``cd`` into the extracted directory:
 
 	.. code-block:: bash
 		
-		$ tar -zxvf pyCTQW-X.Y.tar.gz
-		$ cd pyCTQW-X.Y
+		$ unzip pyctqw.zip
+		$ cd pyctqw-master
 
-3) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
+4) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
 
 	.. code-block:: bash
 
@@ -46,13 +52,13 @@ Compiling and installing :py:mod:`pyCTQW.MPI`
 	.. important::
 		If you plan to install :py:mod:`pyCTQW.MPI` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
 
-4) Compile the Python module :py:mod:`pyCTQW.MPI` by running
+5) Compile the Python module :py:mod:`pyCTQW.MPI` by running
 
 	.. code-block:: bash
 		
 		$ python setup.py build
 
-5) System-wide install:
+6) System-wide install:
 
 	.. code-block:: bash
 		
