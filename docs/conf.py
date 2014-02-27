@@ -18,9 +18,8 @@ import sys, os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('../'))
 
+# readthedocs config
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:
-    sys.path.insert(0, '/var/build/user_builds/pyctqw/envs/latest/src/sphinxcontrib-fulltoc')
 
 # -- General configuration -----------------------------------------------------
 
@@ -29,10 +28,17 @@ if on_rtd:
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = [	'sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.mathjax',
-				'sphinx.ext.ifconfig', 'sphinx.ext.viewcode', 'sphinx.ext.autosummary',
-				'sphinxfortran.fortran_domain', 'sphinxfortran.fortran_autodoc',
-				'sphinxcontrib.napoleon','sphinxcontrib.fulltoc']
+
+extensions_list = [ 'sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.mathjax',
+                    'sphinx.ext.ifconfig', 'sphinx.ext.viewcode', 'sphinx.ext.autosummary',
+                    'sphinxfortran.fortran_domain', 'sphinxfortran.fortran_autodoc',
+                    'sphinxcontrib.napoleon']
+
+if on_rtd:
+    extensions = extensions_list 
+else:
+    extensions = extensions_list + ['sphinxcontrib.fulltoc']
+
 
 from sphinx.highlighting import lexers
 from pygments.lexers import FortranLexer
@@ -41,9 +47,6 @@ lexers['fortran'] = FortranLexer()
 napoleon_use_rtype = True
 napoleon_include_special_with_doc = False
 autosummary_generate = True
-
-# readthedocs config
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 class Mock(object):
     def __init__(self, *args, **kwargs):
