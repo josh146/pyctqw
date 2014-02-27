@@ -37,7 +37,7 @@ extensions_list = [ 'sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.mat
 if on_rtd:
     extensions = extensions_list 
 else:
-    extensions = extensions_list + ['sphinxcontrib.fulltoc']
+    extensions = extensions_list #+ ['sphinxcontrib.fulltoc']
 
 
 from sphinx.highlighting import lexers
@@ -141,39 +141,31 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 
-# Cloud Theme
-# import cloud_sptheme as csp
-# html_theme = "cloud"
-# html_theme_path = [csp.get_theme_dir()]
-# html_theme_options = { "roottarget": "index" }
-
 # Default Theme
 # html_theme = "nature"
 # html_theme_options = {"stickysidebar" : True}
 
-if on_rtd:
-    html_style = "/default.css"
-    html_theme = "default"
-else:
-    #solar theme
-    html_theme = "solar"
-    html_theme_path = ['_themes']
-
-# readable theme
-# import sphinx_readable_theme
-# html_theme_path = [sphinx_readable_theme.get_html_theme_path()]
-# html_theme = 'readable'
+# if on_rtd:
+#     html_theme = "default"
+# else:
+#     #solar theme
+#     html_theme = "solar"
+#     html_theme_path = ['_themes']
 
 # Bootstrap theme
-# import sphinx_bootstrap_theme
-# html_theme = 'bootstrap'
-# html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
-# html_theme_options = {
-# 		# 'navbar_class': "navbar navbar-inverse",
-# 		'navbar_fixed_top': "true",
-# 		'source_link_position': "footer",
-# 		'bootswatch_theme': "flatly",
-# }
+import sphinx_bootstrap_theme
+html_theme = 'bootstrap'
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
+html_theme_options = {
+		'navbar_fixed_top': "true",
+		'source_link_position': "footer",
+        'globaltoc_depth': -1,
+        'bootstrap_version': "3",
+		'bootswatch_theme': "united",
+        # 'bootswatch_theme': "lumen",
+        # 'bootswatch_theme': "simplex",
+        'navbar_links': [("Index", "genindex")],
+}
 
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -193,17 +185,17 @@ html_short_title = 'pyCTQW'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = 'silly_walk_html2.png'
+# html_logo = 'silly_walk_html2.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'silly_walk_favicon.ico'
+# html_favicon = 'silly_walk_favicon.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
