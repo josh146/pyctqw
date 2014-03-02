@@ -46,13 +46,10 @@ lib/libctqwMPI.a: $(CTQW_DIR)/src/ctqwMPI.F90
 	ar cr $(CTQW_DIR)/lib/libctqwMPI.a $(CTQW_DIR)/src/libctqw-MPI.o
 
 # documentation
-docs-html:
+.PHONY: docs
+docs:
 	make -C docs/ html
 	ln -fs docs/_build/html/index.html ./index.html
-docs-pdf:
-	make -C docs/ latex
-	make -C docs/_build/latex
-	mv docs/_build/latex/pyCTQW.pdf ./
 docs-clean:
 	make -C docs/ clean
 	rm -f docs/stub/*

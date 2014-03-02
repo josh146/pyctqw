@@ -3,6 +3,8 @@ Fortran library and Python module to calculate continuous-time quantum walks
 This is intended to provide a framework to quickly and easily work with quantum
 walkers, take advantage of high performance computing, and allow easy visualisation.
 
+Website: http://pyctqw.readthedocs.org
+
 Features
 ============
 * Fortran and Python bindings (in the form of a library and module respectively)
@@ -127,7 +129,7 @@ If `Sphinx <http://sphinx-doc.org/>`_ is installed, the documentation can be com
 
 	.. code-block:: bash
 		
-		$ make docs-html
+		$ make docs
 
 Documentation
 ===============

@@ -26,7 +26,7 @@ Compiling and installing :py:mod:`pyCTQW.MPI`
 
 1) Ensure all dependencies required above are installed
    
-2) Download the latest version of :mod:`pyctqw`, extract the :mod:`pyCTQW` archive, and ``cd`` into the extracted directory::
+2) :doc:`Download <downloads>` the latest version of :mod:`pyctqw`, extract the :mod:`pyCTQW` archive, and ``cd`` into the extracted directory:
    	
    	.. code-block:: bash
 
@@ -78,16 +78,7 @@ If `Sphinx <http://sphinx-doc.org/>`_ is installed, the documentation can be com
 
 	.. code-block:: bash
 		
-		$ make docs-html
-
-or
-
-	.. code-block:: bash
-		
-		$ make docs-pdf
-
-Note that in order to compile the PDF documentation, texlive must be
-installed.
+		$ make docs
 
 Known Issues
 ==============

@@ -165,7 +165,8 @@ html_theme_options = {
         # 'bootswatch_theme': "lumen",
         # 'bootswatch_theme': "simplex",
         'navbar_links': [("Index", "genindex"),
-            ("Source Code","https://github.com/josh146/pyctqw/",True)],
+            ("Source","https://github.com/josh146/pyctqw/",True)],
+        'navbar_pagenav': False,
     }
 
 

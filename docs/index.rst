@@ -17,6 +17,7 @@ pyCTQW Manual
     |    :glob:                  |  * Fortran and Python bindings (in the form of a library and module respectively)                        |
     |    :maxdepth: 2            |  * Supports MPI through the use of the PETSc and SLEPc high-performance sparse                           |
     |                            |    matrix libraries (CUDA support planned)                                                               |
+    |    downloads               |                                                                                                          |
     |    installation            |  * Has in-built support for infinite-line Hamiltonians                                                   |
     |    quickstart              |                                                                                                          |
     |    pyCTQW.MPI              |  * Can import custom adjancency matrices                                                                 |
@@ -45,4 +46,4 @@ pyCTQW Manual
     |                            | .. image: examples/2P_3cayley/2p_3cayley_ent.png                                                         |
     |                            |   :width: 250pt                                                                                          |
     +----------------------------+----------------------------------------------------------------------------------------------------------+
-
+    
