@@ -45,12 +45,12 @@ Installation
 
 1) Ensure all dependencies required above are installed
 
-2) Extract the ``pyCTQW`` tarball, and ``cd`` into the extracted directory:
+2) Extract the ``pyCTQW`` zip folder, and ``cd`` into the extracted directory:
 
 	.. code-block:: bash
 		
-		$ tar -zxvf pyCTQW-X.Y.tar.gz
-		$ cd pyCTQW-X.Y
+		$ unzip v1.0.zip
+		$ cd pyctqw-v1.0
 
 3) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
 

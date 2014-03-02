@@ -30,14 +30,14 @@ Compiling and installing :py:mod:`pyCTQW.MPI`
    	
    	.. code-block:: bash
 
-   		$ wget https://github.com/josh146/pyctqw/archive/master.zip -O pyctqw.zip
+   		$ wget https://github.com/josh146/pyctqw/archive/v1.0.zip -O pyctqw.zip
 
 3) Extract the :mod:`pyCTQW` zip folder, and ``cd`` into the extracted directory:
 
 	.. code-block:: bash
 		
-		$ unzip pyctqw.zip
-		$ cd pyctqw-master
+		$ unzip v1.0.zip
+		$ cd pyctqw-v1.0
 
 4) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
 

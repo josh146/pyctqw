@@ -1,3 +1,11 @@
+!
+!  The graph isomorphism subroutine GraphISCert uses the external subroutine
+!  d_refsor, a highly optimised Fortran sorting implementation written by
+!  Michel Olagnon and part of the ORDERPACK 2.0 suite of ranking and sorting
+!  algorithms for Fortran 90. http://www.fortran-2000.com/rank/
+!  ----------------------------------------------------------------------------
+!
+!
 ! ! Module m_refsor
 ! Integer, Parameter :: kdp = selected_real_kind(15)
 ! public :: refsor
