@@ -49,8 +49,8 @@ Installation
 
 	.. code-block:: bash
 		
-		$ unzip v1.0.zip
-		$ cd pyctqw-v1.0
+		$ unzip pyctqw-X.Y.zip
+		$ cd pyctqw-X.Y
 
 3) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
 
