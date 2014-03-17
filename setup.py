@@ -11,8 +11,9 @@ info={
     'description'   : 'An MPI enabled CTQW simulator',
     'long_description' : open('README.rst').read(),
     'provides'      : ["pyCTQW"],
-    'install_requires' : ['numpy','scipy','matplotlib','networkx==1.7','mpi4py','petsc4py'],
-    'dependency_links' : ['http://networkx.lanl.gov/download/networkx/networkx-1.7.tar.gz#egg=networkx-1.7']
+    'install_requires' : ['numpy','scipy','matplotlib','networkx==1.7','mpi4py','petsc4py==3.4'],
+    'dependency_links' : ['http://networkx.lanl.gov/download/networkx/networkx-1.7.tar.gz#egg=networkx-1.7',
+        'https://bitbucket.org/petsc/petsc4py/downloads/petsc4py-3.4.tar.gz#egg=petsc4py-3.4']
   }
 
 classifiers=[
@@ -61,9 +62,9 @@ def MPIpackage(config):
         elif not (os.path.isfile(PETSC_DIR+'/'+PETSC_ARCH+'/lib/libpetsc.so') or os.path.isfile(PETSC_DIR+'/'+PETSC_ARCH+'/lib/libpetsc.a')):
             raise dirError
     except KeyError:
-        raise noMPI("ERROR: PETSC_DIR environment variable not set")
+        raise Exception("ERROR: PETSC_DIR environment variable not set")
     except dirError:
-        raise noMPI("ERROR: PETSC_DIR does not point towards a valid directory")
+        raise Exception("ERROR: PETSC_DIR does not point towards a valid directory")
     
     # get PETSc include and library directories
     if PETSC_ARCH and os.path.isdir(os.path.join(PETSC_DIR, PETSC_ARCH)):
@@ -80,7 +81,10 @@ def MPIpackage(config):
     try:
         import petsc4py
     except ImportError:
-        raise noMPI("ERROR: petsc4py not installed")
+        raise Exception("""ERROR: petsc4py 3.4 not installed. 
+This can be installed by running 
+pip install https://bitbucket.org/petsc/petsc4py/downloads/petsc4py-3.4.tar.gz
+Please see http://pythonhosted.org/petsc4py/ for more info.""")
         
     INCLUDE_DIRS += [petsc4py.get_include()]
                   
@@ -92,9 +96,9 @@ def MPIpackage(config):
         elif not (os.path.isfile(SLEPC_DIR+'/'+PETSC_ARCH+'/lib/libslepc.so') or os.path.isfile(SLEPC_DIR+'/'+PETSC_ARCH+'/lib/libslepc.a')):
             raise dirError
     except KeyError:
-        raise noMPI("ERROR: SLEPC_DIR environment variable not set")
+        raise Exception("ERROR: SLEPC_DIR environment variable not set")
     except dirError:
-        raise noMPI("ERROR: SLEPC_DIR does not point towards a valid directory")
+        raise Exception("ERROR: SLEPC_DIR does not point towards a valid directory")
     
     # get SLEPc include and library directories 
     if PETSC_ARCH and os.path.isdir(os.path.join(PETSC_DIR, PETSC_ARCH)):
@@ -153,10 +157,10 @@ def configuration(parent_package='', top_path=''):
 
 def run_setup():
     try:
-    	import setuptools
+        import setuptools
         from numpy.distutils.core import setup
     except ImportError:
-        raise DistutilsError("requires NumPy>=1.6")
+        raise Exception("Requires NumPy>=1.6")
 
     config, mpi = configuration(top_path='')
     if mpi:
