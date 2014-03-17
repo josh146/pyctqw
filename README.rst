@@ -31,15 +31,15 @@ Dependencies
 
 In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the python ``pyCTQW.MPI`` module depends on the following components:
 
-	- `Python <http://www.python.org/>`_ >= 2.7
-	- `NumPy <http://www.numpy.org/>`_ >= 1.6.0
-	- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2	
-	- `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1	
-	- `petsc4py 3.4 or petsc4py-dev <https://bitbucket.org/petsc/petsc4py>`_
-	- `mpi4py <http://mpi4py.scipy.org/>`_		(recommended, used for some plotting)
-	- `matplotlib <http://matplotlib.org/>`_	(recommended, for node plotting and graph visualisation)
-	- `SciPy <http://www.scipy.org/>`_			(recommended, for some I/O operations)
-	- `NetworkX <http://networkx.github.io/>`_		(recommended, graph visualisation)
+- `Python <http://www.python.org/>`_ >= 2.7
+- `NumPy <http://www.numpy.org/>`_ >= 1.6.0
+- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2	
+- `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1	
+- `petsc4py 3.4 or petsc4py-dev <https://bitbucket.org/petsc/petsc4py>`_
+- `mpi4py <http://mpi4py.scipy.org/>`_		(recommended, used for some plotting)
+- `matplotlib <http://matplotlib.org/>`_	(recommended, for node plotting and graph visualisation)
+- `SciPy <http://www.scipy.org/>`_			(recommended, for some I/O operations)
+- `NetworkX <http://networkx.github.io/>`_		(recommended, graph visualisation)
 
 
 Installation
@@ -47,69 +47,69 @@ Installation
 
 pyCTQW can be installed using `pip`:
 
-	.. code-block:: bash
-		
-		$ pip install pyCTQW
+.. code-block:: bash
+	
+	$ pip install pyCTQW
 
 Alternatively, the source code can be downloaded and compiled manually:
 
-	1) Ensure all dependencies required above are installed
+1) Ensure all dependencies required above are installed
 
-	2) Extract the ``pyCTQW`` folder, and ``cd`` into the extracted directory:
+2) Extract the ``pyCTQW`` folder, and ``cd`` into the extracted directory:
+
+	.. code-block:: bash
+		
+		$ tar xvzf pyctqw-v1.0.tar.gz
+		$ cd pyctqw-1.0
+
+3) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
+
+	.. code-block:: bash
+
+		$ export PETSC_DIR=/path/to/petsc
+		$ export PETSC_ARCH=linux-gnu
+		$ export SLEPC_DIR=/path/to/slepc
+
+	If you are unsure what your PETSc or SLEPc variables should be, please refer to their documentation.
+
+	.. important::
+		If you plan to install ``pyCTQW.MPI`` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
+
+4) Compile the Python module ``pyCTQW.MPI`` by running
+
+	.. code-block:: bash
+		
+		$ python setup.py build
+
+5) System-wide install:
+
+	.. code-block:: bash
+		
+		$ sudo -E python setup.py install
+
+	where the command ``-E`` ensures that the environment variables set in step 3 are passed to the root.
+
+	.. note::
+		If you do not have root access, or the above command does not appear to work, you can install the package locally by running
 
 		.. code-block:: bash
 			
-			$ tar xvzf pyctqw-v1.0.tar.gz
-			$ cd pyctqw-1.0
+			$ python setup.py install --user
 
-	3) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
-
-		.. code-block:: bash
-
-			$ export PETSC_DIR=/path/to/petsc
-			$ export PETSC_ARCH=linux-gnu
-			$ export SLEPC_DIR=/path/to/slepc
-
-		If you are unsure what your PETSc or SLEPc variables should be, please refer to their documentation.
-
-		.. important::
-			If you plan to install ``pyCTQW.MPI`` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
-
-	4) Compile the Python module ``pyCTQW.MPI`` by running
-
-		.. code-block:: bash
-			
-			$ python setup.py build
-
-	5) System-wide install:
-
-		.. code-block:: bash
-			
-			$ sudo -E python setup.py install
-
-		where the command ``-E`` ensures that the environment variables set in step 3 are passed to the root.
-
-		.. note::
-			If you do not have root access, or the above command does not appear to work, you can install the package locally by running
-
-				.. code-block:: bash
-					
-					$ python setup.py install --user
-
-		Now, have a go running some of the examples!
+	Now, have a go running some of the examples!
 
 *Optional*: compiling ``libctqwMPI``
 ===========================================================
 
 In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the Fortran library ``libctqwMPI`` depends on the following components:
-    - `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2   
-    - `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1
+- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2   
+- `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1
 
 Once these dependencies are installed, simply open a terminal in the root directory of ``pyCTQW-X.Y`` and run
      
-    .. code-block:: bash    
-        
-        $ make fortran [options]
+.. code-block:: bash    
+    
+    $ make fortran [options]
 
 where available options include
 
@@ -135,9 +135,9 @@ The fortran library (``libctqwMPI.so`` or ``libctqwMPI.a``) can be found in the 
 
 If `Sphinx <http://sphinx-doc.org/>`_ is installed, the documentation can be compiled by running
 
-	.. code-block:: bash
-		
-		$ make docs-html
+.. code-block:: bash
+	
+	$ make docs-html
 
 Documentation
 ===============

@@ -10,15 +10,15 @@ Dependencies
 
 In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `Open MPI <http://www.open-mpi.org/>`_), the :py:mod:`pyCTQW.MPI` module depends on the following components:
 
-	- `Python <http://www.python.org/>`_ >= 2.7
-	- `NumPy <http://www.numpy.org/>`_ >= 1.6.0
-	- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2	
-	- `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1	
-	- `petsc4py 3.4 or petsc4py-dev <https://pypi.python.org/pypi/petsc4py/3.4>`_
-	- `mpi4py <http://mpi4py.scipy.org/>`_		(recommended, used for some plotting)
-	- `matplotlib <http://matplotlib.org/>`_	(recommended, for node plotting and graph visualisation)
-	- `SciPy <http://www.scipy.org/>`_			(recommended, for some I/O operations)
-	- `NetworkX <http://networkx.github.io/>`_		(recommended, graph visualisation)
+- `Python <http://www.python.org/>`_ >= 2.7
+- `NumPy <http://www.numpy.org/>`_ >= 1.6.0
+- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2	
+- `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1	
+- `petsc4py 3.4 or petsc4py-dev <https://pypi.python.org/pypi/petsc4py/3.4>`_
+- `mpi4py <http://mpi4py.scipy.org/>`_		(recommended, used for some plotting)
+- `matplotlib <http://matplotlib.org/>`_	(recommended, for node plotting and graph visualisation)
+- `SciPy <http://www.scipy.org/>`_			(recommended, for some I/O operations)
+- `NetworkX <http://networkx.github.io/>`_		(recommended, graph visualisation)
 
 
 Compiling and installing :py:mod:`pyCTQW.MPI`
@@ -26,20 +26,20 @@ Compiling and installing :py:mod:`pyCTQW.MPI`
 
 After ensuring all dependencies required above are installed, :mod:`pyctqw` can be installed using `pip`:
 
-	.. code-block:: bash
-		
-		$ pip install pyCTQW
+.. code-block:: bash
+	
+	$ pip install pyCTQW
 
 
 Alternatively, the source code can be downloaded and compiled manually:
    
 	1) :doc:`Download <downloads>` the latest version of :mod:`pyctqw`, extract the :mod:`pyCTQW` archive, and ``cd`` into the extracted directory:
 	   	
-	   	.. code-block:: bash
+   	.. code-block:: bash
 
-	   		$ wget https://github.com/josh146/pyctqw/archive/v1.0.tar.gz -O pyctqw-v1.0.tar.gz
-			$ tar xzvf pyctqw-v1.0.tar.gz
-			$ cd pyctqw-v1.0
+   		$ wget https://github.com/josh146/pyctqw/archive/v1.0.tar.gz -O pyctqw-v1.0.tar.gz
+		$ tar xzvf pyctqw-v1.0.tar.gz
+		$ cd pyctqw-v1.0
 
 	2) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
 
@@ -71,9 +71,9 @@ Alternatively, the source code can be downloaded and compiled manually:
 		.. note::
 			If you do not have root access, or the above command does not appear to work, you can install the package locally by running
 
-				.. code-block:: bash
-					
-					$ python setup.py install --user
+			.. code-block:: bash
+				
+				$ python setup.py install --user
 
 		Now, have a go running some of the :doc:`examples`!
 
@@ -83,9 +83,9 @@ Alternatively, the source code can be downloaded and compiled manually:
 
 If `Sphinx <http://sphinx-doc.org/>`_ is installed, the documentation can be compiled by running
 
-	.. code-block:: bash
-		
-		$ make docs
+.. code-block:: bash
+	
+	$ make docs
 
 Known Issues
 ==============
