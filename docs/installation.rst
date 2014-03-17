@@ -24,51 +24,58 @@ In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `
 Compiling and installing :py:mod:`pyCTQW.MPI`
 =============================================
 
-1) Ensure all dependencies required above are installed
+After ensuring all dependencies required above are installed, :mod:`pyctqw` can be installed using `pip`:
+
+	.. code-block:: bash
+		
+		$ pip install pyCTQW
+
+
+Alternatively, the source code can be downloaded and compiled manually:
    
-2) :doc:`Download <downloads>` the latest version of :mod:`pyctqw`, extract the :mod:`pyCTQW` archive, and ``cd`` into the extracted directory:
-   	
-   	.. code-block:: bash
+	1) :doc:`Download <downloads>` the latest version of :mod:`pyctqw`, extract the :mod:`pyCTQW` archive, and ``cd`` into the extracted directory:
+	   	
+	   	.. code-block:: bash
 
-   		$ wget https://github.com/josh146/pyctqw/archive/v1.0.tar.gz -O pyctqw-v1.0.tar.gz
-		$ tar xzvf pyctqw-v1.0.tar.gz
-		$ cd pyctqw-v1.0
+	   		$ wget https://github.com/josh146/pyctqw/archive/v1.0.tar.gz -O pyctqw-v1.0.tar.gz
+			$ tar xzvf pyctqw-v1.0.tar.gz
+			$ cd pyctqw-v1.0
 
-3) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
+	2) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
 
-	.. code-block:: bash
+		.. code-block:: bash
 
-		$ export PETSC_DIR=/path/to/petsc
-		$ export PETSC_ARCH=linux-gnu
-		$ export SLEPC_DIR=/path/to/slepc
+			$ export PETSC_DIR=/path/to/petsc
+			$ export PETSC_ARCH=linux-gnu
+			$ export SLEPC_DIR=/path/to/slepc
 
-	If you are unsure what your PETSc or SLEPc variables should be, please refer to their documentation.
+		If you are unsure what your PETSc or SLEPc variables should be, please refer to their documentation.
 
-	.. important::
-		If you plan to install :py:mod:`pyCTQW.MPI` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
+		.. important::
+			If you plan to install :py:mod:`pyCTQW.MPI` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
 
-4) Compile the Python module :py:mod:`pyCTQW.MPI` by running
+	3) Compile the Python module :py:mod:`pyCTQW.MPI` by running
 
-	.. code-block:: bash
-		
-		$ python setup.py build
+		.. code-block:: bash
+			
+			$ python setup.py build
 
-5) System-wide install:
+	4) System-wide install:
 
-	.. code-block:: bash
-		
-		$ sudo -E python setup.py install
+		.. code-block:: bash
+			
+			$ sudo -E python setup.py install
 
-	where the command ``-E`` ensures that the environment variables set in step 3 are passed to the root.
+		where the command ``-E`` ensures that the environment variables set in step 3 are passed to the root.
 
-	.. note::
-		If you do not have root access, or the above command does not appear to work, you can install the package locally by running
+		.. note::
+			If you do not have root access, or the above command does not appear to work, you can install the package locally by running
 
-			.. code-block:: bash
-				
-				$ python setup.py install --user
+				.. code-block:: bash
+					
+					$ python setup.py install --user
 
-	Now, have a go running some of the :doc:`examples`!
+		Now, have a go running some of the :doc:`examples`!
 
 
 **Optional:** build documentation 

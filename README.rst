@@ -3,7 +3,7 @@ Fortran library and Python module to calculate continuous-time quantum walks
 This is intended to provide a framework to quickly and easily work with quantum
 walkers, take advantage of high performance computing, and allow easy visualisation.
 
-Website: http://pyctqw.readthedocs.org
+For more information on how to use this package, please see the `online documentation <http://pyctqw.readthedocs.org>`_
 
 Features
 ============
@@ -35,7 +35,7 @@ In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `
 	- `NumPy <http://www.numpy.org/>`_ >= 1.6.0
 	- `PETSc <http://www.mcs.anl.gov/petsc/>`_ >= 3.4.2	
 	- `SLEPc <http://www.grycap.upv.es/slepc/>`_ >= 3.4.1	
-	- `petsc4py 3.4 or petsc4py-dev <https://pypi.python.org/pypi/petsc4py/3.4>`_
+	- `petsc4py 3.4 or petsc4py-dev <https://bitbucket.org/petsc/petsc4py>`_
 	- `mpi4py <http://mpi4py.scipy.org/>`_		(recommended, used for some plotting)
 	- `matplotlib <http://matplotlib.org/>`_	(recommended, for node plotting and graph visualisation)
 	- `SciPy <http://www.scipy.org/>`_			(recommended, for some I/O operations)
@@ -45,50 +45,58 @@ In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `
 Installation
 ============
 
-1) Ensure all dependencies required above are installed
-
-2) Extract the ``pyCTQW`` zip folder, and ``cd`` into the extracted directory:
+pyCTQW can be installed using `pip`:
 
 	.. code-block:: bash
 		
-		$ unzip pyctqw-X.Y.zip
-		$ cd pyctqw-X.Y
+		$ pip install pyCTQW
 
-3) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
+Alternatively, the source code can be downloaded and compiled manually:
 
-	.. code-block:: bash
+	1) Ensure all dependencies required above are installed
 
-		$ export PETSC_DIR=/path/to/petsc
-		$ export PETSC_ARCH=linux-gnu
-		$ export SLEPC_DIR=/path/to/slepc
+	2) Extract the ``pyCTQW`` folder, and ``cd`` into the extracted directory:
 
-	If you are unsure what your PETSc or SLEPc variables should be, please refer to their documentation.
+		.. code-block:: bash
+			
+			$ tar xvzf pyctqw-v1.0.tar.gz
+			$ cd pyctqw-1.0
 
-	.. important::
-		If you plan to install ``pyCTQW.MPI`` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
+	3) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
 
-4) Compile the Python module ``pyCTQW.MPI`` by running
+		.. code-block:: bash
 
-	.. code-block:: bash
-		
-		$ python setup.py build
+			$ export PETSC_DIR=/path/to/petsc
+			$ export PETSC_ARCH=linux-gnu
+			$ export SLEPC_DIR=/path/to/slepc
 
-5) System-wide install:
+		If you are unsure what your PETSc or SLEPc variables should be, please refer to their documentation.
 
-	.. code-block:: bash
-		
-		$ sudo -E python setup.py install
+		.. important::
+			If you plan to install ``pyCTQW.MPI`` using ``root`` to a **system** directory, the PETSc and SLEPc environment variables must be available to the root user.
 
-	where the command ``-E`` ensures that the environment variables set in step 3 are passed to the root.
+	4) Compile the Python module ``pyCTQW.MPI`` by running
 
-	.. note::
-		If you do not have root access, or the above command does not appear to work, you can install the package locally by running
+		.. code-block:: bash
+			
+			$ python setup.py build
 
-			.. code-block:: bash
-				
-				$ python setup.py install --user
+	5) System-wide install:
 
-	Now, have a go running some of the examples!
+		.. code-block:: bash
+			
+			$ sudo -E python setup.py install
+
+		where the command ``-E`` ensures that the environment variables set in step 3 are passed to the root.
+
+		.. note::
+			If you do not have root access, or the above command does not appear to work, you can install the package locally by running
+
+				.. code-block:: bash
+					
+					$ python setup.py install --user
+
+		Now, have a go running some of the examples!
 
 *Optional*: compiling ``libctqwMPI``
 ===========================================================
@@ -122,14 +130,14 @@ where available options include
 The fortran library (``libctqwMPI.so`` or ``libctqwMPI.a``) can be found in the ``pyCTQW-X.Y/lib`` directory, with required module files found in the ``pyCTQW-X.Y/include`` directory.
 
 
-**Optional:** build documentation 
+*Optional:* build documentation 
 =======================================
 
 If `Sphinx <http://sphinx-doc.org/>`_ is installed, the documentation can be compiled by running
 
 	.. code-block:: bash
 		
-		$ make docs
+		$ make docs-html
 
 Documentation
 ===============
