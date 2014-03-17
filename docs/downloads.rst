@@ -16,13 +16,11 @@ Alternatively, if `pip` is installed, :mod:`pyCTQW` can be installed using `pip`
 
 Please see the installation page for more information on installing :mod:`pyCTQW`.
 
-.. note::
-	At the moment, only Unix based systems are supported.
 
 Development version
 --------------------
 
-If you would like to try out the development version, ths can be downloaded as a zip folder (`pyctqw-master.zip <https://github.com/josh146/pyctqw/archive/master.zip>`_) or alternatively, checked out via Git:
+If you would like to try out the development version, ths can be downloaded as an archive (`pyctqw-master.tar.gz <https://github.com/josh146/pyctqw/archive/master.tar.gz>`_) or alternatively, checked out via Git:
 
 .. code-block:: bash
 
@@ -33,6 +31,12 @@ or Subversion:
 .. code-block:: bash
 
 	$ svn co https://github.com/josh146/pyctqw
+
+or installed using `pip`:
+
+.. code-block:: bash
+	
+	$ pip install --allow-unverified pyCTQW pyCTQW==dev		
 
 .. caution::
 	The development version may be unstable, and can possibly break

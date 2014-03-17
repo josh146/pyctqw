@@ -28,7 +28,7 @@ classifiers=[
     "Programming Language :: Python",
     "Programming Language :: Fortran",
     "Topic :: Scientific/Engineering :: Physics"
-  ],
+  ]
 
 class noMPI(Exception):
     pass

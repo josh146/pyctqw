@@ -42,14 +42,18 @@ In addition to an MPI implementation (e.g. `MPICH <http://www.mpich.org/>`_ or `
 - `NetworkX <http://networkx.github.io/>`_		(recommended, graph visualisation)
 
 
-Installation
-============
+Installation using `pip`
+===========================
 
-pyCTQW can be installed using `pip`:
+After ensuring NumPy and petsc4py are installed (and all PETSc, SLEPc and MPI environment variables are properly set), pyCTQW can be installed using `pip`:
 
 .. code-block:: bash
 	
 	$ pip install pyCTQW
+
+
+Installation from source code
+==============================
 
 Alternatively, the source code can be downloaded and compiled manually:
 
