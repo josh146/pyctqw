@@ -1,0 +1,8 @@
+include COPYING
+include LICENSE
+include ctqw_common
+include makefile
+recursive-include examples *
+recursive-include docs *
+recursive-include graphs *
+recursive-include src *

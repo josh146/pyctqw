@@ -1,9 +1,5 @@
 #!/usr/bin/env python2.7
-import sys, os, glob
-
-examples = glob.glob('examples/*')
-graphs = glob.glob('graphs/*')
-docs = glob.glob('docs/*')
+import sys, os
 
 info={
     'name'          : 'pyCTQW',
@@ -15,14 +11,7 @@ info={
     'description'   : 'An MPI enabled CTQW simulator',
     'long_description' : open('README.rst').read(),
     'provides'      : ["pyCTQW"],
-    'data_files'    : [
-            ('src/sort.f90', ['src/sort.f90']),
-            ('docs', docs),
-            ('examples', examples),
-            ('graphs', graphs),
-            ('.', ['ctqw_common','LICENSE','COPYING','makefile', 'README.rst'])
-        ],
-    'install_requires' : ['scipy','matplotlib','networkx==1.7','mpi4py','petsc4py'],
+    'install_requires' : ['numpy','scipy','matplotlib','networkx==1.7','mpi4py','petsc4py'],
     'dependency_links' : ['http://networkx.lanl.gov/download/networkx/networkx-1.7.tar.gz#egg=networkx-1.7']
   }
 
@@ -164,6 +153,7 @@ def configuration(parent_package='', top_path=''):
 
 def run_setup():
     try:
+    	import setuptools
         from numpy.distutils.core import setup
     except ImportError:
         raise DistutilsError("requires NumPy>=1.6")
