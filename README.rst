@@ -1,3 +1,12 @@
+.. image:: http://img.shields.io/github/release/josh146/pyctqw.png
+    :target: https://github.com/josh146/pyctqw/releases/latest
+    
+.. image:: http://img.shields.io/pypi/v/pyCTQW.png
+    :target: https://pypi.python.org/pypi/pyCTQW
+    
+.. image:: http://img.shields.io/pypi/dm/pyCTQW.png
+    :target: https://pypi.python.org/pypi/pyCTQW
+
 Fortran library and Python module to calculate continuous-time quantum walks
 
 This is intended to provide a framework to quickly and easily work with quantum
