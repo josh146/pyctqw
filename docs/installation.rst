@@ -93,6 +93,7 @@ If `Sphinx <http://sphinx-doc.org/>`_ is installed, the documentation can be com
 
 .. code-block:: bash
     
+    $ pip install -r docs/requirements.txt
     $ make docs
 
 Known Issues
