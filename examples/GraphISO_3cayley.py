@@ -14,6 +14,15 @@ rank =  PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 # create a graph isomorphism object
 gi = qw.GraphISO()
 
+# generate certificate
+adj1 = np.genfromtxt('../graphs/cayley/3-cayley.txt')
+cert1 = gi.GIcert(adj1)
+
+# print the certificate
+if rank == 0:
+    print 'The GI certificate of 3-cayley.txt:'
+    np.savetxt('out/3cayley-cert.txt',cert1)
+
 # create a comparison table of two 3-cayley permutations
 # present in the '../graphs/cayley/3-cayley-permutations'
 # folder. As they are permutations, they are isomorphic,
