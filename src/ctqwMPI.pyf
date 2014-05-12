@@ -43,6 +43,11 @@ python module libpyctqw_MPI ! in
                 integer, intent(in)     :: n
                 complex(8), intent(out) :: res(n*n,n*n)
             end subroutine kronSum
+            subroutine kronSum3(M,n,res) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
+                complex(8),intent(in)   :: M(n,n)
+                integer, intent(in)     :: n
+                complex(8), intent(out) :: res(n*n*n,n*n*n)
+            end subroutine kronSum3
             subroutine importadjtoh(mat,filename,p,d,amp,interaction,nd) ! in :libpyctqw_MPI:ctqwMPI.F90:ctqwmpi
                 integer(8)              :: mat
                 character*50, intent(in):: filename

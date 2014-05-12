@@ -31,7 +31,7 @@ module ctqwMPI
     public    :: exportVec, importVec, exportMat, importMat
     public    :: importAdjToH, adjToH
 
-    public    :: identity, kron, kronSum
+    public    :: identity, kron, kronSum, kronSum3
     public    :: coord, coord3P
 
     public    :: marginal1, marginal2, marginal3
@@ -297,10 +297,10 @@ module ctqwMPI
     end subroutine kron
 
     subroutine kronSum(M,n,res)
-        ! compute the Kronecker product of two arrays
-        PetscInt, intent(in)    :: n ! number of rows in matrix 1
-        PetscScalar, intent(in) :: M(n,n) ! matrix 1
-        PetscScalar, intent(out):: res(n*n,n*n) ! kronecker product output
+        ! compute the Kronecker sum of matrix M with te identiy matrix
+        PetscInt, intent(in)    :: n ! matrix dimension
+        PetscScalar, intent(in) :: M(n,n) ! matrix
+        PetscScalar, intent(out):: res(n*n,n*n) ! kronecker sum output
 
         ! local variables
         PetscInt :: i, j, k
@@ -311,12 +311,42 @@ module ctqwMPI
             do j=1,n
                 do k=1,n
                     res(n*(i-1)+k, n*(j-1)+k) = M(i,j) + res(n*(i-1)+k, n*(j-1)+k)
-                    res(n*(k-1)+i, n*(k-1)+i) = M(i,j) + res(n*(k-1)+i, n*(k-1)+i)
+                    res(n*(k-1)+i, n*(k-1)+j) = M(i,j) + res(n*(k-1)+i, n*(k-1)+j)
                 enddo
             enddo
         enddo
 
     end subroutine kronSum
+
+    subroutine kronSum3(M,n,res)
+        ! compute the Kronecker sum of matrix M with te identiy matrix
+        PetscInt, intent(in)    :: n ! matrix dimension
+        PetscScalar, intent(in) :: M(n,n) ! matrix
+        PetscScalar, intent(out):: res(n*n*n,n*n*n) ! kronecker sum output
+
+        ! local variables
+        PetscInt :: i, j, k, k2
+        
+        res = 0.d0
+
+        do i=1,n
+            do j=1,n
+                do k=1,n
+                    do k2=1,n
+                        res(k+n*(i-1)+n*n*(k2-1), k+n*(j-1)+n*n*(k2-1)) = M(i,j) &
+                            & + res(k+n*(i-1)+n*n*(k2-1), k+n*(j-1)+n*n*(k2-1))
+
+                        res(i+n*(k-1)+n*n*(k2-1), j+n*(k-1)+n*n*(k2-1)) = M(i,j) &
+                            & + res(i+n*(k-1)+n*n*(k2-1), j+n*(k-1)+n*n*(k2-1))
+
+                        res(k2+n*(k-1)+n*n*(i-1), k2+n*(k-1)+n*n*(j-1)) = M(i,j) &
+                            & + res(k2+n*(k-1)+n*n*(i-1), k2+n*(k-1)+n*n*(j-1))
+                    enddo
+                enddo
+            enddo
+        enddo
+
+    end subroutine kronSum3
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~Import and convert Adjacency matrix to Hamiltonian ~~~~~~~~~
@@ -388,8 +418,9 @@ module ctqwMPI
         ! local variables
         PetscMPIInt              :: rank
         PetscErrorCode           :: ierr
-        PetscInt                 :: stat, i, Istart, Iend, j, k, Nsq, Ncb
-        PetscScalar              :: HArray(N,N)
+        PetscInt                 :: stat, i, Istart, Iend, j, k, k2, Nsq, Ncb
+        PetscReal                :: iHA, jHA
+        PetscScalar              :: HArray(N,N), tempA
         PetscInt, allocatable    :: intTestArray(:)
         PetscScalar, allocatable :: ident(:,:),ident2(:,:), temp(:,:),temp3(:,:), H2Array(:,:)
         
@@ -416,17 +447,8 @@ module ctqwMPI
         if (p == '2') then
             Nsq = N*N
 
-            !allocate(H2Array(Nsq,Nsq), ident(N,N), temp(Nsq,Nsq))
-       
-            !call identity(ident,N)
-            !call kron(HArray,N,N,ident,N,N,H2Array)
-            !call kron(ident,N,N,HArray,N,N,temp)
-
-            !H2Array = H2Array + temp
-            !deallocate(ident,temp)
-
-            allocate(H2Array(Nsq,Nsq))
-            call kronSum(HArray,N,H2Array)
+            !allocate(H2Array(Nsq,Nsq))
+            !call kronSum(HArray,N,H2Array)
             
             call PetscBarrier(mat,ierr)
         
@@ -434,18 +456,47 @@ module ctqwMPI
             call MatSetFromOptions(mat,ierr)
             call MatSetUp(mat,ierr)
             call MatGetOwnershipRange(mat,Istart,Iend,ierr)
-        
-            do i=Istart, Iend-1            
+
+            do i=Istart+1, Iend
                 do j=1,Nsq
-                    if (H2Array(i+1,j) .ne. 0) then
-                        if (i==j-1 .and. mod(j,n+1)==1) then
-                            call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
-                        else
-                            call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
+                    do k=1,N
+
+                        iHA = real((i-k+N))/real(N)
+                        jHA = real((j-k+N))/real(N)
+
+                        if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
+                            if (mod(iHA,1.)==0. .and. mod(jHA,1.)==0.) then
+                                call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
+                            endif
                         endif
+
+                        iHA = i-k*N+N
+                        jHA = j-k*N+N
+
+                        if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
+                            call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
+                        endif
+
+                    enddo
+
+                    if (i==j .and. mod(j,N+1)==1) then
+                        call MatSetValue(mat,i-1,j-1,interaction,ADD_VALUES,ierr)
                     endif
+
                 enddo
             enddo
+
+            !do i=Istart, Iend-1            
+            !    do j=1,Nsq
+            !        if (H2Array(i+1,j) .ne. 0) then
+            !            if (i==j-1 .and. mod(j,n+1)==1) then
+            !                call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
+            !            else
+            !                call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
+            !            endif
+            !        endif
+            !    enddo
+            !enddo
         
             call PetscBarrier(mat,ierr)
 
@@ -453,27 +504,17 @@ module ctqwMPI
             CHKERRQ(ierr)
             call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
             CHKERRQ(ierr)
-        
-            deallocate(H2Array)
+
+            !deallocate(H2Array)
 
         elseif (p == '3') then
             Nsq = N*N
             Ncb = N*Nsq
 
-            allocate(H2Array(Ncb,Ncb), ident(N,N), ident2(Nsq,Nsq), &
-                       & intTestArray(N),temp(Ncb,Ncb),temp3(Ncb,Ncb))
-        
-            call identity(ident,N)
-            call identity(ident2,Nsq)
+            allocate(H2Array(Ncb,Ncb), intTestArray(N))
+            call kronSum3(HArray,N,H2Array)
 
-            call kron(ident2,Nsq,Nsq,HArray,N,N,temp)
-            call kron(HArray,N,N,ident2,Nsq,Nsq,temp3)
-
-            call kron(ident,N,N,HArray,N,N,ident2)
-            call kron(ident2,Nsq,Nsq,ident,N,N,H2Array)
-
-            H2Array = temp + H2Array + temp3
-            deallocate(ident,ident2,temp,temp3)
+            !allocate(intTestArray(N))
             
             call PetscBarrier(mat,ierr)
         
@@ -482,7 +523,57 @@ module ctqwMPI
             call MatSetUp(mat,ierr)
             call MatGetOwnershipRange(mat,Istart,Iend,ierr)
 
-            intTestArray = [(i, i=1, Nsq, n)]
+            intTestArray = [(i, i=1, Nsq, N)]
+
+!            do i=Istart+1, Iend
+!                do j=1,Ncb
+!                    do k=1,N
+!                        do k2=1,N
+
+!                            iHA = 1+N*(1-k2)+real(i-k)/real(N)
+!                            jHA = 1+N*(1-k2)+real(j-k)/real(N)
+
+!                            if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
+!                                if (mod(iHA,1.)==0. .and. mod(jHA,1.)==0.) then
+!                                    call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
+!                                endif
+!                            endif
+
+!                            iHA = i+N*(1-k-k2*N+N)
+!                            jHA = j+N*(1-k-k2*N+N)
+
+!                            if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
+!                                call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
+!                            endif
+
+!                            iHA = real(i-k*N-k2+Nsq+N)/real(Nsq)
+!                            jHA = real(j-k*N-k2+Nsq+N)/real(Nsq)
+
+!                            if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
+!                                if (mod(iHA,1.)==0. .and. mod(jHA,1.)==0.) then
+!                                    call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
+!                                endif
+!                            endif
+
+!                        enddo
+!                    enddo
+
+!                    if (i==j) then
+
+!                        if (mod(j,Nsq+n+1) == 1) then
+!                             call MatSetValue(mat,i-1,j-1,2*interaction,ADD_VALUES,ierr)
+!                        elseif ((mod(j,Nsq+n) .le. n) .and. (mod(j,Nsq+1) .ge. 1)) then
+!                             call MatSetValue(mat,i-1,j-1,interaction,ADD_VALUES,ierr)
+!                        elseif ( mod(j,n+1) == int(ceiling(real(j)/real(Nsq))) ) then
+!                             call MatSetValue(mat,i-1,j-1,interaction,ADD_VALUES,ierr)
+!                        elseif ( any(intTestArray .eq. mod(j,Nsq+1)) ) then
+!                             call MatSetValue(mat,i-1,j-1,interaction,ADD_VALUES,ierr)
+!                        endif
+
+!                    endif
+
+!                enddo
+!            enddo
 
             do i=Istart, Iend-1
                 do j=1,Ncb
@@ -511,8 +602,10 @@ module ctqwMPI
             call MatAssemblyBegin(mat,MAT_FINAL_ASSEMBLY,ierr)
             CHKERRQ(ierr)
             call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
+            CHKERRQ(ierr)
         
             deallocate(H2Array,intTestArray)
+            !deallocate(intTestArray)
         
         else
             call PetscBarrier(mat,ierr)

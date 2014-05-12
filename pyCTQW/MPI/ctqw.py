@@ -3569,7 +3569,7 @@ class GraphISO(object):
 				adj(1|2) (array or numpy.array): \
 					symmetric adjacency matrices in the form
 					of a dense array of numpy array.
-			
+
 			:rtype: *bool*
 			"""
 
