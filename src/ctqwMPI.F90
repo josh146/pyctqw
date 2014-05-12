@@ -31,7 +31,7 @@ module ctqwMPI
     public    :: exportVec, importVec, exportMat, importMat
     public    :: importAdjToH, adjToH
 
-    public    :: identity, kron
+    public    :: identity, kron, kronSum
     public    :: coord, coord3P
 
     public    :: marginal1, marginal2, marginal3
@@ -296,6 +296,28 @@ module ctqwMPI
         end forall
     end subroutine kron
 
+    subroutine kronSum(M,n,res)
+        ! compute the Kronecker product of two arrays
+        PetscInt, intent(in)    :: n ! number of rows in matrix 1
+        PetscScalar, intent(in) :: M(n,n) ! matrix 1
+        PetscScalar, intent(out):: res(n*n,n*n) ! kronecker product output
+
+        ! local variables
+        PetscInt :: i, j, k
+        
+        res = 0.d0
+
+        do i=1,n
+        	do j=1,n
+        		do k=1,n
+        			res(n*(i-1)+k, n*(j-1)+k) = M(i,j) + res(n*(i-1)+k, n*(j-1)+k)
+        			res(n*(k-1)+i, n*(k-1)+i) = M(i,j) + res(n*(k-1)+i, n*(k-1)+i)
+        		enddo
+        	enddo
+        enddo
+
+    end subroutine kronSum
+
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~Import and convert Adjacency matrix to Hamiltonian ~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -393,15 +415,18 @@ module ctqwMPI
         
         if (p == '2') then
             Nsq = N*N
-            allocate(H2Array(Nsq,Nsq), ident(N,N), temp(Nsq,Nsq))
-        
-            call identity(ident,N)
-            call kron(HArray,N,N,ident,N,N,H2Array)
-            call kron(ident,N,N,HArray,N,N,temp)
 
-            H2Array = H2Array + temp
-            deallocate(ident,temp)
-            
+            !allocate(H2Array(Nsq,Nsq), ident(N,N), temp(Nsq,Nsq))
+       
+            !call identity(ident,N)
+            !call kron(HArray,N,N,ident,N,N,H2Array)
+            !call kron(ident,N,N,HArray,N,N,temp)
+
+            !H2Array = H2Array + temp
+            !deallocate(ident,temp)
+
+            allocate(H2Array(Nsq,Nsq))
+            call kronSum(HArray,N,H2Array)
             
             call PetscBarrier(mat,ierr)
         
