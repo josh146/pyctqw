@@ -308,12 +308,12 @@ module ctqwMPI
         res = 0.d0
 
         do i=1,n
-        	do j=1,n
-        		do k=1,n
-        			res(n*(i-1)+k, n*(j-1)+k) = M(i,j) + res(n*(i-1)+k, n*(j-1)+k)
-        			res(n*(k-1)+i, n*(k-1)+i) = M(i,j) + res(n*(k-1)+i, n*(k-1)+i)
-        		enddo
-        	enddo
+            do j=1,n
+                do k=1,n
+                    res(n*(i-1)+k, n*(j-1)+k) = M(i,j) + res(n*(i-1)+k, n*(j-1)+k)
+                    res(n*(k-1)+i, n*(k-1)+i) = M(i,j) + res(n*(k-1)+i, n*(k-1)+i)
+                enddo
+            enddo
         enddo
 
     end subroutine kronSum
