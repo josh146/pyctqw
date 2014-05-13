@@ -45,9 +45,9 @@ Alternatively, the source code can be downloaded and compiled manually:
     
     .. code-block:: bash
 
-        $ wget https://github.com/josh146/pyctqw/archive/1.0.0.tar.gz -O pyctqw-1.0.0.tar.gz
-        $ tar xzvf pyctqw-1.0.0.tar.gz
-        $ cd pyctqw-1.0.0
+        $ wget https://github.com/josh146/pyctqw/archive/1.1.0.tar.gz -O pyctqw-1.1.0.tar.gz
+        $ tar xzvf pyctqw-1.1.0.tar.gz
+        $ cd pyctqw-1.1.0
 
 2) Ensure that your PETSc and SLEPc environment variables are correctly set; for example,
 
