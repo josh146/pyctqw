@@ -3393,6 +3393,9 @@ class Line3P(QuantumWalkP3):
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #----------------------------------- Graph Isomorphism -------------------------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class IncorrectInput(Exception):
+	pass
+
 class GraphISO(object):
 	""" A graph isomorphism solver, containing functions for 
 		creating graph certificates and checking isomorphism
@@ -3562,19 +3565,47 @@ class GraphISO(object):
 
 		return _np.array(cert).T[_np.lexsort(_np.array(cert)[:,0:certSize])[::-1]]
 
-	def isomorphicQ(self,adj1,adj2):
-		"""Returns ``True`` if two graphs are isomorphic.
+	def isomorphicQ(self, G1, G2, saveCert1=None, saveCert2=None):
+		"""Returns the GI certificates in addition to
+			``True`` if two graphs are isomorphic, ``False`` otherwise.
 
 			Args:
-				adj(1|2) (array or numpy.array): \
+				G(1|2) (array or numpy.array): \
 					symmetric adjacency matrices in the form
-					of a dense array of numpy array.
+					of a dense array or numpy array, **OR** a
+					previously calculated two column GI certificate.
 
-			:rtype: *bool*
+			Keyword Args:
+				saveCert(1|2) (str): \
+					Filename. If provided, the specified GI
+					certificate is exported to a text file.
+
+			Returns:
+				both graph certificates, boolean value
+			:rtype: :func:`numpy.array`, *bool*
 			"""
 
-		GIcert1 = self.GIcert(adj1)
-		GIcert2 = self.GIcert(adj2)
+		if _np.all(_np.array(G1).T == _np.array(G1)):
+			GIcert1 = self.GIcert(G1)
+		elif _np.array(G1).shape[1] == 2:
+			GIcert1 = G1
+		else:
+			raise IncorrectInput('Argument G1 is not a valid adjacency matrix or GI certificate')
+
+		if saveCert1 is not None:
+			_io.createPath(saveCert1)
+			_np.savetxt(saveCert1, GIcert1)
+
+		if _np.all(_np.array(G2).T == _np.array(G2)):
+			GIcert2 = self.GIcert(G2)
+		elif _np.array(G2).shape[1] == 2:
+			GIcert2 = G2
+		else:
+			raise IncorrectInput('Argument G2 is not a valid adjacency matrix or GI certificate')
+
+		if saveCert2 is not None:
+			_io.createPath(saveCert2)
+			_np.savetxt(saveCert2, GIcert2)
 
 		comm = _PETSc.COMM_WORLD
 		size = comm.getSize()
@@ -3582,7 +3613,7 @@ class GraphISO(object):
 
 		if self.__rank == 0:
 			if GIcert1.shape[0] == GIcert2.shape[0]:
-				if _np.abs(_np.subtract(GIcert1,GIcert2)).max() < self.compareTol:
+				if _np.abs(_np.subtract(GIcert1, GIcert2)).max() < self.compareTol:
 					result = _np.array([True for i in range(size)])
 				else:
 					result = _np.array([False for i in range(size)])
@@ -3590,7 +3621,7 @@ class GraphISO(object):
 				result = _np.array([False for i in range(size)])
 
 		result = comm.tompi4py().scatter(result)
-		return result
+		return GIcert1, GIcert2, result
 
 	def AllIsomorphicQ(self,folder,graphRange=None,info=True,checkSelf=False):
 		"""Calculates whether each pair of graphs (in a specified set of graphs)
@@ -3634,21 +3665,42 @@ class GraphISO(object):
 		adj = []
 		for graph in filelist:
 			if graphRange is not None:
-				if int(_glob.re.findall(r'\d+',graph)[-1]) in graphRange:
+				if int(_glob.re.findall(r'\d+', graph)[-1]) in graphRange:
 					adj.append(_np.genfromtxt(graph))
-					if (self.__rank==0 and info):   print 'Adding graph ' + graph
+					if (self.__rank == 0 and info):
+						print 'Adding graph ' + graph
 			else:
 				adj.append(_np.genfromtxt(graph))
-				if (self.__rank==0 and info):   print 'Adding graph ' + graph
+				if (self.__rank == 0 and info):
+					print 'Adding graph ' + graph
 
 		NG = len(adj)
 		comparisonTable = _np.zeros([NG,NG])
+		cert = [None]*NG
 
 		for i in range(NG):
-			for j in range(i if checkSelf else i+1,NG):
-				if (self.__rank==0 and info):   print 'Testing graphs ' + str(i) + ',' + str(j)
-				comparisonTable[i,j] = 1 if self.isomorphicQ(adj[i],adj[j]) else 0
-				if (self.__rank==0 and info):   print '\tIsomorphic' if comparisonTable[i,j] == 1 else '\tNon-isomorphic'
+			for j in range(i if checkSelf else i+1, NG):
+
+				if (self.__rank == 0 and info):
+					print 'Testing graphs ' + str(i) + ',' + str(j)
+
+				if cert[i] is not None and cert[j] is not None:
+					cert[i], cert[j], checkISO = self.isomorphicQ(cert[i], cert[j])
+
+				elif cert[i] is not None:
+					cert[i], cert[j], checkISO = self.isomorphicQ(cert[i], adj[j])
+
+				elif cert[j] is not None:
+					cert[i], cert[j], checkISO = self.isomorphicQ(adj[i], cert[j])
+
+				else:
+					cert[i], cert[j], checkISO = self.isomorphicQ(adj[i], adj[j])
+
+
+				comparisonTable[i,j] = 1 if checkISO else 0
+
+				if (self.__rank == 0 and info):
+					print '\tIsomorphic' if comparisonTable[i,j] == 1 else '\tNon-isomorphic'
 
 		if checkSelf:
 			return comparisonTable + comparisonTable.T - _np.diag(comparisonTable.diagonal())

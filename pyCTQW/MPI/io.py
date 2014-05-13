@@ -30,6 +30,19 @@ import numpy as _np
 from petsc4py import PETSc as _PETSc
 import fileinput as _fl
 
+def createPath(filename):
+	if _os.path.isabs(filename):
+		outDir = _os.path.dirname(filename)
+	else:
+		outDir = './'+_os.path.dirname(filename)
+
+	# create output directory if it doesn't exist
+	try:
+		_os.mkdir(outDir)
+	except OSError as exception:
+		if exception.errno != _errno.EEXIST:
+			raise
+
 def vecToArray(obj):
 	"""	Converts a PETSc vector to a numpy array, available on *all* MPI nodes.
 
@@ -209,17 +222,8 @@ def exportVec(vec,filename,filetype):
 							* ``'txt'`` - a column vector in text format.
 							* ``'bin'`` - a PETSc binary vector.
 		"""
-	if _os.path.isabs(filename):
-		outDir = _os.path.dirname(filename)
-	else:
-		outDir = './'+_os.path.dirname(filename)
-
-	# create output directory if it doesn't exist
-	try:
-		_os.mkdir(outDir)
-	except OSError as exception:
-		if exception.errno != _errno.EEXIST:
-			raise
+	
+	createPath(filename)
 	
 	if filetype == 'txt':
 		# scatter prob to process 0
@@ -295,17 +299,7 @@ def exportMat(mat,filename,filetype,mattype=None):
 		"""
 	rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 
-	if _os.path.isabs(filename):
-		outDir = _os.path.dirname(filename)
-	else:
-		outDir = './'+_os.path.dirname(filename)
-
-	# create output directory if it doesn't exist
-	try:
-		_os.mkdir(outDir)
-	except OSError as exception:
-		if exception.errno != _errno.EEXIST:
-			raise
+	createPath(filename)
 	
 	if filetype == 'txt':
 		txtSave = _PETSc.Viewer().createASCII(filename, 'w',
@@ -405,17 +399,7 @@ def exportVecToMat(vec,filename,filetype):
 		"""
 	rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
 	
-	if _os.path.isabs(filename):
-		outDir = _os.path.dirname(filename)
-	else:
-		outDir = './'+_os.path.dirname(filename)
-
-	# create output directory if it doesn't exist
-	try:
-		_os.mkdir(outDir)
-	except OSError as exception:
-		if exception.errno != _errno.EEXIST:
-			raise
+	createPath(filename)
 	
 	vecArray = vecToArray(vec)
 	matArray = vecArray.reshape([_np.sqrt(vecArray.size),_np.sqrt(vecArray.size)])

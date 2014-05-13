@@ -1,9 +1,11 @@
 #!/usr/bin/env python2.7
 import sys, os
 
+version = __import__('pyCTQW').__version__
+
 info={
     'name'          : 'pyCTQW',
-    'version'       : '1.0.0',
+    'version'       :  version,
     'author'        : 'Josh Izaac',
     'author_email'  : 'josh@iza.ac',
     'url'           : 'http://pyctqw.readthedocs.org',
