@@ -418,8 +418,7 @@ module ctqwMPI
         ! local variables
         PetscMPIInt              :: rank
         PetscErrorCode           :: ierr
-        PetscInt                 :: stat, i, Istart, Iend, j, k, k2, Nsq, Ncb
-        PetscReal                :: iHA, jHA
+        PetscInt                 :: stat, i, Istart, Iend, j, k, k2, Nsq, Ncb, iH, jH
         PetscScalar              :: HArray(N,N), tempA
         PetscInt, allocatable    :: intTestArray(:)
         PetscScalar, allocatable :: ident(:,:),ident2(:,:), temp(:,:),temp3(:,:), H2Array(:,:)
@@ -457,35 +456,43 @@ module ctqwMPI
             call MatSetUp(mat,ierr)
             call MatGetOwnershipRange(mat,Istart,Iend,ierr)
 
-            do i=Istart+1, Iend
-                do j=1,Nsq
-                    do k=1,N
+            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            ! looping over  HArray
+            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            do i=1,N
+                do j=1,N
+                    if (HArray(i,j) /= 0.d0+PETSC_i*0.d0) then
+                        do k=1,N
 
-                        iHA = real((i-k+N))/real(N)
-                        jHA = real((j-k+N))/real(N)
+                            iH = N*(i-1)+k
+                            jH = N*(j-1)+k
 
-                        if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
-                            if (mod(iHA,1.)==0. .and. mod(jHA,1.)==0.) then
-                                call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
+                            if (Istart<iH .and. iH<Iend+1) then
+                                call MatSetValue(mat,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
                             endif
-                        endif
 
-                        iHA = i-k*N+N
-                        jHA = j-k*N+N
+                            iH = N*(k-1)+i
+                            jH = N*(k-1)+j
 
-                        if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
-                            call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
-                        endif
+                            if (Istart<iH .and. iH<Iend+1) then
+                                call MatSetValue(mat,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
+                            endif
 
-                    enddo
-
-                    if (i==j .and. mod(j,N+1)==1) then
-                        call MatSetValue(mat,i-1,j-1,interaction,ADD_VALUES,ierr)
+                        enddo
                     endif
-
                 enddo
             enddo
 
+            ! interactions
+            do i=Istart+1, Iend
+                if (mod(i,N+1)==1) then
+                    call MatSetValue(mat,i-1,i-1,interaction,ADD_VALUES,ierr)
+                endif
+            enddo
+
+            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            ! looping over  H2Array formed from kronsum2
+            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             !do i=Istart, Iend-1            
             !    do j=1,Nsq
             !        if (H2Array(i+1,j) .ne. 0) then
@@ -511,10 +518,10 @@ module ctqwMPI
             Nsq = N*N
             Ncb = N*Nsq
 
-            allocate(H2Array(Ncb,Ncb), intTestArray(N))
-            call kronSum3(HArray,N,H2Array)
+            !allocate(H2Array(Ncb,Ncb), intTestArray(N))
+            !call kronSum3(HArray,N,H2Array)
 
-            !allocate(intTestArray(N))
+            allocate(intTestArray(N))
             
             call PetscBarrier(mat,ierr)
         
@@ -525,77 +532,79 @@ module ctqwMPI
 
             intTestArray = [(i, i=1, Nsq, N)]
 
-!            do i=Istart+1, Iend
-!                do j=1,Ncb
-!                    do k=1,N
-!                        do k2=1,N
+            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            ! looping over  HArray
+            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            do i=1,N
+                do j=1,N
+                    if (HArray(i,j) /= 0.d0+PETSC_i*0.d0) then
+                        do k=1,N
+                            do k2=1,N
 
-!                            iHA = 1+N*(1-k2)+real(i-k)/real(N)
-!                            jHA = 1+N*(1-k2)+real(j-k)/real(N)
+                                iH = k+n*(i-1)+n*n*(k2-1)
+                                jH = k+n*(j-1)+n*n*(k2-1)
 
-!                            if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
-!                                if (mod(iHA,1.)==0. .and. mod(jHA,1.)==0.) then
-!                                    call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
-!                                endif
-!                            endif
+                                if (Istart<iH .and. iH<Iend+1) then
+                                    call MatSetValue(mat,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
+                                endif
 
-!                            iHA = i+N*(1-k-k2*N+N)
-!                            jHA = j+N*(1-k-k2*N+N)
+                                iH = i+n*(k-1)+n*n*(k2-1)
+                                jH = j+n*(k-1)+n*n*(k2-1)
 
-!                            if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
-!                                call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
-!                            endif
+                                if (Istart<iH .and. iH<Iend+1) then
+                                    call MatSetValue(mat,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
+                                endif
 
-!                            iHA = real(i-k*N-k2+Nsq+N)/real(Nsq)
-!                            jHA = real(j-k*N-k2+Nsq+N)/real(Nsq)
+                                iH = k2+n*(k-1)+n*n*(i-1)
+                                jH = k2+n*(k-1)+n*n*(j-1)
 
-!                            if (0<iHA .and. iHA<=N .and. 0<jHA .and. jHA<=N) then
-!                                if (mod(iHA,1.)==0. .and. mod(jHA,1.)==0.) then
-!                                    call MatSetValue(mat,i-1,j-1,HArray(int(iHA),int(jHA)),ADD_VALUES,ierr)
-!                                endif
-!                            endif
+                                if (Istart<iH .and. iH<Iend+1) then
+                                    call MatSetValue(mat,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
+                                endif
 
-!                        enddo
-!                    enddo
-
-!                    if (i==j) then
-
-!                        if (mod(j,Nsq+n+1) == 1) then
-!                             call MatSetValue(mat,i-1,j-1,2*interaction,ADD_VALUES,ierr)
-!                        elseif ((mod(j,Nsq+n) .le. n) .and. (mod(j,Nsq+1) .ge. 1)) then
-!                             call MatSetValue(mat,i-1,j-1,interaction,ADD_VALUES,ierr)
-!                        elseif ( mod(j,n+1) == int(ceiling(real(j)/real(Nsq))) ) then
-!                             call MatSetValue(mat,i-1,j-1,interaction,ADD_VALUES,ierr)
-!                        elseif ( any(intTestArray .eq. mod(j,Nsq+1)) ) then
-!                             call MatSetValue(mat,i-1,j-1,interaction,ADD_VALUES,ierr)
-!                        endif
-
-!                    endif
-
-!                enddo
-!            enddo
-
-            do i=Istart, Iend-1
-                do j=1,Ncb
-                    if (H2Array(i+1,j) .ne. 0) then 
-                        if (i==j-1) then
-                            if ( mod(j,Nsq+n+1) == 1 ) then
-                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j)+2*interaction,INSERT_VALUES,ierr)
-                            elseif ((mod(j,Nsq+n) .le. n) .and. (mod(j,Nsq+1) .ge. 1)) then
-                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
-                            elseif ( mod(j,n+1) == int(ceiling(real(j)/real(Nsq))) ) then
-                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
-                            elseif ( any(intTestArray .eq. mod(j,Nsq+1)) ) then
-                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
-                            else
-                                 call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
-                            endif
-                        else
-                             call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
-                        endif
+                            enddo
+                        enddo
                     endif
                 enddo
             enddo
+
+            ! interactions
+            do i=Istart+1, Iend
+                if (mod(i,Nsq+n+1) == 1) then
+                    call MatSetValue(mat,i-1,i-1,2*interaction,ADD_VALUES,ierr)
+                elseif ((mod(i,Nsq+n) .le. n) .and. (mod(i,Nsq+1) .ge. 1)) then
+                    call MatSetValue(mat,i-1,i-1,interaction,ADD_VALUES,ierr)
+                elseif ( mod(i,n+1) == int(ceiling(real(i)/real(Nsq))) ) then
+                    call MatSetValue(mat,i-1,i-1,interaction,ADD_VALUES,ierr)
+                elseif ( any(intTestArray .eq. mod(i,Nsq+1)) ) then
+                    call MatSetValue(mat,i-1,i-1,interaction,ADD_VALUES,ierr)
+                endif
+            enddo
+
+            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            ! looping over  H2Array from kronsum3
+            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            !do i=Istart, Iend-1
+            !    do j=1,Ncb
+            !        if (H2Array(i+1,j) .ne. 0) then 
+            !            if (i==j-1) then
+            !                if ( mod(j,Nsq+n+1) == 1 ) then
+            !                     call MatSetValue(mat,i,j-1,H2Array(i+1,j)+2*interaction,INSERT_VALUES,ierr)
+            !                elseif ((mod(j,Nsq+n) .le. n) .and. (mod(j,Nsq+1) .ge. 1)) then
+            !                     call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
+            !                elseif ( mod(j,n+1) == int(ceiling(real(j)/real(Nsq))) ) then
+            !                     call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
+            !                elseif ( any(intTestArray .eq. mod(j,Nsq+1)) ) then
+            !                     call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
+            !                else
+            !                     call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
+            !                endif
+            !            else
+            !                 call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
+            !            endif
+            !        endif
+            !    enddo
+            !enddo
 
             call PetscBarrier(mat,ierr)
         
@@ -604,8 +613,8 @@ module ctqwMPI
             call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
             CHKERRQ(ierr)
         
-            deallocate(H2Array,intTestArray)
-            !deallocate(intTestArray)
+            !deallocate(H2Array,intTestArray)
+            deallocate(intTestArray)
         
         else
             call PetscBarrier(mat,ierr)
