@@ -24,17 +24,17 @@ gi = qw.GraphISO()
 adj1 = np.genfromtxt('../graphs/k-equiv/K8.txt')
 adj2 = np.genfromtxt('../graphs/k-equiv/K8_twisted01.txt')
 
-# generate certificates for these two graphs
-# cert1 = gi.GIcert(adj1)
-# cert2 = gi.GIcert(adj2)
+#generate certificates for these two graphs
+cert1 = gi.GIcert(adj1)
+cert2 = gi.GIcert(adj2)
 
 # print the certificates
-# if rank == 0:
-#     print('The GI certificate of K1.txt:')
-#     pprint(cert1)
+if rank == 0:
+    print('Exporting the GI certificate of K8.txt:')
+    np.savetxt('out/k8cert.txt', cert1)
 
-#     print('\nThe GI certificate of K1-twisted.txt:')
-#     pprint(cert2)
+    print('\nExporting the GI certificate of K8_twisted01.txt:')
+    np.savetxt('out/k8cert_twisted01.txt', cert2)
 
 # verify using the inbuilt checking method
 if rank == 0:
@@ -43,26 +43,3 @@ if rank == 0:
 checkISO = gi.isomorphicQ(adj1, adj2)
 if rank == 0:
     print(checkISO)
-
-#=========================
-#    Isomorphic Graphs
-#=========================
-# if rank == 0:
-#     print('\nTesting isomorphism of K1.txt and K1-perm1.txt:')
-
-# adj1 = np.genfromtxt('../graphs/k-equiv/K1.txt')
-# adj2 = np.genfromtxt('../graphs/k-equiv/K1-perm1.txt')
-
-# checkISO = gi.isomorphicQ(adj1, adj2)
-# if rank == 0:
-#     print(checkISO)
-
-# if rank == 0:
-#     print('\nTesting isomorphism of K1-twisted.txt and K1-twisted-perm1.txt:')
-
-# adj1 = np.genfromtxt('../graphs/k-equiv/K1-twisted.txt')
-# adj2 = np.genfromtxt('../graphs/k-equiv/K1-twisted-perm1.txt')
-
-# checkISO = gi.isomorphicQ(adj1, adj2)
-# if rank == 0:
-#     print(checkISO)
