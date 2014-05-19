@@ -1809,7 +1809,8 @@ module ctqwMPI
         PetscReal, allocatable   :: certArrayReal(:)
         PetscScalar, allocatable :: localCert(:), init_states(:,:,:)
         PetscScalar, pointer     :: certArray(:)
-        character(len=12)        :: expArg, eigArg, wtArg
+        character(len=12)        :: expArg, eigArg, wtArg, rankstr
+        character(len=50)        :: tmpcertfile
 
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
         call MPI_Comm_size(PETSC_COMM_WORLD,comm_size,ierr)
@@ -1818,6 +1819,11 @@ module ctqwMPI
         t = 2*N
 
         ! create local Hamiltonian
+        if (verbose .and. rank == 0) then
+            call execute_command_line('mkdir -p tmpcerts/')
+            write(*,*)'Creating the Hamiltonian...'
+        endif
+
         call MatCreate(MPI_COMM_SELF,H,ierr)
         call MatSetType(H, MATSEQAIJ,ierr)
         if (p==3) then
@@ -1837,12 +1843,24 @@ module ctqwMPI
         endif
         allocate(localCert(NN*localStateNum))
 
+        if (verbose) then
+            write(*,*)'Rank ',rank,': Number of local initial states is', localStateNum
+            write(rankstr,*)rank
+            tmpcertfile = "tmpcerts/rank" // trim(adjustl(rankstr)) // ".txt"
+            open(unit=12, file=trim(adjustl(tmpcertfile)), action="write", position="append")
+        endif
+
         call VecCreateSeq(MPI_COMM_SELF,NN,psi0,ierr)
         call VecCreateSeq(MPI_COMM_SELF,NN,psi,ierr)
 
         ! if using the Chebyshev method, calculate the eigenvalues
         expArg = trim(adjustl(expm_method))
         if (expArg == 'chebyshev') then
+
+            if (verbose .and. rank == 0) then
+                write(*,*)'Calculating the eigenvalues for Chebyshev propagation...'
+            endif
+
             if (Emax_estimate == 0.) then
                 eigArg = trim(adjustl(eig_solver))
                 wtArg = trim(adjustl(worktype))
@@ -1858,7 +1876,7 @@ module ctqwMPI
         ! loop over all local initial states
         do i=1, localStateNum
 
-            if (verbose) write(*,*)'rank = ',rank,' Calculating init state = ', &
+            if (verbose) write(*,*)'Rank ',rank,': Calculating init state ', &
                 int(init_states(i,1,1)), int(init_states(i,2,1))
 
             ! create the initial state vector
@@ -1884,7 +1902,23 @@ module ctqwMPI
 
             ! reset initial state vector
             call VecSet(psi0,0.d0*PETSc_i,ierr)
+
+            if (verbose) then
+                do j=(i-1)*NN+1, i*NN
+                    write(12,'(E23.15E3)') real(localCert(j))
+                enddo
+                !call buildFrequencyTable(localCert(1:i*NN),tol,cert,certLength,N,p)
+                !open(unit=12, file=trim(adjustl(tmpcertfile)), action="write", status='replace')
+                !do j=1, certLength
+                !    write(12,'(2E23.15E3)') cert(:,j)
+                !enddo
+                !close(unit=12)
+            endif
         enddo
+
+        if (verbose) then
+            close(unit=14)
+        endif
 
         if (comm_size>1) then
             ! create a global vector
@@ -1966,5 +2000,44 @@ module ctqwMPI
 
     end subroutine GraphISCert
 
+    subroutine buildFrequencyTable(localProb,tol,cert,certLength,N,p)
+        PetscScalar, intent(in)  :: localProb(:)
+        PetscInt, intent(in)     :: N, p
+        PetscReal, intent(in)    :: tol
+
+        PetscReal, intent(out)   :: cert(2,(N**(p+1))*(N-1)/2)
+        PetscInt, intent(out)    :: certLength
+
+        ! local variables
+        PetscInt                 :: i, certSize, counter, certPos
+        PetscReal, allocatable   :: certArrayReal(:)
+        PetscReal                :: currentProb
+
+        certSize = size(localProb)
+        allocate(certArrayReal(certSize))
+        certArrayReal = localProb
+
+        call d_refsor(certArrayReal)
+
+        currentProb = certArrayReal(1)
+        counter = 1
+        certPos = 1
+
+        do i=1, certSize
+            if (certArrayReal(i) - currentProb > tol) then
+                cert(:,certPos) = [currentProb,real(counter,8)]
+                currentProb = certArrayReal(i)
+                counter = 1
+                certPos = certPos + 1
+            else
+                counter = counter + 1
+            endif
+        enddo
+
+        deallocate(certArrayReal)
+
+        certLength = certPos-1
+
+    end subroutine buildFrequencyTable
 
 end module ctqwMPI
