@@ -3408,7 +3408,7 @@ class GraphISO(object):
 					to use in constructing the graph certificate.
 
 			freqTol (float): the tolerance to use when constructing the
-						frequency table (*default* ``1.e-2``). See also
+						frequency table (*default* ``5.e-3``). See also
 						:py:func:`GIcert`.
 
 			compareTol (float):    the tolerance used when comparing two Graph
@@ -3431,7 +3431,7 @@ class GraphISO(object):
 	def __init__(self,**kwargs):        
 		self.__default = {
 						'p'             : 2,
-						'freqTol'       : 1.e-2,
+						'freqTol'       : 5.e-3,
 						'compareTol'    : 1.e-10,
 						'propagator'    : 'chebyshev'
 						}

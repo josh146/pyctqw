@@ -1847,7 +1847,7 @@ module ctqwMPI
             write(*,*)'Rank ',rank,': Number of local initial states is', localStateNum
             write(rankstr,*)rank
             tmpcertfile = "tmpcerts/rank" // trim(adjustl(rankstr)) // ".txt"
-            open(unit=12, file=trim(adjustl(tmpcertfile)), action="write", position="append")
+            !open(unit=12, file=trim(adjustl(tmpcertfile)), action="write", position="append")
         endif
 
         call VecCreateSeq(MPI_COMM_SELF,NN,psi0,ierr)
@@ -1904,21 +1904,21 @@ module ctqwMPI
             call VecSet(psi0,0.d0*PETSc_i,ierr)
 
             if (verbose) then
-                do j=(i-1)*NN+1, i*NN
-                    write(12,'(E23.15E3)') real(localCert(j))
-                enddo
-                !call buildFrequencyTable(localCert(1:i*NN),tol,cert,certLength,N,p)
-                !open(unit=12, file=trim(adjustl(tmpcertfile)), action="write", status='replace')
-                !do j=1, certLength
-                !    write(12,'(2E23.15E3)') cert(:,j)
+                !do j=(i-1)*NN+1, i*NN
+                !    write(12,'(E23.15E3)') real(localCert(j))
                 !enddo
-                !close(unit=12)
+                call buildFrequencyTable(localCert(1:i*NN),tol,cert,certLength,N,p)
+                open(unit=12, file=trim(adjustl(tmpcertfile)), action="write", status='replace')
+                do j=1, certLength
+                    write(12,'(2E23.15E3)') cert(:,j)
+                enddo
+                close(unit=12)
             endif
         enddo
 
-        if (verbose) then
-            close(unit=14)
-        endif
+        !if (verbose) then
+        !    close(unit=14)
+        !endif
 
         if (comm_size>1) then
             ! create a global vector
@@ -1973,11 +1973,11 @@ module ctqwMPI
             call d_refsor(certArrayReal)
 
             currentProb = certArrayReal(1)
-            counter = 1
+            counter = 0
             certPos = 1
 
             do i=1, certSize
-                if (certArrayReal(i) - currentProb > tol) then
+                if (certArrayReal(i)/currentProb > 1.d0 + tol) then
                     cert(:,certPos) = [currentProb,real(counter,8)]
                     currentProb = certArrayReal(i)
                     counter = 1
@@ -1987,9 +1987,11 @@ module ctqwMPI
                 endif
             enddo
 
+            cert(:,certPos) = [currentProb, real(counter,8)]
+
             deallocate(certArrayReal,localCert)
 
-            certLength = certPos-1
+            certLength = certPos
 
             if (comm_size>1) then
                 call VecRestoreArrayF90(cert0,certArray,ierr)
@@ -2020,11 +2022,11 @@ module ctqwMPI
         call d_refsor(certArrayReal)
 
         currentProb = certArrayReal(1)
-        counter = 1
+        counter = 0
         certPos = 1
 
         do i=1, certSize
-            if (certArrayReal(i) - currentProb > tol) then
+            if (certArrayReal(i)/currentProb > 1.d0+tol) then
                 cert(:,certPos) = [currentProb,real(counter,8)]
                 currentProb = certArrayReal(i)
                 counter = 1
@@ -2034,9 +2036,11 @@ module ctqwMPI
             endif
         enddo
 
+        cert(:,certPos) = [currentProb, real(counter,8)]
+
         deallocate(certArrayReal)
 
-        certLength = certPos-1
+        certLength = certPos
 
     end subroutine buildFrequencyTable
 

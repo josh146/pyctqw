@@ -16,17 +16,19 @@ import pyCTQW.MPI as qw
 rank = PETSc.Comm.Get_rank(PETSc.COMM_WORLD)
 
 # create a graph isomorphism object
-gi = qw.GraphISO(verbose=True)
+gi = qw.GraphISO(verbose=True,freqTol=0.01)
 
 #=========================
 #Two Non-Isomorphic Graphs
 #=========================
 adj1 = np.genfromtxt('../graphs/furer/grid3_furer1.txt')
-adj2 = np.genfromtxt('../graphs/furer/grid3_furer2.txt')
+# adj2 = np.genfromtxt('../graphs/furer/grid3_furer2.txt')
 
 GIcert1 = gi.GIcert(adj1)
 
-print(rank, GIcert1)
+if rank==0:
+    pprint(GIcert1)
+    np.savetxt('out/g3f1cert.txt',GIcert1)
 
 # # verify using the inbuilt checking method
 # if rank == 0:S
