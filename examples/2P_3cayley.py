@@ -25,12 +25,17 @@ walk = qw.Graph2P(N)
 # Create a 2 particle interacting Hamiltonian from a file.
 # A defect of amplitude 2 and 0.5 has
 # been added to nodes 3 and 4 respectively.
-d = [3,4]
-amp = [2.0,1.5]
-walk.createH('../graphs/cayley/3-cayley.txt','txt',d=d,amp=amp,layout='spring',interaction=0.5)
+#d = [3,4]
+#amp = [2.0,1.5]
+d=[1]
+amp=[0.]
+walk.createH('../graphs/cayley/3-cayley.txt','txt',d=d,amp=amp,layout='spring',interaction=0.5,bosonic=True)
+H=qw.io.matToSparse(walk.H.mat)
+H=np.real(H.toarray())
+np.savetxt('out/bh.txt',H, fmt='%.1f')
 
 # create the initial state (1/sqrt(2)) (|0,1>+i|1,1>)
-init_state = [[0,1,1.0/np.sqrt(2.0)], [1,1,1.0j/np.sqrt(2.0)]]
+init_state = [[0,1,1.0/np.sqrt(2.0)], [1,0,1.0/np.sqrt(2.0)]]
 walk.createInitState(init_state)
 
 # set the eigensolver properties.

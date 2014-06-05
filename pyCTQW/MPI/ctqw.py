@@ -329,7 +329,7 @@ class Hamiltonian(object):
 
 		self.nodePos, self.lineX, self.lineY = _plot.getGraphNodes(self.Adj,layout=layout)
 
-	def importAdjToH(self,filename,filetype,d=[0.],amp=[0.],p='1',layout='spring',delimiter=None,interaction=0.):
+	def importAdjToH(self,filename,filetype,d=[0.],amp=[0.],p='1',layout='spring',delimiter=None,interaction=0.,bosonic=False):
 		""" Create a Hamiltonian from an imported adjacency matrix.
 
 			Args:
@@ -364,6 +364,8 @@ class Hamiltonian(object):
 				interaction (float): the amplitude of interaction between the walkers \
 									 when located on the same vertex.
 
+                bosonic (bool): if true, a Bosonic Hamiltonian is generated.
+
 			Returns:
 				 :	* :attr:`Hamiltonian.mat` *(petsc4py.PETSc.Mat)* - the Hamiltonian matrix.
 				 	* :attr:`Hamiltonian.Adj` *(petsc4py.PETSc.Mat)* - the adjacency matrix stored as a PETSc matrix.
@@ -390,7 +392,7 @@ class Hamiltonian(object):
 		Hamiltonian = _PETSc.Log.Stage('Hamiltonian')
 		Hamiltonian.push()
 
-		_ctqwmpi.importadjtoh(self.mat.fortran,filename,p,d,amp,interaction)
+		_ctqwmpi.importadjtoh(self.mat.fortran,filename,p,d,amp,interaction,bosonic)
 		
 		Hamiltonian.pop()
 
@@ -2198,15 +2200,15 @@ class Graph2P(QuantumWalkP2):
 			:func:`createH`. For details on the other keyword arguments,
 			see :func:`createH`.
 		"""
-	def __init__(self,N,filename=None,filetype=None,d=None,amp=None,interaction=0.):
+	def __init__(self,N,filename=None,filetype=None,d=None,amp=None,interaction=0.,bosonic=False):
 		QuantumWalkP2.__init__(self,N)
 		self.liveplot = False
 		self.EigSolver.setEigSolver(emin_estimate=0.)
 		
 		if (filename and filetype) is not None:
-			self.createH(filename,filetype,d=d,amp=amp,interaction=interaction)
+			self.createH(filename,filetype,d=d,amp=amp,interaction=interaction,bosonic=bosonic)
 		
-	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None,interaction=0.):
+	def createH(self,filename,filetype,d=None,amp=None,layout='spring',delimiter=None,interaction=0.,bosonic=False):
 		""" Generate the Hamiltonian of the graph.
 
 			Args:
@@ -2240,6 +2242,8 @@ class Graph2P(QuantumWalkP2):
 				interaction (float): the amplitude of interaction between the two walkers \
 									 when located on the same vertex.
 
+                bosonic (bool): if true, a Bosonic Hamiltonian is generated.
+
 			Returns:
 				:this creates a Hamiltonian object, accessed via the attibute
 						:attr:`Graph2P.H`.
@@ -2268,9 +2272,10 @@ class Graph2P(QuantumWalkP2):
 			self.defectAmp = amp
 
 		self.interaction = interaction
+		self.bosonic = bosonic
 
 		self.H.importAdjToH(filename,filetype,
-			d=self.defectNodes,amp=self.defectAmp,p='2',interaction=self.interaction,
+			d=self.defectNodes,amp=self.defectAmp,p='2',interaction=self.interaction,bosonic=self.bosonic,
 			layout=layout,delimiter=delimiter)
 
 		# _ctqwmpi.importadjtoh(self.H.mat.fortran,filename,'2',
@@ -3408,7 +3413,7 @@ class GraphISO(object):
 					to use in constructing the graph certificate.
 
 			freqTol (float): the tolerance to use when constructing the
-						frequency table (*default* ``5.e-3``). See also
+						frequency table (*default* ``1.e-2``). See also
 						:py:func:`GIcert`.
 
 			compareTol (float):    the tolerance used when comparing two Graph
@@ -3419,10 +3424,12 @@ class GraphISO(object):
 							when calculating the graph certificate
 							(``'chebyshev'`` *(default)* or ``'krylov'``).
 
+			bosonic (bool): if ``True``, instructs the solver to use a
+							Bosonic Hamiltonian (*default* ``False``).
+
 		Note:
-			* For ``freqTol=1.e-2``, all decimal places \
-				below 0.01 are discarded from the probability \
-				distribution.
+			* For ``freqTol=1.e-2``, probabilities within (100freqTol)% \
+				are treated as equal.
 			* Two isomorphic certificates satisfy \
 				:math:`\max(|cert_1 - cert_2|) < compareTol`.
 
@@ -3443,7 +3450,8 @@ class GraphISO(object):
 						'workSize'      : '35',
 						'tol'           : 0.,
 						'maxIt'         : 0,
-						'verbose'       : False
+						'verbose'       : False,
+						'bosonic'		: False
 						}
 			   
 		self.__rank = _PETSc.Comm.Get_rank(_PETSc.COMM_WORLD)
@@ -3560,7 +3568,7 @@ class GraphISO(object):
 		GIcertS = _PETSc.Log.Stage('GICert')
 		GIcertS.push()
 		cert, certSize = _ctqwmpi.GraphISCert(adj,self.p,self.freqTol,self.propagator,
-			self.esolver,self.emax_estimate,self.workType,self.workSize,self.tol,self.maxIt,self.verbose)
+			self.esolver,self.emax_estimate,self.workType,self.workSize,self.tol,self.maxIt,self.bosonic,self.verbose)
 		GIcertS.pop()
 
 		return _np.array(cert).T[_np.lexsort(_np.array(cert)[:,0:certSize])[::-1]]

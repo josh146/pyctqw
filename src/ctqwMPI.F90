@@ -352,7 +352,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~Import and convert Adjacency matrix to Hamiltonian ~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    subroutine importAdjToH(mat,filename,p,d,amp,interaction,nd)
+    subroutine importAdjToH(mat,filename,p,d,amp,interaction,bosonic,nd)
         ! Import an adjacency matrix from a file, and create a PETSc Hamiltonian matrix.
         character, intent(in)          :: p ! number of particles in the system ('1', '2', or '3')
         character(len=50), intent(in)  :: filename ! dense adjacency matrix file in text format
@@ -360,6 +360,7 @@ module ctqwMPI
         PetscInt, intent(in)           :: d(nd) ! nodes to place defects on
         PetscScalar, intent(in)        :: amp(nd) ! amplitude of defects
         PetscScalar, intent(in)        :: interaction ! interaction amplitude
+        PetscBool, intent(in)          :: bosonic ! whether to generate bosonic hamiltonian or not
         
         Mat, intent(out)                :: mat ! output Hamiltonian matrix
         
@@ -394,7 +395,7 @@ module ctqwMPI
 
         close(15)
 
-        call adjToH(mat,adjArray,p,d,amp,interaction,nd,N)
+        call adjToH(mat,adjArray,p,d,amp,interaction,bosonic,nd,N)
         deallocate(adjArray,HArray)
 
     end subroutine importAdjToH
@@ -403,7 +404,7 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~ Convert Adjacency array to Hamiltonian ~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    subroutine adjToH(mat,adjArray,p,d,amp,interaction,nd,N)
+    subroutine adjToH(mat,adjArray,p,d,amp,interaction,bosonic,nd,N)
         ! convert an adjacency array to a PETSc Hamiltonian matrix
         character, intent(in)          :: p ! number of particles in the system ('1', '2', or '3')
         PetscInt, intent(in)           :: nd ! number of defects
@@ -412,6 +413,7 @@ module ctqwMPI
         PetscInt, intent(in)           :: adjArray(N,N) ! nxn array containing adjacency matrix
         PetscScalar, intent(in)        :: amp(nd) ! amplitude of defects
         PetscScalar, intent(in)        :: interaction ! interaction amplitude
+        PetscBool, intent(in)          :: bosonic ! whether to generate bosonic hamiltonian or not
         
         Mat, intent(out)                :: mat ! output Hamiltonian matrix
         
@@ -422,6 +424,8 @@ module ctqwMPI
         PetscScalar              :: HArray(N,N), tempA
         PetscInt, allocatable    :: intTestArray(:)
         PetscScalar, allocatable :: ident(:,:),ident2(:,:), temp(:,:),temp3(:,:), H2Array(:,:)
+        Mat                      :: IplS, H, BH
+        PetscBool                :: seq
         
         call MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr)
         
@@ -448,71 +452,175 @@ module ctqwMPI
 
             !allocate(H2Array(Nsq,Nsq))
             !call kronSum(HArray,N,H2Array)
+
+
+            !generate bosonic hamiltonian
+            if (bosonic) then
+
+                ! set up output matrix
+                call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,Nsq,Nsq,ierr)
+                call MatSetFromOptions(mat,ierr)
+                call MatSetUp(mat,ierr)
+                call MatGetOwnershipRange(mat,Istart,Iend,ierr)
+
+                if (Iend-Istart == Nsq) then
+                    seq = .TRUE.
+                else
+                    seq = .FALSE.
+                endif
+
+                if (seq) then
+                    call MatCreate(MPI_COMM_SELF,H,ierr)
+                else
+                    call MatCreate(PETSC_COMM_WORLD,H,ierr)
+                endif
+                call MatSetSizes(H,PETSC_DECIDE,PETSC_DECIDE,Nsq,Nsq,ierr)
+                call MatSetFromOptions(H,ierr)
+                call MatSetUp(H,ierr)
+
+                call MatGetOwnershipRange(H,Istart,Iend,ierr)
+                !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                ! looping over  HArray
+                !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                do i=1,N
+                    do j=1,N
+                        if (HArray(i,j) /= 0.d0+PETSC_i*0.d0) then
+                            do k=1,N
+
+                                iH = N*(i-1)+k
+                                jH = N*(j-1)+k
+
+                                if (Istart<iH .and. iH<Iend+1) then
+                                    call MatSetValue(H,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
+                                endif
+
+                                iH = N*(k-1)+i
+                                jH = N*(k-1)+j
+
+                                if (Istart<iH .and. iH<Iend+1) then
+                                    call MatSetValue(H,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
+                                endif
+
+                            enddo
+                        endif
+                    enddo
+                enddo
             
-            call PetscBarrier(mat,ierr)
-        
-            call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,Nsq,Nsq,ierr)
-            call MatSetFromOptions(mat,ierr)
-            call MatSetUp(mat,ierr)
-            call MatGetOwnershipRange(mat,Istart,Iend,ierr)
+                !Assemble current H matrix
+                call PetscBarrier(H,ierr)
+                call MatAssemblyBegin(H,MAT_FINAL_ASSEMBLY,ierr)
+                CHKERRQ(ierr)
+                call MatAssemblyEnd(H,MAT_FINAL_ASSEMBLY,ierr)
+                CHKERRQ(ierr)
 
-            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            ! looping over  HArray
-            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            do i=1,N
-                do j=1,N
-                    if (HArray(i,j) /= 0.d0+PETSC_i*0.d0) then
-                        do k=1,N
+                if (seq) then
+                    call MatCreate(MPI_COMM_SELF,IplS,ierr)
+                else
+                    call MatCreate(PETSC_COMM_WORLD,IplS,ierr)
+                endif
+                call MatSetSizes(IplS,PETSC_DECIDE,PETSC_DECIDE,Nsq,Nsq,ierr)
+                call MatSetFromOptions(IplS,ierr)
+                call MatSetUp(IplS,ierr)
+                call MatGetOwnershipRange(IplS,Istart,Iend,ierr)
 
-                            iH = N*(i-1)+k
-                            jH = N*(j-1)+k
+                ! create elements of 0.5S
+                do i=0,N-1
+                    do j=0,N-1
 
-                            if (Istart<iH .and. iH<Iend+1) then
-                                call MatSetValue(mat,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
-                            endif
+                        iH = N*i+j
+                        jH = N*j+i
 
-                            iH = N*(k-1)+i
-                            jH = N*(k-1)+j
+                        if (Istart-1<iH .and. iH<Iend) then
+                            call MatSetValue(IplS,iH,jH,0.5d0+PETSC_i*0.d0,ADD_VALUES,ierr)
+                        endif
 
-                            if (Istart<iH .and. iH<Iend+1) then
-                                call MatSetValue(mat,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
-                            endif
+                    enddo
+                enddo
 
-                        enddo
+                ! Add 0.5S to 0.5I
+                do i=Istart, Iend-1
+                    call MatSetValue(IplS,i,i,0.5d0+PETSC_i*0.d0,ADD_VALUES,ierr)
+                enddo
+
+                !Assemble matrix
+                call PetscBarrier(IplS,ierr)
+                call MatAssemblyBegin(IplS,MAT_FINAL_ASSEMBLY,ierr)
+                CHKERRQ(ierr)
+                call MatAssemblyEnd(IplS,MAT_FINAL_ASSEMBLY,ierr)
+                CHKERRQ(ierr)
+
+                !Calculate 0.5(I+S).H
+                call MatMatMult(IplS,H,MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,BH,ierr)
+
+                ! interactions
+                call MatGetOwnershipRange(mat,Istart,Iend,ierr)
+
+                do i=Istart+1, Iend
+                    if (mod(i,N+1)==1) then
+                        call MatSetValue(mat,i-1,i-1,interaction,ADD_VALUES,ierr)
                     endif
                 enddo
-            enddo
+            
+                call PetscBarrier(mat,ierr)
+                call MatAssemblyBegin(mat,MAT_FINAL_ASSEMBLY,ierr)
+                CHKERRQ(ierr)
+                call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
+                CHKERRQ(ierr)
 
-            ! interactions
-            do i=Istart+1, Iend
-                if (mod(i,N+1)==1) then
-                    call MatSetValue(mat,i-1,i-1,interaction,ADD_VALUES,ierr)
-                endif
-            enddo
+                call MatAXPY(mat,1.d0+PETSC_i*0.d0,BH,DIFFERENT_NONZERO_PATTERN,ierr)
 
-            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            ! looping over  H2Array formed from kronsum2
-            !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            !do i=Istart, Iend-1            
-            !    do j=1,Nsq
-            !        if (H2Array(i+1,j) .ne. 0) then
-            !            if (i==j-1 .and. mod(j,n+1)==1) then
-            !                call MatSetValue(mat,i,j-1,H2Array(i+1,j)+interaction,INSERT_VALUES,ierr)
-            !            else
-            !                call MatSetValue(mat,i,j-1,H2Array(i+1,j),INSERT_VALUES,ierr)
-            !            endif
-            !        endif
-            !    enddo
-            !enddo
-        
-            call PetscBarrier(mat,ierr)
+                call MatDestroy(H,ierr)
+                call MatDestroy(BH,ierr)
+                call MatDestroy(IplS,ierr)
+            else
+            
+                call PetscBarrier(mat,ierr)
+            
+                call MatSetSizes(mat,PETSC_DECIDE,PETSC_DECIDE,Nsq,Nsq,ierr)
+                call MatSetFromOptions(mat,ierr)
+                call MatSetUp(mat,ierr)
+                call MatGetOwnershipRange(mat,Istart,Iend,ierr)
 
-            call MatAssemblyBegin(mat,MAT_FINAL_ASSEMBLY,ierr)
-            CHKERRQ(ierr)
-            call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
-            CHKERRQ(ierr)
+                !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                ! looping over  HArray
+                !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                do i=1,N
+                    do j=1,N
+                        if (HArray(i,j) /= 0.d0+PETSC_i*0.d0) then
+                            do k=1,N
 
-            !deallocate(H2Array)
+                                iH = N*(i-1)+k
+                                jH = N*(j-1)+k
+
+                                if (Istart<iH .and. iH<Iend+1) then
+                                    call MatSetValue(mat,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
+                                endif
+
+                                iH = N*(k-1)+i
+                                jH = N*(k-1)+j
+
+                                if (Istart<iH .and. iH<Iend+1) then
+                                    call MatSetValue(mat,iH-1,jH-1,HArray(i,j),ADD_VALUES,ierr)
+                                endif
+
+                            enddo
+                        endif
+                    enddo
+                enddo
+
+                ! interactions
+                do i=Istart+1, Iend
+                    if (mod(i,N+1)==1) then
+                        call MatSetValue(mat,i-1,i-1,interaction,ADD_VALUES,ierr)
+                    endif
+                enddo
+            
+                call PetscBarrier(mat,ierr)
+                call MatAssemblyBegin(mat,MAT_FINAL_ASSEMBLY,ierr)
+                CHKERRQ(ierr)
+                call MatAssemblyEnd(mat,MAT_FINAL_ASSEMBLY,ierr)
+                CHKERRQ(ierr)
+            endif
 
         elseif (p == '3') then
             Nsq = N*N
@@ -1087,9 +1195,10 @@ module ctqwMPI
 !~~~~~~~~~~~~~~~~~~ using PETSc's sparse matrix routines ~~~~~~~~~~~~~~~~~
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    subroutine hamiltonian_p3_line(H3,d,amp,interaction,nd,n)
+    subroutine hamiltonian_p3_line(H3,d,amp,interaction,bosonic,nd,n)
         PetscInt, intent(in)    :: n, nd, d(nd)
         PetscScalar, intent(in) :: amp(nd), interaction
+        PetscBool, intent(in)   :: bosonic ! whether to generate bosonic hamiltonian or not
         
         Mat, intent(out)        :: H3
         
@@ -1106,7 +1215,7 @@ module ctqwMPI
             adjArray(i,i+1) = 1
         enddo
                 
-        call adjToH(H3,adjArray,'3',d,amp,interaction,nd,N) 
+        call adjToH(H3,adjArray,'3',d,amp,interaction,bosonic,nd,N) 
     
     end subroutine hamiltonian_p3_line
     
@@ -1785,13 +1894,13 @@ module ctqwMPI
     end subroutine getAllEdgeStates3P
 
     subroutine GraphISCert(cert,certLength,adjArray,p,tol,expm_method, & 
-        eig_solver,Emax_estimate,worktype,worktypeInt,tolIn,max_it,verbose,N)
+        eig_solver,Emax_estimate,worktype,worktypeInt,tolIn,max_it,bosonic,verbose,N)
 
         PetscInt, intent(in)         :: N, adjArray(N,N), worktypeInt, max_it, p
         PetscReal, intent(in)        :: tolIn, Emax_estimate, tol
         character(len=*),intent(in)  :: expm_method, eig_solver
         character(len=3), intent(in) :: worktype
-        PetscBool, intent(in)        :: verbose
+        PetscBool, intent(in)        :: verbose, bosonic
 
         PetscReal, intent(out)       :: cert(2,(N**(p+1))*(N-1)/2)
         PetscInt, intent(out)        :: certLength
@@ -1820,16 +1929,15 @@ module ctqwMPI
 
         ! create local Hamiltonian
         if (verbose .and. rank == 0) then
-            call execute_command_line('mkdir -p tmpcerts/')
             write(*,*)'Creating the Hamiltonian...'
         endif
 
         call MatCreate(MPI_COMM_SELF,H,ierr)
         call MatSetType(H, MATSEQAIJ,ierr)
         if (p==3) then
-            call adjToH(H,adjArray,'3',[0],[0.d0*PETSC_i],1.d0+0.d0*PETSC_i,1,N)
+            call adjToH(H,adjArray,'3',[0],[0.d0*PETSC_i],1.d0+0.d0*PETSC_i,bosonic,1,N)
         else
-            call adjToH(H,adjArray,'2',[0],[0.d0*PETSC_i],1.d0+0.d0*PETSC_i,1,N)
+            call adjToH(H,adjArray,'2',[0],[0.d0*PETSC_i],1.d0+0.d0*PETSC_i,bosonic,1,N)
         endif
 
         NN = N**p
@@ -1968,7 +2076,6 @@ module ctqwMPI
                 allocate(certArrayReal(certSize))
                 certArrayReal = localCert
             endif
-
 
             call d_refsor(certArrayReal)
 
