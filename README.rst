@@ -12,7 +12,12 @@ Fortran library and Python module to calculate continuous-time quantum walks
 This is intended to provide a framework to quickly and easily work with quantum
 walkers, take advantage of high performance computing, and allow easy visualisation.
 
-For more information on how to use this package, please see the `online documentation <http://pyctqw.readthedocs.org>`_
+For more information on how to use this package, please see the `online documentation <http://pyctqw.readthedocs.org>`_ 
+and the following peer-reviewed article:
+
+   Josh A. Izaac and Jingbo B. Wang.
+   pyCTQW: a continuous-time quantum walk simulator on distributed memory computers.
+   *Computer Physics Communications*, September 2014. `doi:10.1016/j.cpc.2014.09.011 <http://dx.doi.org/10.1016/j.cpc.2014.09.011>`_
 
 Features
 ============
